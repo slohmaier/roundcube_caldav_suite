@@ -1,0 +1,10 @@
+services:
+  radicale:
+    image: tomsquest/docker-radicale:latest
+    container_name: radicale-test
+    ports:
+      - "15232:5232"
+    volumes:
+      - ./tests/radicale-config:/etc/radicale:ro
+    tmpfs:
+      - /data

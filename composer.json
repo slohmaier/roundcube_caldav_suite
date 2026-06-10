@@ -38,5 +38,10 @@
         "test:all": "phpunit",
         "analyse": "phpstan analyse lib/ -l 6",
         "cs-fix": "php-cs-fixer fix lib/ tests/"
+    },
+    "config": {
+        "allow-plugins": {
+            "roundcube/plugin-installer": true
+        }
     }
 }
