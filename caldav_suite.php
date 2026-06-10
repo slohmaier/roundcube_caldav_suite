@@ -14,6 +14,18 @@ class caldav_suite extends rcube_plugin
     {
         $this->rc = rcmail::get_instance();
 
+        // Register AJAX actions BEFORE register_task (which clobbers $this->mytask)
+        $this->register_action('plugin.caldav-calendars', [$this, 'action_get_calendars']);
+        $this->register_action('plugin.caldav-events', [$this, 'action_get_events']);
+        $this->register_action('plugin.caldav-event-save', [$this, 'action_save_event']);
+        $this->register_action('plugin.caldav-event-delete', [$this, 'action_delete_event']);
+        $this->register_action('plugin.caldav-tasklists', [$this, 'action_get_tasklists']);
+        $this->register_action('plugin.caldav-tasks', [$this, 'action_get_tasks']);
+        $this->register_action('plugin.caldav-task-save', [$this, 'action_save_task']);
+        $this->register_action('plugin.caldav-task-delete', [$this, 'action_delete_task']);
+        $this->register_action('plugin.caldav-task-toggle', [$this, 'action_toggle_task']);
+        $this->register_action('plugin.caldav-test-connection', [$this, 'action_test_connection']);
+
         $this->register_task('calendar');
         $this->register_task('tasks');
 
@@ -71,17 +83,6 @@ class caldav_suite extends rcube_plugin
                 $args['abort'] = true;
             }
         }
-
-        $this->register_action('plugin.caldav-calendars', [$this, 'action_get_calendars']);
-        $this->register_action('plugin.caldav-events', [$this, 'action_get_events']);
-        $this->register_action('plugin.caldav-event-save', [$this, 'action_save_event']);
-        $this->register_action('plugin.caldav-event-delete', [$this, 'action_delete_event']);
-        $this->register_action('plugin.caldav-tasklists', [$this, 'action_get_tasklists']);
-        $this->register_action('plugin.caldav-tasks', [$this, 'action_get_tasks']);
-        $this->register_action('plugin.caldav-task-save', [$this, 'action_save_task']);
-        $this->register_action('plugin.caldav-task-delete', [$this, 'action_delete_task']);
-        $this->register_action('plugin.caldav-task-toggle', [$this, 'action_toggle_task']);
-        $this->register_action('plugin.caldav-test-connection', [$this, 'action_test_connection']);
 
         return $args;
     }
@@ -178,9 +179,9 @@ class caldav_suite extends rcube_plugin
             return;
         }
 
-        $start = new \DateTimeImmutable(rcube_utils::get_input_value('start', rcube_utils::INPUT_POST));
-        $end = new \DateTimeImmutable(rcube_utils::get_input_value('end', rcube_utils::INPUT_POST));
-        $calendarIds = rcube_utils::get_input_value('calendars', rcube_utils::INPUT_POST) ?: [];
+        $start = new \DateTimeImmutable(rcube_utils::get_input_value('_start', rcube_utils::INPUT_POST));
+        $end = new \DateTimeImmutable(rcube_utils::get_input_value('_end', rcube_utils::INPUT_POST));
+        $calendarIds = rcube_utils::get_input_value('_calendars', rcube_utils::INPUT_POST) ?: [];
 
         $events = [];
         foreach ($client->getCalendars() as $cal) {
@@ -207,10 +208,10 @@ class caldav_suite extends rcube_plugin
             return;
         }
 
-        $data = rcube_utils::get_input_value('event', rcube_utils::INPUT_POST);
-        $calendarUrl = rcube_utils::get_input_value('calendar_url', rcube_utils::INPUT_POST);
-        $existingUrl = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
-        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+        $data = rcube_utils::get_input_value('_event', rcube_utils::INPUT_POST);
+        $calendarUrl = rcube_utils::get_input_value('_calendar_url', rcube_utils::INPUT_POST);
+        $existingUrl = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
 
         $backend = new \Slohmaier\CalDAVSuite\CalendarBackend();
         $ical = $backend->buildICalEvent($data);
@@ -231,8 +232,8 @@ class caldav_suite extends rcube_plugin
     public function action_delete_event()
     {
         $client = $this->get_caldav_client();
-        $url = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
-        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+        $url = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
 
         if ($client && $client->deleteObject($url, $etag ?: null)) {
             $this->rc->output->show_message($this->gettext('event_deleted'), 'confirmation');
@@ -274,8 +275,8 @@ class caldav_suite extends rcube_plugin
             return;
         }
 
-        $listUrl = rcube_utils::get_input_value('list_url', rcube_utils::INPUT_POST);
-        $includeCompleted = (bool)rcube_utils::get_input_value('include_completed', rcube_utils::INPUT_POST);
+        $listUrl = rcube_utils::get_input_value('_list_url', rcube_utils::INPUT_POST);
+        $includeCompleted = (bool)rcube_utils::get_input_value('_include_completed', rcube_utils::INPUT_POST);
 
         $tasks = [];
         $lists = $listUrl
@@ -303,10 +304,10 @@ class caldav_suite extends rcube_plugin
             return;
         }
 
-        $data = rcube_utils::get_input_value('task', rcube_utils::INPUT_POST);
-        $listUrl = rcube_utils::get_input_value('list_url', rcube_utils::INPUT_POST);
-        $existingUrl = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
-        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+        $data = rcube_utils::get_input_value('_task', rcube_utils::INPUT_POST);
+        $listUrl = rcube_utils::get_input_value('_list_url', rcube_utils::INPUT_POST);
+        $existingUrl = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
 
         $backend = new \Slohmaier\CalDAVSuite\TaskBackend();
         $ical = $backend->buildICalTodo($data);
@@ -326,8 +327,8 @@ class caldav_suite extends rcube_plugin
     public function action_delete_task()
     {
         $client = $this->get_caldav_client();
-        $url = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
-        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+        $url = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
 
         if ($client && $client->deleteObject($url, $etag ?: null)) {
             $this->rc->output->show_message($this->gettext('task_deleted'), 'confirmation');
@@ -346,9 +347,9 @@ class caldav_suite extends rcube_plugin
             return;
         }
 
-        $url = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
-        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
-        $completed = (bool)rcube_utils::get_input_value('completed', rcube_utils::INPUT_POST);
+        $url = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
+        $completed = (bool)rcube_utils::get_input_value('_completed', rcube_utils::INPUT_POST);
 
         $backend = new \Slohmaier\CalDAVSuite\TaskBackend();
         $ical = $backend->toggleCompleted($url, $completed, $client);
@@ -363,9 +364,9 @@ class caldav_suite extends rcube_plugin
 
     public function action_test_connection()
     {
-        $url = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
-        $username = rcube_utils::get_input_value('username', rcube_utils::INPUT_POST);
-        $password = rcube_utils::get_input_value('password', rcube_utils::INPUT_POST);
+        $url = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
+        $username = rcube_utils::get_input_value('_username', rcube_utils::INPUT_POST);
+        $password = rcube_utils::get_input_value('_password', rcube_utils::INPUT_POST);
 
         try {
             $client = new CalDAVClient($url, $username, $password);
