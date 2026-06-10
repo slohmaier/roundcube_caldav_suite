@@ -149,8 +149,8 @@ class caldav_suite extends rcube_plugin
 
     public function action_get_calendars()
     {
-        $client = $this->get_caldav_client();
-        if (!$client) {
+        $clients = $this->get_all_caldav_clients();
+        if (empty($clients)) {
             $this->rc->output->command('plugin.caldav-calendars-response', ['error' => $this->gettext('no_caldav_configured')]);
             $this->rc->output->send();
             return;
@@ -160,13 +160,15 @@ class caldav_suite extends rcube_plugin
         $prefs = $this->rc->user->get_prefs();
         $colors = json_decode($prefs['caldav_suite_colors'] ?? '{}', true) ?: [];
 
-        foreach ($client->getCalendars() as $cal) {
-            $calendars[] = [
-                'id'    => $cal->getId(),
-                'name'  => $cal->displayName,
-                'url'   => $cal->url,
-                'color' => $colors[$cal->getId()] ?? $cal->color ?? '#4fc3f7',
-            ];
+        foreach ($clients as $client) {
+            foreach ($client->getCalendars() as $cal) {
+                $calendars[] = [
+                    'id'    => $cal->getId(),
+                    'name'  => $cal->displayName,
+                    'url'   => $cal->url,
+                    'color' => $colors[$cal->getId()] ?? $cal->color ?? '#4fc3f7',
+                ];
+            }
         }
 
         $this->rc->output->command('plugin.caldav-calendars-response', ['calendars' => $calendars]);
@@ -175,8 +177,8 @@ class caldav_suite extends rcube_plugin
 
     public function action_get_events()
     {
-        $client = $this->get_caldav_client();
-        if (!$client) {
+        $clients = $this->get_all_caldav_clients();
+        if (empty($clients)) {
             $this->rc->output->command('plugin.caldav-events-response', ['error' => $this->gettext('no_caldav_configured')]);
             $this->rc->output->send();
             return;
@@ -187,14 +189,16 @@ class caldav_suite extends rcube_plugin
         $calendarIds = rcube_utils::get_input_value('_calendars', rcube_utils::INPUT_POST) ?: [];
 
         $events = [];
-        foreach ($client->getCalendars() as $cal) {
-            if (!empty($calendarIds) && !in_array($cal->getId(), $calendarIds)) {
-                continue;
-            }
-            foreach ($client->getEvents($cal->url, $start, $end) as $event) {
-                $data = $event->toArray();
-                $data['calendarId'] = $cal->getId();
-                $events[] = $data;
+        foreach ($clients as $client) {
+            foreach ($client->getCalendars() as $cal) {
+                if (!empty($calendarIds) && !in_array($cal->getId(), $calendarIds)) {
+                    continue;
+                }
+                foreach ($client->getEvents($cal->url, $start, $end) as $event) {
+                    $data = $event->toArray();
+                    $data['calendarId'] = $cal->getId();
+                    $events[] = $data;
+                }
             }
         }
 
@@ -436,6 +440,14 @@ class caldav_suite extends rcube_plugin
                         'size' => 30, 'type' => 'password', 'value' => '',
                     ]))->show() . ' <small>' . $this->gettext('password_hint') . '</small>',
                 ],
+                'extra_urls' => [
+                    'title'   => $this->gettext('extra_caldav_urls'),
+                    'content' => (new html_textarea([
+                        'name' => '_caldav_extra_urls', 'id' => 'caldav-extra-urls',
+                        'cols' => 60, 'rows' => 3,
+                    ]))->show($prefs['caldav_suite_extra_urls'] ?? '')
+                    . ' <small>' . $this->gettext('extra_urls_hint') . '</small>',
+                ],
                 'test' => [
                     'title'   => '',
                     'content' => html::tag('button', [
@@ -516,6 +528,7 @@ class caldav_suite extends rcube_plugin
         $args['prefs']['caldav_suite_default_view'] = rcube_utils::get_input_value('_caldav_default_view', rcube_utils::INPUT_POST);
         $args['prefs']['caldav_suite_first_day'] = rcube_utils::get_input_value('_caldav_first_day', rcube_utils::INPUT_POST);
         $args['prefs']['caldav_suite_time_format'] = rcube_utils::get_input_value('_caldav_time_format', rcube_utils::INPUT_POST);
+        $args['prefs']['caldav_suite_extra_urls'] = rcube_utils::get_input_value('_caldav_extra_urls', rcube_utils::INPUT_POST);
         $args['prefs']['caldav_suite_geocode_provider'] = rcube_utils::get_input_value('_caldav_geocode_provider', rcube_utils::INPUT_POST);
         $args['prefs']['caldav_suite_geocode_url'] = rcube_utils::get_input_value('_caldav_geocode_url', rcube_utils::INPUT_POST);
 
@@ -550,5 +563,38 @@ class caldav_suite extends rcube_plugin
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    /**
+     * Get all CalDAV clients including additional URLs (e.g. shared calendars).
+     * @return CalDAVClient[]
+     */
+    private function get_all_caldav_clients(): array
+    {
+        $clients = [];
+        $main = $this->get_caldav_client();
+        if ($main) {
+            $clients[] = $main;
+        }
+
+        $prefs = $this->rc->user->get_prefs();
+        $extraUrls = $prefs['caldav_suite_extra_urls'] ?? '';
+        $username = $prefs['caldav_suite_username'] ?? '';
+        $password = $prefs['caldav_suite_password'] ?? '';
+        $decrypted = $this->rc->decrypt($password);
+
+        if (!empty($extraUrls) && $decrypted !== false) {
+            foreach (explode("\n", $extraUrls) as $url) {
+                $url = trim($url);
+                if (empty($url)) continue;
+                try {
+                    $clients[] = new CalDAVClient($url, $username, $decrypted);
+                } catch (\Exception $e) {
+                    // skip broken URLs
+                }
+            }
+        }
+
+        return $clients;
     }
 }

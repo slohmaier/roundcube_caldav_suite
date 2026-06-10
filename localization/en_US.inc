@@ -73,3 +73,5 @@ $labels['geocoding_settings'] = 'Location Search';
 $labels['geocode_provider'] = 'Search provider';
 $labels['geocode_url'] = 'Server URL (self-hosted)';
 $labels['geocode_url_hint'] = 'Empty = public instance. For self-hosted: e.g. https://nominatim.example.com';
+$labels['extra_caldav_urls'] = 'Additional CalDAV URLs';
+$labels['extra_urls_hint'] = 'One URL per line. For shared calendars, e.g. https://radicale.example.com/shared/';
