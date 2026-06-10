@@ -122,8 +122,14 @@ class CalendarObject
         ];
 
         if ($this->component->name === 'VEVENT') {
-            $data['start'] = $this->getStart()?->format('c');
-            $data['end'] = $this->getEnd()?->format('c');
+            if ($this->isAllDay()) {
+                // All-day: send pure dates (Y-m-d) to avoid timezone shift in browser
+                $data['start'] = $this->getStart()?->format('Y-m-d');
+                $data['end'] = $this->getEnd()?->format('Y-m-d');
+            } else {
+                $data['start'] = $this->getStart()?->format('c');
+                $data['end'] = $this->getEnd()?->format('c');
+            }
             $data['allDay'] = $this->isAllDay();
             $data['travel_mode'] = $this->getTravelMode();
             $data['location_geo'] = $this->getGeo();

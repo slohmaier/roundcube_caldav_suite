@@ -50,10 +50,11 @@
 .week-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); }
 
 /* All-day events row */
-.week-allday { display: flex; border-bottom: 2px solid var(--color-border, #ddd); min-height: 28px; }
+/* All-day events row - grows to fit all events, scrolls if too many */
+.week-allday { display: flex; border-bottom: 2px solid var(--color-border, #ddd); max-height: 120px; overflow-y: auto; }
 .week-allday .time-gutter { width: 3em; flex-shrink: 0; font-size: 0.7em; text-align: right; padding-right: 4px; color: var(--color-text-secondary, #888); padding-top: 4px; }
-.week-allday-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); padding: 2px; }
-.week-allday-event { font-size: 0.75em; padding: 2px 6px; margin: 1px 0; border-radius: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.week-allday-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); padding: 2px; display: flex; flex-direction: column; gap: 1px; }
+.week-allday-event { font-size: 0.72em; padding: 1px 5px; border-radius: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 .week-allday-event:focus { outline: 2px solid var(--color-main, #4fc3f7); }
 
 /* Inline week events (inside cells, scroll with grid) */

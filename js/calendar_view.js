@@ -542,17 +542,23 @@
     }
 
     function getEventsForDate(events, date) {
+        var dayStr = date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate());
         var dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
         var dayEnd = dayStart + 86400000;
+
         return events.filter(function(ev) {
+            if (ev.allDay) {
+                // All-day: dates come as "YYYY-MM-DD" strings, DTEND is exclusive
+                // e.g. start=2026-06-10, end=2026-06-11 means only June 10
+                var startStr = (ev.start || '').substr(0, 10);
+                var endStr = (ev.end || ev.start || '').substr(0, 10);
+                return dayStr >= startStr && dayStr < endStr;
+            }
             var evStart = new Date(ev.start).getTime();
             var evEnd = new Date(ev.end || ev.start).getTime();
-            // All-day events: DTEND is exclusive in iCal (e.g. June 10 to June 11 = only June 10)
-            // So for all-day: event is on this day if start <= day < end
-            if (ev.allDay) {
-                return evStart < dayEnd && evEnd > dayStart && evEnd > evStart;
-            }
             return evStart < dayEnd && evEnd > dayStart;
         });
     }
+
+    function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 })();
