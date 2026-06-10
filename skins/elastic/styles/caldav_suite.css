@@ -38,13 +38,13 @@
 
 /* ---- Week View ---- */
 
-.week-view { position: relative; min-height: 600px; }
+.week-view { position: relative; }
 .week-header { display: flex; border-bottom: 2px solid var(--color-border, #ddd); }
 .week-header .time-gutter { width: 3em; flex-shrink: 0; }
 .week-day-header { flex: 1; text-align: center; padding: 0.4em; font-weight: 600; }
 .week-day-header.today { color: var(--color-main, #4fc3f7); }
 
-.week-body { position: relative; }
+.week-body { position: relative; overflow-y: auto; max-height: calc(100vh - 120px); }
 .week-row { display: flex; border-bottom: 1px solid var(--color-border, #eee); height: 40px; }
 .week-row .time-gutter { width: 3em; flex-shrink: 0; font-size: 0.75em; text-align: right; padding-right: 4px; color: var(--color-text-secondary, #888); }
 .week-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); }
@@ -55,7 +55,7 @@
 
 /* ---- Day View ---- */
 
-.day-view { position: relative; min-height: 600px; }
+.day-view { position: relative; overflow-y: auto; max-height: calc(100vh - 120px); }
 .day-row { display: flex; border-bottom: 1px solid var(--color-border, #eee); height: 40px; }
 .day-row .time-gutter { width: 3em; flex-shrink: 0; font-size: 0.75em; text-align: right; padding-right: 4px; color: var(--color-text-secondary, #888); }
 .day-cell { flex: 1; }
@@ -147,6 +147,10 @@
     .week-view { font-size: 0.85em; }
     .day-view { font-size: 0.9em; }
 }
+
+/* ---- Layout content scroller ---- */
+#layout-content .scroller { overflow-y: auto; height: calc(100vh - 110px); }
+#layout-sidebar .scroller { overflow-y: auto; }
 
 /* ---- Hint for unconfigured state ---- */
 .hint { color: var(--color-text-secondary, #888); text-align: center; padding: 2em; }
