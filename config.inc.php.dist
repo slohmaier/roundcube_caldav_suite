@@ -1,0 +1,20 @@
+<?php
+
+// CalDAV Server URL (e.g. https://radicale.example.com/user/)
+$config['caldav_suite_url'] = '';
+
+// CalDAV credentials (if different from IMAP login)
+$config['caldav_suite_username'] = '';
+$config['caldav_suite_password'] = '';
+
+// Default view: month|week|day|list
+$config['caldav_suite_default_view'] = 'month';
+
+// First day of week: 0=Sunday, 1=Monday
+$config['caldav_suite_first_day'] = 1;
+
+// Time format: 24|12
+$config['caldav_suite_time_format'] = '24';
+
+// Cache TTL in seconds
+$config['caldav_suite_cache_ttl'] = 300;
