@@ -413,11 +413,17 @@
 
             var color = getCalendarColor(ev.calendarId);
             var time = ev.allDay ? 'Ganztägig' : caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end);
+            var travelHtml = '';
+            if (ev.travel_mode) {
+                var travelLabel = ev.travel_mode === 'auto' ? 'Fahrzeit: Auto' : 'Fahrzeit: ' + ev.travel_mode + ' min';
+                travelHtml = '<span class="event-travel" aria-label="' + travelLabel + '">🚗 ' + (ev.travel_mode === 'auto' ? 'Auto' : ev.travel_mode + ' min') + '</span>';
+            }
             html += '<li class="list-event" data-url="' + ev.url + '" tabindex="0" role="listitem">'
                 + '<span class="event-color-dot" style="background:' + color + '" aria-hidden="true"></span>'
                 + '<span class="event-time">' + time + '</span>'
                 + '<span class="event-summary">' + rcmail.quote_html(ev.summary) + '</span>'
                 + (ev.location ? '<span class="event-location">' + rcmail.quote_html(ev.location) + '</span>' : '')
+                + travelHtml
                 + '</li>';
         });
         html += '</ul></div>';
