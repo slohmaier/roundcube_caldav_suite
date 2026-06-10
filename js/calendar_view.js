@@ -294,6 +294,8 @@
         var today = new Date();
 
         var html = '<div class="week-view" role="grid" aria-label="Week view">';
+
+        // Header with day names
         html += '<div class="week-header"><div class="time-gutter"></div>';
         var cur = new Date(range.start);
         for (var i = 0; i < 7; i++) {
@@ -305,44 +307,64 @@
         }
         html += '</div>';
 
+        // All-day events row
+        var hasAllDay = false;
+        cur = new Date(range.start);
+        var allDayHtml = '<div class="week-allday"><div class="time-gutter">ganzt.</div>';
+        for (var d = 0; d < 7; d++) {
+            var allDayEvents = getEventsForDate(events, cur).filter(function(e) { return e.allDay; });
+            allDayHtml += '<div class="week-allday-cell">';
+            allDayEvents.forEach(function(ev) {
+                hasAllDay = true;
+                var color = getCalendarColor(ev.calendarId);
+                allDayHtml += '<div class="week-allday-event" style="background:' + color + '30;border-left:3px solid ' + color + '" '
+                    + 'data-url="' + ev.url + '" tabindex="0" role="button">'
+                    + rcmail.quote_html(ev.summary) + '</div>';
+            });
+            allDayHtml += '</div>';
+            cur.setDate(cur.getDate() + 1);
+        }
+        allDayHtml += '</div>';
+        if (hasAllDay) html += allDayHtml;
+
+        // Time grid with events inline
         html += '<div class="week-body">';
+
+        // Build per-day event lists for positioning
+        var dayColumns = [];
+        cur = new Date(range.start);
+        for (var d = 0; d < 7; d++) {
+            dayColumns.push(getEventsForDate(events, cur).filter(function(e) { return !e.allDay; }));
+            cur.setDate(cur.getDate() + 1);
+        }
+
         for (var h = 0; h < 24; h++) {
             html += '<div class="week-row">';
             html += '<div class="time-gutter">' + (h < 10 ? '0' : '') + h + ':00</div>';
-            cur = new Date(range.start);
             for (var d = 0; d < 7; d++) {
-                var cellDate = new Date(cur);
-                cellDate.setHours(h, 0, 0, 0);
-                html += '<div class="week-cell" data-date="' + cellDate.toISOString() + '"></div>';
-                cur.setDate(cur.getDate() + 1);
+                html += '<div class="week-cell">';
+                // Render events that start in this hour
+                dayColumns[d].forEach(function(ev) {
+                    var s = new Date(ev.start);
+                    if (s.getHours() === h) {
+                        var e = new Date(ev.end || ev.start);
+                        var durationH = Math.max((e - s) / 3600000, 0.5);
+                        var heightPx = Math.round(durationH * 40); // 40px per hour row
+                        var color = getCalendarColor(ev.calendarId);
+                        html += '<div class="week-event-inline" style="height:' + heightPx + 'px;background:' + color + '30;border-left:3px solid ' + color + '" '
+                            + 'data-url="' + ev.url + '" tabindex="0" role="button">'
+                            + caldav_suite.formatTime(ev.start) + ' ' + rcmail.quote_html(ev.summary)
+                            + '</div>';
+                    }
+                });
+                html += '</div>';
             }
             html += '</div>';
-        }
-        html += '</div>';
-
-        // Overlay events
-        html += '<div class="week-events">';
-        cur = new Date(range.start);
-        for (var d = 0; d < 7; d++) {
-            var dayEvents = getEventsForDate(events, cur).filter(function(e) { return !e.allDay; });
-            dayEvents.forEach(function(ev) {
-                var s = new Date(ev.start);
-                var e = new Date(ev.end);
-                var top = (s.getHours() * 60 + s.getMinutes()) / (24 * 60) * 100;
-                var height = ((e - s) / 3600000) / 24 * 100;
-                var left = d * (100 / 7);
-                var color = getCalendarColor(ev.calendarId);
-                html += '<div class="week-event" style="top:' + top + '%;height:' + Math.max(height, 2) + '%;left:calc(' + left + '% + 3em);width:calc(' + (100/7) + '% - 3.2em);background:' + color + '30;border-left:3px solid ' + color + '" '
-                    + 'data-url="' + ev.url + '" tabindex="0" role="button">'
-                    + caldav_suite.formatTime(ev.start) + ' ' + rcmail.quote_html(ev.summary)
-                    + '</div>';
-            });
-            cur.setDate(cur.getDate() + 1);
         }
         html += '</div></div>';
 
         container.html(html);
-        container.find('.week-event').click(function() {
+        container.find('.week-event-inline, .week-allday-event').click(function() {
             var url = $(this).data('url');
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
@@ -355,33 +377,51 @@
         var d = state.currentDate;
         var events = getVisibleEvents();
         var dayEvents = getEventsForDate(events, d);
+        var timedEvents = dayEvents.filter(function(e) { return !e.allDay; });
+        var allDayEvents = dayEvents.filter(function(e) { return e.allDay; });
 
         var html = '<div class="day-view" role="grid" aria-label="Day view">';
-        for (var h = 0; h < 24; h++) {
-            html += '<div class="day-row">';
-            html += '<div class="time-gutter">' + (h < 10 ? '0' : '') + h + ':00</div>';
-            html += '<div class="day-cell" data-hour="' + h + '"></div>';
+
+        // All-day events
+        if (allDayEvents.length) {
+            html += '<div class="day-allday">';
+            allDayEvents.forEach(function(ev) {
+                var color = getCalendarColor(ev.calendarId);
+                html += '<div class="day-allday-event" style="background:' + color + '30;border-left:3px solid ' + color + '" '
+                    + 'data-url="' + ev.url + '" tabindex="0" role="button">'
+                    + rcmail.quote_html(ev.summary) + '</div>';
+            });
             html += '</div>';
         }
 
-        dayEvents.filter(function(e) { return !e.allDay; }).forEach(function(ev) {
-            var s = new Date(ev.start);
-            var e = new Date(ev.end);
-            var top = (s.getHours() * 60 + s.getMinutes()) / (24 * 60) * 100;
-            var height = ((e - s) / 3600000) / 24 * 100;
-            var color = getCalendarColor(ev.calendarId);
-            html += '<div class="day-event" style="top:' + top + '%;height:' + Math.max(height, 2) + '%;background:' + color + '30;border-left:3px solid ' + color + '" '
-                + 'data-url="' + ev.url + '" tabindex="0" role="button">'
-                + caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end) + ' '
-                + rcmail.quote_html(ev.summary)
-                + (ev.location ? ' (' + rcmail.quote_html(ev.location) + ')' : '')
-                + '</div>';
-        });
+        // Time grid with inline events
+        html += '<div class="day-body">';
+        for (var h = 0; h < 24; h++) {
+            html += '<div class="day-row">';
+            html += '<div class="time-gutter">' + (h < 10 ? '0' : '') + h + ':00</div>';
+            html += '<div class="day-cell">';
+            timedEvents.forEach(function(ev) {
+                var s = new Date(ev.start);
+                if (s.getHours() === h) {
+                    var e = new Date(ev.end || ev.start);
+                    var durationH = Math.max((e - s) / 3600000, 0.5);
+                    var heightPx = Math.round(durationH * 40);
+                    var color = getCalendarColor(ev.calendarId);
+                    html += '<div class="day-event-inline" style="height:' + heightPx + 'px;background:' + color + '30;border-left:3px solid ' + color + '" '
+                        + 'data-url="' + ev.url + '" tabindex="0" role="button">'
+                        + caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end) + ' '
+                        + rcmail.quote_html(ev.summary)
+                        + (ev.location ? ' (' + rcmail.quote_html(ev.location) + ')' : '')
+                        + '</div>';
+                }
+            });
+            html += '</div></div>';
+        }
+        html += '</div></div>';
 
-        html += '</div>';
         container.html(html);
 
-        container.find('.day-event').click(function() {
+        container.find('.day-event-inline, .day-allday-event').click(function() {
             var url = $(this).data('url');
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
