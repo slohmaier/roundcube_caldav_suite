@@ -76,6 +76,37 @@ class CalendarObject
         return isset($this->component->STATUS) ? (string)$this->component->STATUS : null;
     }
 
+    public function getTravelMode(): ?string
+    {
+        if (isset($this->component->{'X-APPLE-TRAVEL-ADVISORY-BEHAVIOR'})) {
+            $val = (string)$this->component->{'X-APPLE-TRAVEL-ADVISORY-BEHAVIOR'};
+            if (strtoupper($val) === 'AUTOMATIC') {
+                return 'auto';
+            }
+        }
+        if (isset($this->component->{'X-APPLE-TRAVEL-DURATION'})) {
+            $duration = (string)$this->component->{'X-APPLE-TRAVEL-DURATION'};
+            if (preg_match('/PT(\d+)M/', $duration, $m)) {
+                return $m[1];
+            }
+        }
+        return null;
+    }
+
+    public function getGeo(): ?string
+    {
+        if (isset($this->component->GEO)) {
+            return str_replace(';', ',', (string)$this->component->GEO);
+        }
+        if (isset($this->component->{'X-APPLE-STRUCTURED-LOCATION'})) {
+            $val = (string)$this->component->{'X-APPLE-STRUCTURED-LOCATION'};
+            if (preg_match('/geo:([\d.+-]+)[,;]([\d.+-]+)/', $val, $m)) {
+                return $m[1] . ',' . $m[2];
+            }
+        }
+        return null;
+    }
+
     /**
      * Serialize to array for JSON API responses.
      */
@@ -94,6 +125,8 @@ class CalendarObject
             $data['start'] = $this->getStart()?->format('c');
             $data['end'] = $this->getEnd()?->format('c');
             $data['allDay'] = $this->isAllDay();
+            $data['travel_mode'] = $this->getTravelMode();
+            $data['location_geo'] = $this->getGeo();
         }
 
         if ($this->component->name === 'VTODO') {

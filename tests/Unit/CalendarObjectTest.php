@@ -110,4 +110,45 @@ class CalendarObjectTest extends TestCase
         $this->assertArrayHasKey('priority', $arr);
         $this->assertEquals(5, $arr['priority']);
     }
+
+    public function testTravelModeAutomatic(): void
+    {
+        $obj = $this->makeEvent("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:travel-1\r\nSUMMARY:Arzt\r\nDTSTART:20260723T090000Z\r\nDTEND:20260723T100000Z\r\nX-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC\r\nEND:VEVENT\r\nEND:VCALENDAR");
+
+        $this->assertEquals('auto', $obj->getTravelMode());
+        $arr = $obj->toArray();
+        $this->assertEquals('auto', $arr['travel_mode']);
+    }
+
+    public function testTravelModeManual(): void
+    {
+        $obj = $this->makeEvent("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:travel-2\r\nSUMMARY:Meeting\r\nDTSTART:20260723T090000Z\r\nDTEND:20260723T100000Z\r\nX-APPLE-TRAVEL-DURATION:PT45M\r\nEND:VEVENT\r\nEND:VCALENDAR");
+
+        $this->assertEquals('45', $obj->getTravelMode());
+    }
+
+    public function testTravelModeNone(): void
+    {
+        $obj = $this->makeEvent("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:travel-3\r\nSUMMARY:Simple\r\nDTSTART:20260723T090000Z\r\nDTEND:20260723T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR");
+
+        $this->assertNull($obj->getTravelMode());
+        $arr = $obj->toArray();
+        $this->assertNull($arr['travel_mode']);
+    }
+
+    public function testGeoFromGeoProperty(): void
+    {
+        $obj = $this->makeEvent("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:geo-1\r\nSUMMARY:Ort\r\nDTSTART:20260723T090000Z\r\nDTEND:20260723T100000Z\r\nGEO:48.1351;11.5820\r\nEND:VEVENT\r\nEND:VCALENDAR");
+
+        $this->assertStringStartsWith('48.1351,11.582', $obj->getGeo());
+        $arr = $obj->toArray();
+        $this->assertStringStartsWith('48.1351,11.582', $arr['location_geo']);
+    }
+
+    public function testGeoNone(): void
+    {
+        $obj = $this->makeEvent("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:geo-2\r\nSUMMARY:NoGeo\r\nDTSTART:20260723T090000Z\r\nDTEND:20260723T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR");
+
+        $this->assertNull($obj->getGeo());
+    }
 }
