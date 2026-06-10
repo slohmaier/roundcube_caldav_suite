@@ -49,19 +49,32 @@
 .week-row .time-gutter { width: 3em; flex-shrink: 0; font-size: 0.75em; text-align: right; padding-right: 4px; color: var(--color-text-secondary, #888); }
 .week-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); }
 
-.week-events { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }
-.week-event { position: absolute; pointer-events: auto; font-size: 0.75em; padding: 2px 4px; overflow: hidden; border-radius: 2px; cursor: pointer; }
-.week-event:focus { outline: 2px solid var(--color-main, #4fc3f7); z-index: 10; }
+/* All-day events row */
+.week-allday { display: flex; border-bottom: 2px solid var(--color-border, #ddd); min-height: 28px; }
+.week-allday .time-gutter { width: 3em; flex-shrink: 0; font-size: 0.7em; text-align: right; padding-right: 4px; color: var(--color-text-secondary, #888); padding-top: 4px; }
+.week-allday-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); padding: 2px; }
+.week-allday-event { font-size: 0.75em; padding: 2px 6px; margin: 1px 0; border-radius: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.week-allday-event:focus { outline: 2px solid var(--color-main, #4fc3f7); }
+
+/* Inline week events (inside cells, scroll with grid) */
+.week-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); position: relative; }
+.week-event-inline { position: absolute; left: 0; right: 0; z-index: 2; font-size: 0.75em; padding: 2px 4px; overflow: hidden; border-radius: 2px; cursor: pointer; }
+.week-event-inline:focus { outline: 2px solid var(--color-main, #4fc3f7); z-index: 10; }
 
 /* ---- Day View ---- */
 
-.day-view { position: relative; overflow-y: auto; max-height: calc(100vh - 120px); }
+.day-view { position: relative; }
+.day-allday { padding: 4px 0 4px 3.2em; border-bottom: 2px solid var(--color-border, #ddd); }
+.day-allday-event { font-size: 0.85em; padding: 3px 8px; margin: 2px 0; border-radius: 3px; cursor: pointer; }
+.day-allday-event:focus { outline: 2px solid var(--color-main, #4fc3f7); }
+
+.day-body { overflow-y: auto; max-height: calc(100vh - 160px); }
 .day-row { display: flex; border-bottom: 1px solid var(--color-border, #eee); height: 40px; }
 .day-row .time-gutter { width: 3em; flex-shrink: 0; font-size: 0.75em; text-align: right; padding-right: 4px; color: var(--color-text-secondary, #888); }
-.day-cell { flex: 1; }
+.day-cell { flex: 1; position: relative; }
 
-.day-event { position: absolute; left: 3.2em; right: 0.5em; font-size: 0.85em; padding: 4px 8px; border-radius: 3px; cursor: pointer; }
-.day-event:focus { outline: 2px solid var(--color-main, #4fc3f7); z-index: 10; }
+.day-event-inline { position: absolute; left: 0; right: 0; z-index: 2; font-size: 0.85em; padding: 4px 8px; border-radius: 3px; cursor: pointer; overflow: hidden; }
+.day-event-inline:focus { outline: 2px solid var(--color-main, #4fc3f7); z-index: 10; }
 
 /* ---- List/Agenda View ---- */
 
