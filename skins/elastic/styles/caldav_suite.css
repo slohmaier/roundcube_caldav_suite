@@ -3,9 +3,9 @@
 /* Screen reader only */
 .voice { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
-/* Taskbar icons */
-.button-calendar .inner::before { content: "\f073"; font-family: "Font Awesome 5 Free"; font-weight: 900; }
-.button-tasks .inner::before { content: "\f0ae"; font-family: "Font Awesome 5 Free"; font-weight: 900; }
+/* Taskbar icons - matches Elastic's icon pattern */
+#taskmenu .button-calendar::before { content: "\f073"; }
+#taskmenu .button-tasks::before { content: "\f0ae"; }
 
 /* Toolbar */
 .header .toolbar { display: flex; align-items: center; gap: 0.25em; flex-wrap: wrap; }
