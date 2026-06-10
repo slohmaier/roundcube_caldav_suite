@@ -102,6 +102,9 @@ class caldav_suite extends rcube_plugin
         $this->rc->output->set_env('caldav_default_view', $prefs['caldav_suite_default_view'] ?? 'month');
         $this->rc->output->set_env('caldav_first_day', (int)($prefs['caldav_suite_first_day'] ?? 1));
         $this->rc->output->set_env('caldav_time_format', $prefs['caldav_suite_time_format'] ?? '24');
+        $this->rc->output->set_env('caldav_geocode_provider', $prefs['caldav_suite_geocode_provider'] ?? 'photon');
+        $this->rc->output->set_env('caldav_geocode_url', $prefs['caldav_suite_geocode_url'] ?? '');
+        $this->rc->output->set_env('caldav_geocode_lang', 'de');
 
         $this->rc->output->send('caldav_suite.calendar');
     }
@@ -477,6 +480,28 @@ class caldav_suite extends rcube_plugin
             ],
         ];
 
+        // Geocoding settings
+        $geoSelect = new html_select(['name' => '_caldav_geocode_provider', 'id' => 'caldav-geocode-provider']);
+        $geoSelect->add('Photon (komoot.io)', 'photon');
+        $geoSelect->add('Nominatim (OpenStreetMap)', 'nominatim');
+
+        $args['blocks']['geocoding'] = [
+            'name'    => $this->gettext('geocoding_settings'),
+            'options' => [
+                'provider' => [
+                    'title'   => $this->gettext('geocode_provider'),
+                    'content' => $geoSelect->show($prefs['caldav_suite_geocode_provider'] ?? 'photon'),
+                ],
+                'geocode_url' => [
+                    'title'   => $this->gettext('geocode_url'),
+                    'content' => (new html_inputfield([
+                        'name' => '_caldav_geocode_url', 'id' => 'caldav-geocode-url',
+                        'size' => 60, 'value' => $prefs['caldav_suite_geocode_url'] ?? '',
+                    ]))->show() . ' <small>' . $this->gettext('geocode_url_hint') . '</small>',
+                ],
+            ],
+        ];
+
         return $args;
     }
 
@@ -491,6 +516,8 @@ class caldav_suite extends rcube_plugin
         $args['prefs']['caldav_suite_default_view'] = rcube_utils::get_input_value('_caldav_default_view', rcube_utils::INPUT_POST);
         $args['prefs']['caldav_suite_first_day'] = rcube_utils::get_input_value('_caldav_first_day', rcube_utils::INPUT_POST);
         $args['prefs']['caldav_suite_time_format'] = rcube_utils::get_input_value('_caldav_time_format', rcube_utils::INPUT_POST);
+        $args['prefs']['caldav_suite_geocode_provider'] = rcube_utils::get_input_value('_caldav_geocode_provider', rcube_utils::INPUT_POST);
+        $args['prefs']['caldav_suite_geocode_url'] = rcube_utils::get_input_value('_caldav_geocode_url', rcube_utils::INPUT_POST);
 
         $password = rcube_utils::get_input_value('_caldav_password', rcube_utils::INPUT_POST);
         if (!empty($password)) {
