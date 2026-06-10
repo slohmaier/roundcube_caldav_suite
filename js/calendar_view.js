@@ -338,22 +338,31 @@
             cur.setDate(cur.getDate() + 1);
         }
 
+        // Pre-compute column assignments for overlapping events
+        var dayEventColumns = [];
+        for (var d = 0; d < 7; d++) {
+            dayEventColumns.push(layoutOverlapping(dayColumns[d]));
+        }
+
         for (var h = 0; h < 24; h++) {
             html += '<div class="week-row">';
             html += '<div class="time-gutter">' + (h < 10 ? '0' : '') + h + ':00</div>';
             for (var d = 0; d < 7; d++) {
                 html += '<div class="week-cell">';
-                // Render events that start in this hour
-                dayColumns[d].forEach(function(ev) {
-                    var s = new Date(ev.start);
+                dayEventColumns[d].forEach(function(item) {
+                    var s = new Date(item.ev.start);
                     if (s.getHours() === h) {
-                        var e = new Date(ev.end || ev.start);
+                        var e = new Date(item.ev.end || item.ev.start);
                         var durationH = Math.max((e - s) / 3600000, 0.5);
-                        var heightPx = Math.round(durationH * 40); // 40px per hour row
-                        var color = getCalendarColor(ev.calendarId);
-                        html += '<div class="week-event-inline" style="height:' + heightPx + 'px;background:' + color + '30;border-left:3px solid ' + color + '" '
-                            + 'data-url="' + ev.url + '" tabindex="0" role="button">'
-                            + caldav_suite.formatTime(ev.start) + ' ' + rcmail.quote_html(ev.summary)
+                        var heightPx = Math.round(durationH * 40);
+                        var color = getCalendarColor(item.ev.calendarId);
+                        var widthPct = Math.floor(100 / item.totalCols);
+                        var leftPct = item.col * widthPct;
+                        html += '<div class="week-event-inline" style="height:' + heightPx + 'px;'
+                            + 'left:' + leftPct + '%;width:' + widthPct + '%;'
+                            + 'background:' + color + '30;border-left:3px solid ' + color + '" '
+                            + 'data-url="' + item.ev.url + '" tabindex="0" role="button">'
+                            + caldav_suite.formatTime(item.ev.start) + ' ' + rcmail.quote_html(item.ev.summary)
                             + '</div>';
                     }
                 });
@@ -394,24 +403,29 @@
             html += '</div>';
         }
 
-        // Time grid with inline events
+        // Time grid with inline events (column layout for overlaps)
+        var dayLayout = layoutOverlapping(timedEvents);
         html += '<div class="day-body">';
         for (var h = 0; h < 24; h++) {
             html += '<div class="day-row">';
             html += '<div class="time-gutter">' + (h < 10 ? '0' : '') + h + ':00</div>';
             html += '<div class="day-cell">';
-            timedEvents.forEach(function(ev) {
-                var s = new Date(ev.start);
+            dayLayout.forEach(function(item) {
+                var s = new Date(item.ev.start);
                 if (s.getHours() === h) {
-                    var e = new Date(ev.end || ev.start);
+                    var e = new Date(item.ev.end || item.ev.start);
                     var durationH = Math.max((e - s) / 3600000, 0.5);
                     var heightPx = Math.round(durationH * 40);
-                    var color = getCalendarColor(ev.calendarId);
-                    html += '<div class="day-event-inline" style="height:' + heightPx + 'px;background:' + color + '30;border-left:3px solid ' + color + '" '
-                        + 'data-url="' + ev.url + '" tabindex="0" role="button">'
-                        + caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end) + ' '
-                        + rcmail.quote_html(ev.summary)
-                        + (ev.location ? ' (' + rcmail.quote_html(ev.location) + ')' : '')
+                    var color = getCalendarColor(item.ev.calendarId);
+                    var widthPct = Math.floor(100 / item.totalCols);
+                    var leftPct = item.col * widthPct;
+                    html += '<div class="day-event-inline" style="height:' + heightPx + 'px;'
+                        + 'left:' + leftPct + '%;width:' + widthPct + '%;'
+                        + 'background:' + color + '30;border-left:3px solid ' + color + '" '
+                        + 'data-url="' + item.ev.url + '" tabindex="0" role="button">'
+                        + caldav_suite.formatTime(item.ev.start) + ' – ' + caldav_suite.formatTime(item.ev.end) + ' '
+                        + rcmail.quote_html(item.ev.summary)
+                        + (item.ev.location ? ' (' + rcmail.quote_html(item.ev.location) + ')' : '')
                         + '</div>';
                 }
             });
@@ -480,12 +494,64 @@
 
     // ---- Helpers ----
 
+    /**
+     * Assign columns to overlapping events so they render side by side.
+     * Returns array of {ev, col, totalCols} objects.
+     */
+    function layoutOverlapping(events) {
+        if (!events.length) return [];
+
+        // Sort by start time
+        var sorted = events.slice().sort(function(a, b) {
+            return new Date(a.start).getTime() - new Date(b.start).getTime();
+        });
+
+        var columns = []; // array of arrays, each column has events
+        var results = [];
+
+        sorted.forEach(function(ev) {
+            var evStart = new Date(ev.start).getTime();
+            var placed = false;
+
+            // Try to place in existing column (first one where it doesn't overlap)
+            for (var c = 0; c < columns.length; c++) {
+                var lastInCol = columns[c][columns[c].length - 1];
+                var lastEnd = new Date(lastInCol.end || lastInCol.start).getTime();
+                if (evStart >= lastEnd) {
+                    columns[c].push(ev);
+                    placed = true;
+                    results.push({ ev: ev, col: c, totalCols: 0 });
+                    break;
+                }
+            }
+
+            if (!placed) {
+                columns.push([ev]);
+                results.push({ ev: ev, col: columns.length - 1, totalCols: 0 });
+            }
+        });
+
+        // Set totalCols for each event based on the max columns needed in its time range
+        results.forEach(function(item) {
+            item.totalCols = columns.length;
+        });
+
+        // Optimize: compute actual overlap groups for tighter columns
+        // For now, use total columns count which is safe
+        return results;
+    }
+
     function getEventsForDate(events, date) {
         var dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
         var dayEnd = dayStart + 86400000;
         return events.filter(function(ev) {
             var evStart = new Date(ev.start).getTime();
             var evEnd = new Date(ev.end || ev.start).getTime();
+            // All-day events: DTEND is exclusive in iCal (e.g. June 10 to June 11 = only June 10)
+            // So for all-day: event is on this day if start <= day < end
+            if (ev.allDay) {
+                return evStart < dayEnd && evEnd > dayStart && evEnd > evStart;
+            }
             return evStart < dayEnd && evEnd > dayStart;
         });
     }
