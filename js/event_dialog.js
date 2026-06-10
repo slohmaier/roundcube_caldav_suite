@@ -34,7 +34,11 @@ window.caldav_event_dialog = {
             + '<div class="prop"><label for="ev-title">' + caldav_suite.label('title') + '</label>'
             + '<input type="text" id="ev-title" class="form-control" value="' + rcmail.quote_html(ev.summary) + '" required /></div>'
             + '<div class="prop"><label for="ev-location">' + caldav_suite.label('location') + '</label>'
-            + '<input type="text" id="ev-location" class="form-control" value="' + rcmail.quote_html(ev.location || '') + '" /></div>'
+            + '<div class="location-wrap">'
+            + '<input type="text" id="ev-location" class="form-control" value="' + rcmail.quote_html(ev.location || '') + '" autocomplete="off" />'
+            + '<input type="hidden" id="ev-location-geo" value="' + (ev.location_geo || '') + '" />'
+            + '<ul id="ev-location-results" class="location-results" role="listbox" aria-label="' + caldav_suite.label('location_results') + '"></ul>'
+            + '</div></div>'
             + '<div class="prop"><label for="ev-allday">'
             + '<input type="checkbox" id="ev-allday"' + (ev.allDay ? ' checked' : '') + ' /> '
             + caldav_suite.label('allday') + '</label></div>'
@@ -66,6 +70,7 @@ window.caldav_event_dialog = {
                     var formData = {
                         title: dlg.find('#ev-title').val(),
                         location: dlg.find('#ev-location').val(),
+                        location_geo: dlg.find('#ev-location-geo').val(),
                         description: dlg.find('#ev-desc').val(),
                         travel_mode: dlg.find('#ev-travel').val(),
                         start: dlg.find('#ev-start').val(),
@@ -114,6 +119,128 @@ window.caldav_event_dialog = {
             }
         });
 
+        // Location autocomplete (Photon or Nominatim)
+        var searchTimer = null;
+        dlg.find('#ev-location').on('input', function() {
+            var q = $(this).val();
+            clearTimeout(searchTimer);
+            if (q.length < 3) { dlg.find('#ev-location-results').empty().hide(); return; }
+            searchTimer = setTimeout(function() { caldav_geocode.search(q, dlg); }, 300);
+        }).on('keydown', function(e) {
+            var results = dlg.find('#ev-location-results li');
+            if (!results.length) return;
+            var active = results.filter('.active');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                var next = active.length ? active.removeClass('active').next() : results.first();
+                if (!next.length) next = results.first();
+                next.addClass('active').focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                var prev = active.length ? active.removeClass('active').prev() : results.last();
+                if (!prev.length) prev = results.last();
+                prev.addClass('active').focus();
+            } else if (e.key === 'Enter' && active.length) {
+                e.preventDefault();
+                active.click();
+            } else if (e.key === 'Escape') {
+                dlg.find('#ev-location-results').empty().hide();
+            }
+        });
+
         dlg.find('#ev-title').focus();
+    }
+};
+
+/**
+ * Geocoding module - supports Photon and Nominatim backends.
+ */
+window.caldav_geocode = {
+    search: function(query, dlg) {
+        var provider = rcmail.env.caldav_geocode_provider || 'photon';
+        var baseUrl = rcmail.env.caldav_geocode_url || '';
+        var url;
+
+        if (provider === 'nominatim') {
+            url = (baseUrl || 'https://nominatim.openstreetmap.org') + '/search';
+            url += '?format=json&addressdetails=1&limit=5&q=' + encodeURIComponent(query);
+            if (rcmail.env.caldav_geocode_lang) url += '&accept-language=' + rcmail.env.caldav_geocode_lang;
+        } else {
+            url = (baseUrl || 'https://photon.komoot.io') + '/api';
+            url += '?limit=5&q=' + encodeURIComponent(query);
+            if (rcmail.env.caldav_geocode_lang) url += '&lang=' + rcmail.env.caldav_geocode_lang;
+        }
+
+        $.getJSON(url, function(data) {
+            var results = caldav_geocode.parse(data, provider);
+            caldav_geocode.renderResults(results, dlg);
+        }).fail(function() {
+            dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
+        });
+    },
+
+    parse: function(data, provider) {
+        var results = [];
+        if (provider === 'nominatim') {
+            (data || []).forEach(function(item) {
+                results.push({
+                    name: item.display_name,
+                    lat: parseFloat(item.lat),
+                    lng: parseFloat(item.lon)
+                });
+            });
+        } else {
+            // Photon
+            ((data && data.features) || []).forEach(function(f) {
+                var p = f.properties || {};
+                var parts = [];
+                if (p.name) parts.push(p.name);
+                if (p.street) {
+                    var street = p.street;
+                    if (p.housenumber) street += ' ' + p.housenumber;
+                    parts.push(street);
+                }
+                if (p.postcode || p.city) {
+                    parts.push((p.postcode ? p.postcode + ' ' : '') + (p.city || ''));
+                }
+                if (p.country && p.country !== 'Deutschland' && p.country !== 'Germany') {
+                    parts.push(p.country);
+                }
+                var name = parts.join(', ') || p.name || 'Unbekannt';
+                var coords = f.geometry && f.geometry.coordinates;
+                results.push({
+                    name: name,
+                    lat: coords ? coords[1] : null,
+                    lng: coords ? coords[0] : null
+                });
+            });
+        }
+        return results;
+    },
+
+    renderResults: function(results, dlg) {
+        var list = dlg.find('#ev-location-results');
+        list.empty();
+        if (!results.length) { list.hide(); return; }
+
+        results.forEach(function(r) {
+            var li = $('<li>')
+                .attr('role', 'option')
+                .attr('tabindex', '-1')
+                .text(r.name)
+                .data('geo', r.lat && r.lng ? r.lat + ',' + r.lng : '')
+                .click(function() {
+                    dlg.find('#ev-location').val(r.name);
+                    dlg.find('#ev-location-geo').val(r.lat && r.lng ? r.lat + ',' + r.lng : '');
+                    list.empty().hide();
+                    dlg.find('#ev-location').focus();
+                    caldav_suite.announce(r.name + ' ausgewählt');
+                })
+                .on('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') { $(this).click(); e.preventDefault(); }
+                });
+            list.append(li);
+        });
+        list.show();
     }
 };

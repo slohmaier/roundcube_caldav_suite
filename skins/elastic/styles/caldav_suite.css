@@ -105,6 +105,16 @@
 .propform .prop { margin-bottom: 0.8em; }
 .propform label { display: block; font-weight: 500; margin-bottom: 0.2em; }
 
+/* ---- Location Autocomplete ---- */
+
+.location-wrap { position: relative; }
+.location-results { list-style: none; padding: 0; margin: 0; position: absolute; z-index: 100; left: 0; right: 0; top: 100%; max-height: 200px; overflow-y: auto; background: var(--color-layout-content-background, #fff); border: 1px solid var(--color-border, #ddd); border-radius: 0 0 4px 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.15); display: none; }
+.location-results[style*="block"] { display: block; }
+.location-results li { padding: 0.5em 0.8em; cursor: pointer; font-size: 0.9em; border-bottom: 1px solid var(--color-border, #eee); }
+.location-results li:hover, .location-results li.active { background: rgba(79, 195, 247, 0.15); }
+.location-results li:focus { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; }
+.location-results li.hint { color: var(--color-text-secondary, #888); cursor: default; }
+
 /* ---- Dark Mode ---- */
 
 @media (prefers-color-scheme: dark) {

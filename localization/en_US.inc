@@ -68,3 +68,8 @@ $labels['select_tasklist'] = 'Select task list';
 $labels['travel_time'] = 'Travel Time';
 $labels['travel_none'] = 'None';
 $labels['travel_auto'] = 'Automatic (Apple Maps)';
+$labels['location_results'] = 'Location suggestions';
+$labels['geocoding_settings'] = 'Location Search';
+$labels['geocode_provider'] = 'Search provider';
+$labels['geocode_url'] = 'Server URL (self-hosted)';
+$labels['geocode_url_hint'] = 'Empty = public instance. For self-hosted: e.g. https://nominatim.example.com';

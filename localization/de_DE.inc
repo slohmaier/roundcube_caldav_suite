@@ -68,3 +68,8 @@ $labels['select_tasklist'] = 'Aufgabenliste wählen';
 $labels['travel_time'] = 'Fahrzeit';
 $labels['travel_none'] = 'Keine';
 $labels['travel_auto'] = 'Automatisch (Apple Maps)';
+$labels['location_results'] = 'Ortsvorschläge';
+$labels['geocoding_settings'] = 'Ortssuche';
+$labels['geocode_provider'] = 'Suchdienst';
+$labels['geocode_url'] = 'Server URL (eigene Instanz)';
+$labels['geocode_url_hint'] = 'Leer = öffentliche Instanz. Für self-hosted: z.B. https://nominatim.example.com';
