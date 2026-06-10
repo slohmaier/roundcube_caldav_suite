@@ -1,0 +1,38 @@
+<roundcube:include file="includes/layout.html" />
+<roundcube:include file="includes/menu.html" />
+
+<h1 class="voice"><roundcube:label name="caldav_suite.calendar" /></h1>
+
+<div id="layout-sidebar" class="listbox" role="navigation" aria-label="<roundcube:label name='caldav_suite.calendars' />">
+  <div class="header">
+    <span class="header-title"><roundcube:label name="caldav_suite.calendars" /></span>
+  </div>
+  <div class="scroller">
+    <roundcube:object name="plugin.calendarlist" />
+  </div>
+</div>
+
+<div id="layout-content" class="selected" role="main">
+  <div class="header" role="toolbar" aria-label="Calendar toolbar">
+    <span class="header-title" id="calendar-title"></span>
+    <span class="toolbar">
+      <button type="button" class="btn btn-sm" id="btn-prev" aria-label="<roundcube:label name='caldav_suite.previous' />">&#9664;</button>
+      <button type="button" class="btn btn-sm" id="btn-today"><roundcube:label name="caldav_suite.today" /></button>
+      <button type="button" class="btn btn-sm" id="btn-next" aria-label="<roundcube:label name='caldav_suite.next' />">&#9654;</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-sm view-btn" data-view="month"><roundcube:label name="caldav_suite.view_month" /></button>
+      <button type="button" class="btn btn-sm view-btn" data-view="week"><roundcube:label name="caldav_suite.view_week" /></button>
+      <button type="button" class="btn btn-sm view-btn" data-view="day"><roundcube:label name="caldav_suite.view_day" /></button>
+      <button type="button" class="btn btn-sm view-btn" data-view="list"><roundcube:label name="caldav_suite.view_list" /></button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary btn-sm" id="btn-new-event"><roundcube:label name="caldav_suite.new_event" /></button>
+    </span>
+  </div>
+  <div class="scroller">
+    <roundcube:object name="plugin.calendargrid" />
+  </div>
+</div>
+
+<div id="aria-live-region" aria-live="polite" aria-atomic="true" class="voice"></div>
+
+<roundcube:include file="includes/footer.html" />

@@ -1,50 +1,526 @@
 <?php
 
+require_once __DIR__ . '/vendor/autoload.php';
+
 use Slohmaier\CalDAVSuite\CalDAVClient;
 
 class caldav_suite extends rcube_plugin
 {
-    public $task = 'mail|calendar|tasks|settings';
+    public $task = 'calendar|tasks|settings|mail';
+
+    private $rc;
 
     public function init()
     {
-        $this->add_hook('startup', array($this, 'startup'));
+        $this->rc = rcmail::get_instance();
+
         $this->register_task('calendar');
         $this->register_task('tasks');
-        $this->register_action('index', array($this, 'calendar_view'));
+
+        $this->add_hook('startup', [$this, 'startup']);
+        $this->add_hook('preferences_sections_list', [$this, 'preferences_sections_list']);
+        $this->add_hook('preferences_list', [$this, 'preferences_list']);
+        $this->add_hook('preferences_save', [$this, 'preferences_save']);
     }
 
     public function startup($args)
     {
-        $rcmail = rcmail::get_instance();
         $this->add_texts('localization/', true);
-        $this->include_stylesheet($this->local_skin_path() . '/styles/caldav_suite.css');
-        $this->include_script('js/caldav_suite.js');
 
-        // Add menu items
-        $this->add_button(array(
-            'command' => 'calendar',
-            'label' => 'caldav_suite.calendar',
-            'type' => 'link',
-            'class' => 'button-calendar',
-            'classsel' => 'button-calendar button-selected',
+        $this->add_button([
+            'command'    => 'calendar',
+            'label'      => 'caldav_suite.calendar',
+            'type'       => 'link',
+            'class'      => 'button-calendar',
+            'classsel'   => 'button-calendar button-selected',
             'innerclass' => 'button-inner',
-        ), 'taskbar');
+        ], 'taskbar');
 
-        $this->add_button(array(
-            'command' => 'tasks',
-            'label' => 'caldav_suite.tasks',
-            'type' => 'link',
-            'class' => 'button-tasks',
-            'classsel' => 'button-tasks button-selected',
+        $this->add_button([
+            'command'    => 'tasks',
+            'label'      => 'caldav_suite.tasks',
+            'type'       => 'link',
+            'class'      => 'button-tasks',
+            'classsel'   => 'button-tasks button-selected',
             'innerclass' => 'button-inner',
-        ), 'taskbar');
+        ], 'taskbar');
+
+        if (in_array($this->rc->task, ['calendar', 'tasks', 'settings'])) {
+            $this->include_stylesheet($this->local_skin_path() . '/styles/caldav_suite.css');
+            $this->include_script('js/caldav_suite.js');
+        }
+
+        if ($this->rc->task === 'calendar') {
+            $this->include_script('js/calendar_view.js');
+            $this->include_script('js/event_dialog.js');
+            $this->include_script('js/a11y.js');
+
+            if (empty($this->rc->action) || $this->rc->action === 'index') {
+                $this->calendar_view();
+                $args['abort'] = true;
+            }
+        }
+
+        if ($this->rc->task === 'tasks') {
+            $this->include_script('js/task_view.js');
+            $this->include_script('js/task_dialog.js');
+            $this->include_script('js/a11y.js');
+
+            if (empty($this->rc->action) || $this->rc->action === 'index') {
+                $this->tasks_view();
+                $args['abort'] = true;
+            }
+        }
+
+        $this->register_action('plugin.caldav-calendars', [$this, 'action_get_calendars']);
+        $this->register_action('plugin.caldav-events', [$this, 'action_get_events']);
+        $this->register_action('plugin.caldav-event-save', [$this, 'action_save_event']);
+        $this->register_action('plugin.caldav-event-delete', [$this, 'action_delete_event']);
+        $this->register_action('plugin.caldav-tasklists', [$this, 'action_get_tasklists']);
+        $this->register_action('plugin.caldav-tasks', [$this, 'action_get_tasks']);
+        $this->register_action('plugin.caldav-task-save', [$this, 'action_save_task']);
+        $this->register_action('plugin.caldav-task-delete', [$this, 'action_delete_task']);
+        $this->register_action('plugin.caldav-task-toggle', [$this, 'action_toggle_task']);
+        $this->register_action('plugin.caldav-test-connection', [$this, 'action_test_connection']);
 
         return $args;
     }
 
+    // ---- Views ----
+
     public function calendar_view()
     {
-        // TODO: implement
+        $this->rc->output->set_pagetitle($this->gettext('calendar'));
+        $this->rc->output->add_handlers([
+            'plugin.calendarlist' => [$this, 'render_calendar_list'],
+            'plugin.calendargrid' => [$this, 'render_calendar_grid'],
+        ]);
+
+        $prefs = $this->rc->user->get_prefs();
+        $this->rc->output->set_env('caldav_configured', !empty($prefs['caldav_suite_url']));
+        $this->rc->output->set_env('caldav_default_view', $prefs['caldav_suite_default_view'] ?? 'month');
+        $this->rc->output->set_env('caldav_first_day', (int)($prefs['caldav_suite_first_day'] ?? 1));
+        $this->rc->output->set_env('caldav_time_format', $prefs['caldav_suite_time_format'] ?? '24');
+
+        $this->rc->output->send('caldav_suite.calendar');
+    }
+
+    public function tasks_view()
+    {
+        $this->rc->output->set_pagetitle($this->gettext('tasks'));
+        $this->rc->output->add_handlers([
+            'plugin.tasklistlist' => [$this, 'render_tasklist_list'],
+            'plugin.tasklist'    => [$this, 'render_task_list'],
+        ]);
+
+        $prefs = $this->rc->user->get_prefs();
+        $this->rc->output->set_env('caldav_configured', !empty($prefs['caldav_suite_url']));
+
+        $this->rc->output->send('caldav_suite.tasklist');
+    }
+
+    // ---- Template Handlers ----
+
+    public function render_calendar_list($attrib)
+    {
+        return '<div id="calendar-list" role="group" aria-label="' . $this->gettext('calendars') . '"></div>';
+    }
+
+    public function render_calendar_grid($attrib)
+    {
+        return '<div id="calendar-grid" role="main" aria-live="polite"></div>';
+    }
+
+    public function render_tasklist_list($attrib)
+    {
+        return '<div id="tasklist-list" role="group" aria-label="' . $this->gettext('task_lists') . '"></div>';
+    }
+
+    public function render_task_list($attrib)
+    {
+        return '<div id="task-list-container" role="main" aria-live="polite"></div>';
+    }
+
+    // ---- AJAX Handlers ----
+
+    public function action_get_calendars()
+    {
+        $client = $this->get_caldav_client();
+        if (!$client) {
+            $this->rc->output->command('plugin.caldav-calendars-response', ['error' => $this->gettext('no_caldav_configured')]);
+            $this->rc->output->send();
+            return;
+        }
+
+        $calendars = [];
+        $prefs = $this->rc->user->get_prefs();
+        $colors = json_decode($prefs['caldav_suite_colors'] ?? '{}', true) ?: [];
+
+        foreach ($client->getCalendars() as $cal) {
+            $calendars[] = [
+                'id'    => $cal->getId(),
+                'name'  => $cal->displayName,
+                'url'   => $cal->url,
+                'color' => $colors[$cal->getId()] ?? $cal->color ?? '#4fc3f7',
+            ];
+        }
+
+        $this->rc->output->command('plugin.caldav-calendars-response', ['calendars' => $calendars]);
+        $this->rc->output->send();
+    }
+
+    public function action_get_events()
+    {
+        $client = $this->get_caldav_client();
+        if (!$client) {
+            $this->rc->output->command('plugin.caldav-events-response', ['error' => $this->gettext('no_caldav_configured')]);
+            $this->rc->output->send();
+            return;
+        }
+
+        $start = new \DateTimeImmutable(rcube_utils::get_input_value('start', rcube_utils::INPUT_POST));
+        $end = new \DateTimeImmutable(rcube_utils::get_input_value('end', rcube_utils::INPUT_POST));
+        $calendarIds = rcube_utils::get_input_value('calendars', rcube_utils::INPUT_POST) ?: [];
+
+        $events = [];
+        foreach ($client->getCalendars() as $cal) {
+            if (!empty($calendarIds) && !in_array($cal->getId(), $calendarIds)) {
+                continue;
+            }
+            foreach ($client->getEvents($cal->url, $start, $end) as $event) {
+                $data = $event->toArray();
+                $data['calendarId'] = $cal->getId();
+                $events[] = $data;
+            }
+        }
+
+        $this->rc->output->command('plugin.caldav-events-response', ['events' => $events]);
+        $this->rc->output->send();
+    }
+
+    public function action_save_event()
+    {
+        $client = $this->get_caldav_client();
+        if (!$client) {
+            $this->rc->output->show_message($this->gettext('no_caldav_configured'), 'error');
+            $this->rc->output->send();
+            return;
+        }
+
+        $data = rcube_utils::get_input_value('event', rcube_utils::INPUT_POST);
+        $calendarUrl = rcube_utils::get_input_value('calendar_url', rcube_utils::INPUT_POST);
+        $existingUrl = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+
+        $backend = new \Slohmaier\CalDAVSuite\CalendarBackend();
+        $ical = $backend->buildICalEvent($data);
+
+        $url = $existingUrl ?: (rtrim($calendarUrl, '/') . '/' . \Sabre\VObject\UUIDUtil::getUUID() . '.ics');
+        $success = $client->putObject($url, $ical, $etag ?: null);
+
+        if ($success) {
+            $this->rc->output->show_message($this->gettext('event_saved'), 'confirmation');
+            $this->rc->output->command('plugin.caldav-event-saved', ['success' => true]);
+        } else {
+            $this->rc->output->show_message($this->gettext('error_saving'), 'error');
+            $this->rc->output->command('plugin.caldav-event-saved', ['success' => false]);
+        }
+        $this->rc->output->send();
+    }
+
+    public function action_delete_event()
+    {
+        $client = $this->get_caldav_client();
+        $url = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+
+        if ($client && $client->deleteObject($url, $etag ?: null)) {
+            $this->rc->output->show_message($this->gettext('event_deleted'), 'confirmation');
+            $this->rc->output->command('plugin.caldav-event-deleted', ['success' => true]);
+        } else {
+            $this->rc->output->show_message($this->gettext('error_deleting'), 'error');
+        }
+        $this->rc->output->send();
+    }
+
+    public function action_get_tasklists()
+    {
+        $client = $this->get_caldav_client();
+        if (!$client) {
+            $this->rc->output->command('plugin.caldav-tasklists-response', ['error' => $this->gettext('no_caldav_configured')]);
+            $this->rc->output->send();
+            return;
+        }
+
+        $lists = [];
+        foreach ($client->getTaskLists() as $list) {
+            $lists[] = [
+                'id'   => $list->getId(),
+                'name' => $list->displayName,
+                'url'  => $list->url,
+            ];
+        }
+
+        $this->rc->output->command('plugin.caldav-tasklists-response', ['lists' => $lists]);
+        $this->rc->output->send();
+    }
+
+    public function action_get_tasks()
+    {
+        $client = $this->get_caldav_client();
+        if (!$client) {
+            $this->rc->output->command('plugin.caldav-tasks-response', ['error' => $this->gettext('no_caldav_configured')]);
+            $this->rc->output->send();
+            return;
+        }
+
+        $listUrl = rcube_utils::get_input_value('list_url', rcube_utils::INPUT_POST);
+        $includeCompleted = (bool)rcube_utils::get_input_value('include_completed', rcube_utils::INPUT_POST);
+
+        $tasks = [];
+        $lists = $listUrl
+            ? [new \Slohmaier\CalDAVSuite\Collection($listUrl, '', ['VTODO'])]
+            : $client->getTaskLists();
+
+        foreach ($lists as $list) {
+            foreach ($client->getTasks($list->url, $includeCompleted) as $task) {
+                $data = $task->toArray();
+                $data['listId'] = $list->getId();
+                $tasks[] = $data;
+            }
+        }
+
+        $this->rc->output->command('plugin.caldav-tasks-response', ['tasks' => $tasks]);
+        $this->rc->output->send();
+    }
+
+    public function action_save_task()
+    {
+        $client = $this->get_caldav_client();
+        if (!$client) {
+            $this->rc->output->show_message($this->gettext('no_caldav_configured'), 'error');
+            $this->rc->output->send();
+            return;
+        }
+
+        $data = rcube_utils::get_input_value('task', rcube_utils::INPUT_POST);
+        $listUrl = rcube_utils::get_input_value('list_url', rcube_utils::INPUT_POST);
+        $existingUrl = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+
+        $backend = new \Slohmaier\CalDAVSuite\TaskBackend();
+        $ical = $backend->buildICalTodo($data);
+
+        $url = $existingUrl ?: (rtrim($listUrl, '/') . '/' . \Sabre\VObject\UUIDUtil::getUUID() . '.ics');
+        $success = $client->putObject($url, $ical, $etag ?: null);
+
+        if ($success) {
+            $this->rc->output->show_message($this->gettext('task_saved'), 'confirmation');
+            $this->rc->output->command('plugin.caldav-task-saved', ['success' => true]);
+        } else {
+            $this->rc->output->show_message($this->gettext('error_saving'), 'error');
+        }
+        $this->rc->output->send();
+    }
+
+    public function action_delete_task()
+    {
+        $client = $this->get_caldav_client();
+        $url = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+
+        if ($client && $client->deleteObject($url, $etag ?: null)) {
+            $this->rc->output->show_message($this->gettext('task_deleted'), 'confirmation');
+            $this->rc->output->command('plugin.caldav-task-deleted', ['success' => true]);
+        } else {
+            $this->rc->output->show_message($this->gettext('error_deleting'), 'error');
+        }
+        $this->rc->output->send();
+    }
+
+    public function action_toggle_task()
+    {
+        $client = $this->get_caldav_client();
+        if (!$client) {
+            $this->rc->output->send();
+            return;
+        }
+
+        $url = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
+        $etag = rcube_utils::get_input_value('etag', rcube_utils::INPUT_POST);
+        $completed = (bool)rcube_utils::get_input_value('completed', rcube_utils::INPUT_POST);
+
+        $backend = new \Slohmaier\CalDAVSuite\TaskBackend();
+        $ical = $backend->toggleCompleted($url, $completed, $client);
+
+        if ($ical && $client->putObject($url, $ical, $etag ?: null)) {
+            $this->rc->output->command('plugin.caldav-task-toggled', ['success' => true, 'completed' => $completed]);
+        } else {
+            $this->rc->output->show_message($this->gettext('error_saving'), 'error');
+        }
+        $this->rc->output->send();
+    }
+
+    public function action_test_connection()
+    {
+        $url = rcube_utils::get_input_value('url', rcube_utils::INPUT_POST);
+        $username = rcube_utils::get_input_value('username', rcube_utils::INPUT_POST);
+        $password = rcube_utils::get_input_value('password', rcube_utils::INPUT_POST);
+
+        try {
+            $client = new CalDAVClient($url, $username, $password);
+            $collections = $client->discover();
+            $calendars = count(array_filter($collections, fn($c) => $c->supportsEvents()));
+            $taskLists = count(array_filter($collections, fn($c) => $c->supportsTodos()));
+
+            $this->rc->output->command('plugin.caldav-test-result', [
+                'success'   => true,
+                'calendars' => $calendars,
+                'tasklists' => $taskLists,
+            ]);
+            $this->rc->output->show_message(
+                sprintf($this->gettext('connection_success'), $calendars, $taskLists),
+                'confirmation'
+            );
+        } catch (\Exception $e) {
+            $this->rc->output->command('plugin.caldav-test-result', ['success' => false]);
+            $this->rc->output->show_message($this->gettext('connection_failed'), 'error');
+        }
+        $this->rc->output->send();
+    }
+
+    // ---- Settings ----
+
+    public function preferences_sections_list($args)
+    {
+        $args['list']['caldav_suite'] = [
+            'id'      => 'caldav_suite',
+            'section' => $this->gettext('settings'),
+        ];
+        return $args;
+    }
+
+    public function preferences_list($args)
+    {
+        if ($args['section'] !== 'caldav_suite') {
+            return $args;
+        }
+
+        $prefs = $this->rc->user->get_prefs();
+
+        $args['blocks']['connection'] = [
+            'name'    => $this->gettext('caldav_connection'),
+            'options' => [
+                'url' => [
+                    'title'   => $this->gettext('caldav_url'),
+                    'content' => (new html_inputfield([
+                        'name' => '_caldav_url', 'id' => 'caldav-url',
+                        'size' => 60, 'value' => $prefs['caldav_suite_url'] ?? '',
+                    ]))->show(),
+                ],
+                'username' => [
+                    'title'   => $this->gettext('caldav_username'),
+                    'content' => (new html_inputfield([
+                        'name' => '_caldav_username', 'id' => 'caldav-username',
+                        'size' => 30, 'value' => $prefs['caldav_suite_username'] ?? '',
+                    ]))->show(),
+                ],
+                'password' => [
+                    'title'   => $this->gettext('caldav_password'),
+                    'content' => (new html_inputfield([
+                        'name' => '_caldav_password', 'id' => 'caldav-password',
+                        'size' => 30, 'type' => 'password', 'value' => '',
+                    ]))->show() . ' <small>' . $this->gettext('password_hint') . '</small>',
+                ],
+                'test' => [
+                    'title'   => '',
+                    'content' => html::tag('button', [
+                        'type' => 'button', 'id' => 'caldav-test-btn',
+                        'class' => 'btn btn-secondary',
+                        'onclick' => 'caldav_suite_test_connection()',
+                    ], $this->gettext('test_connection'))
+                    . ' <span id="caldav-test-result"></span>',
+                ],
+            ],
+        ];
+
+        $viewSelect = new html_select(['name' => '_caldav_default_view', 'id' => 'caldav-default-view']);
+        $viewSelect->add($this->gettext('view_month'), 'month');
+        $viewSelect->add($this->gettext('view_week'), 'week');
+        $viewSelect->add($this->gettext('view_day'), 'day');
+        $viewSelect->add($this->gettext('view_list'), 'list');
+
+        $daySelect = new html_select(['name' => '_caldav_first_day', 'id' => 'caldav-first-day']);
+        $daySelect->add($this->gettext('monday'), '1');
+        $daySelect->add($this->gettext('sunday'), '0');
+
+        $timeSelect = new html_select(['name' => '_caldav_time_format', 'id' => 'caldav-time-format']);
+        $timeSelect->add('24h', '24');
+        $timeSelect->add('12h', '12');
+
+        $args['blocks']['display'] = [
+            'name'    => $this->gettext('display_settings'),
+            'options' => [
+                'default_view' => [
+                    'title'   => $this->gettext('default_view'),
+                    'content' => $viewSelect->show($prefs['caldav_suite_default_view'] ?? 'month'),
+                ],
+                'first_day' => [
+                    'title'   => $this->gettext('first_day'),
+                    'content' => $daySelect->show($prefs['caldav_suite_first_day'] ?? '1'),
+                ],
+                'time_format' => [
+                    'title'   => $this->gettext('time_format'),
+                    'content' => $timeSelect->show($prefs['caldav_suite_time_format'] ?? '24'),
+                ],
+            ],
+        ];
+
+        return $args;
+    }
+
+    public function preferences_save($args)
+    {
+        if ($args['section'] !== 'caldav_suite') {
+            return $args;
+        }
+
+        $args['prefs']['caldav_suite_url'] = rcube_utils::get_input_value('_caldav_url', rcube_utils::INPUT_POST);
+        $args['prefs']['caldav_suite_username'] = rcube_utils::get_input_value('_caldav_username', rcube_utils::INPUT_POST);
+        $args['prefs']['caldav_suite_default_view'] = rcube_utils::get_input_value('_caldav_default_view', rcube_utils::INPUT_POST);
+        $args['prefs']['caldav_suite_first_day'] = rcube_utils::get_input_value('_caldav_first_day', rcube_utils::INPUT_POST);
+        $args['prefs']['caldav_suite_time_format'] = rcube_utils::get_input_value('_caldav_time_format', rcube_utils::INPUT_POST);
+
+        $password = rcube_utils::get_input_value('_caldav_password', rcube_utils::INPUT_POST);
+        if (!empty($password)) {
+            $args['prefs']['caldav_suite_password'] = $this->rc->encrypt($password);
+        }
+
+        return $args;
+    }
+
+    // ---- Helpers ----
+
+    private function get_caldav_client(): ?CalDAVClient
+    {
+        $prefs = $this->rc->user->get_prefs();
+        $url = $prefs['caldav_suite_url'] ?? '';
+        $username = $prefs['caldav_suite_username'] ?? '';
+        $password = $prefs['caldav_suite_password'] ?? '';
+
+        if (empty($url) || empty($username)) {
+            return null;
+        }
+
+        $decrypted = $this->rc->decrypt($password);
+        if ($decrypted === false) {
+            return null;
+        }
+
+        try {
+            return new CalDAVClient($url, $username, $decrypted);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }

@@ -1,0 +1,41 @@
+<roundcube:include file="includes/layout.html" />
+<roundcube:include file="includes/menu.html" />
+
+<h1 class="voice"><roundcube:label name="caldav_suite.tasks" /></h1>
+
+<div id="layout-sidebar" class="listbox" role="navigation" aria-label="<roundcube:label name='caldav_suite.task_lists' />">
+  <div class="header">
+    <span class="header-title"><roundcube:label name="caldav_suite.task_lists" /></span>
+  </div>
+  <div class="scroller">
+    <roundcube:object name="plugin.tasklistlist" />
+  </div>
+  <div class="footer">
+    <label class="toggle">
+      <input type="checkbox" id="show-completed" />
+      <span><roundcube:label name="caldav_suite.show_completed" /></span>
+    </label>
+  </div>
+</div>
+
+<div id="layout-content" class="selected" role="main">
+  <div class="header" role="toolbar" aria-label="Task toolbar">
+    <span class="header-title"><roundcube:label name="caldav_suite.tasks" /></span>
+    <span class="toolbar">
+      <select id="task-sort" aria-label="<roundcube:label name='caldav_suite.sort_by' />">
+        <option value="due"><roundcube:label name="caldav_suite.sort_due_date" /></option>
+        <option value="priority"><roundcube:label name="caldav_suite.sort_priority" /></option>
+        <option value="created"><roundcube:label name="caldav_suite.sort_created" /></option>
+      </select>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary btn-sm" id="btn-new-task"><roundcube:label name="caldav_suite.new_task" /></button>
+    </span>
+  </div>
+  <div class="scroller">
+    <roundcube:object name="plugin.tasklist" />
+  </div>
+</div>
+
+<div id="aria-live-region" aria-live="polite" aria-atomic="true" class="voice"></div>
+
+<roundcube:include file="includes/footer.html" />
