@@ -65,3 +65,6 @@ $labels['sort_priority'] = 'Priority';
 $labels['sort_created'] = 'Created';
 $labels['select_calendar'] = 'Select calendar';
 $labels['select_tasklist'] = 'Select task list';
+$labels['travel_time'] = 'Travel Time';
+$labels['travel_none'] = 'None';
+$labels['travel_auto'] = 'Automatic (Apple Maps)';

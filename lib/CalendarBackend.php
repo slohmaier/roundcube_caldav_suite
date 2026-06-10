@@ -24,6 +24,31 @@ class CalendarBackend
             $vevent->add('DESCRIPTION', $data['description']);
         }
 
+        // Apple Travel Time
+        if (!empty($data['travel_mode'])) {
+            if ($data['travel_mode'] === 'auto') {
+                $vevent->add('X-APPLE-TRAVEL-ADVISORY-BEHAVIOR', 'AUTOMATIC');
+            } elseif (is_numeric($data['travel_mode'])) {
+                $minutes = (int)$data['travel_mode'];
+                $vevent->add('X-APPLE-TRAVEL-DURATION', 'PT' . $minutes . 'M');
+            }
+        }
+
+        // Structured location (geo coordinates for Apple Maps travel time)
+        if (!empty($data['location_geo'])) {
+            $geo = $data['location_geo']; // "lat,lng"
+            $locName = $data['location'] ?? '';
+            $vevent->add('X-APPLE-STRUCTURED-LOCATION',
+                'geo:' . $geo,
+                [
+                    'VALUE'          => 'URI',
+                    'X-APPLE-RADIUS' => '70',
+                    'X-TITLE'        => $locName,
+                ]
+            );
+            $vevent->add('GEO', str_replace(',', ';', $geo));
+        }
+
         $tz = new \DateTimeZone($data['timezone'] ?? 'Europe/Berlin');
 
         if (!empty($data['allday'])) {

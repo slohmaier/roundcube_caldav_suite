@@ -42,6 +42,17 @@ window.caldav_event_dialog = {
             + '<input type="datetime-local" id="ev-start" class="form-control" value="' + ev.start + '" /></div>'
             + '<div class="prop"><label for="ev-end">' + caldav_suite.label('end') + '</label>'
             + '<input type="datetime-local" id="ev-end" class="form-control" value="' + ev.end + '" /></div>'
+            + '<div class="prop"><label for="ev-travel">' + caldav_suite.label('travel_time') + '</label>'
+            + '<select id="ev-travel" class="form-control">'
+            + '<option value="">' + caldav_suite.label('travel_none') + '</option>'
+            + '<option value="auto"' + (ev.travel_mode === 'auto' ? ' selected' : '') + '>' + caldav_suite.label('travel_auto') + '</option>'
+            + '<option value="15"' + (ev.travel_mode === '15' ? ' selected' : '') + '>15 min</option>'
+            + '<option value="30"' + (ev.travel_mode === '30' ? ' selected' : '') + '>30 min</option>'
+            + '<option value="45"' + (ev.travel_mode === '45' ? ' selected' : '') + '>45 min</option>'
+            + '<option value="60"' + (ev.travel_mode === '60' ? ' selected' : '') + '>1 h</option>'
+            + '<option value="90"' + (ev.travel_mode === '90' ? ' selected' : '') + '>1,5 h</option>'
+            + '<option value="120"' + (ev.travel_mode === '120' ? ' selected' : '') + '>2 h</option>'
+            + '</select></div>'
             + '<div class="prop"><label for="ev-calendar">' + caldav_suite.label('select_calendar') + '</label>'
             + '<select id="ev-calendar" class="form-control">' + calOptions + '</select></div>'
             + '<div class="prop"><label for="ev-desc">' + caldav_suite.label('description') + '</label>'
@@ -56,6 +67,7 @@ window.caldav_event_dialog = {
                         title: dlg.find('#ev-title').val(),
                         location: dlg.find('#ev-location').val(),
                         description: dlg.find('#ev-desc').val(),
+                        travel_mode: dlg.find('#ev-travel').val(),
                         start: dlg.find('#ev-start').val(),
                         end: dlg.find('#ev-end').val(),
                         allday: dlg.find('#ev-allday').is(':checked'),
