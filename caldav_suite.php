@@ -33,6 +33,8 @@ class caldav_suite extends rcube_plugin
         $this->add_hook('preferences_sections_list', [$this, 'preferences_sections_list']);
         $this->add_hook('preferences_list', [$this, 'preferences_list']);
         $this->add_hook('preferences_save', [$this, 'preferences_save']);
+        $this->add_hook('addressbooks_list', [$this, 'addressbooks_list']);
+        $this->add_hook('addressbook_get', [$this, 'addressbook_get']);
     }
 
     public function startup($args)
@@ -535,6 +537,75 @@ class caldav_suite extends rcube_plugin
         $password = rcube_utils::get_input_value('_caldav_password', rcube_utils::INPUT_POST);
         if (!empty($password)) {
             $args['prefs']['caldav_suite_password'] = $this->rc->encrypt($password);
+        }
+
+        return $args;
+    }
+
+    // ---- CardDAV Addressbook Hooks ----
+
+    public function addressbooks_list($args)
+    {
+        $prefs = $this->rc->user->get_prefs();
+        $url = $prefs['caldav_suite_url'] ?? '';
+        if (empty($url)) {
+            return $args;
+        }
+
+        $username = $prefs['caldav_suite_username'] ?? '';
+        $password = $this->rc->decrypt($prefs['caldav_suite_password'] ?? '');
+        if (empty($username) || $password === false) {
+            return $args;
+        }
+
+        try {
+            $client = new \Slohmaier\CalDAVSuite\CardDAVClient($url, $username, $password);
+            $books = $client->discoverAddressbooks();
+            foreach ($books as $bookUrl => $book) {
+                $id = 'caldav_' . md5($bookUrl);
+                $args['sources'][$id] = [
+                    'id'       => $id,
+                    'name'     => $book['displayName'],
+                    'readonly' => false,
+                    'groups'   => false,
+                ];
+            }
+        } catch (\Exception $e) {
+            // silently skip
+        }
+
+        return $args;
+    }
+
+    public function addressbook_get($args)
+    {
+        if (!str_starts_with($args['id'], 'caldav_')) {
+            return $args;
+        }
+
+        $prefs = $this->rc->user->get_prefs();
+        $url = $prefs['caldav_suite_url'] ?? '';
+        $username = $prefs['caldav_suite_username'] ?? '';
+        $password = $this->rc->decrypt($prefs['caldav_suite_password'] ?? '');
+
+        if (empty($url) || empty($username) || $password === false) {
+            return $args;
+        }
+
+        try {
+            $client = new \Slohmaier\CalDAVSuite\CardDAVClient($url, $username, $password);
+            $books = $client->discoverAddressbooks();
+            foreach ($books as $bookUrl => $book) {
+                $id = 'caldav_' . md5($bookUrl);
+                if ($id === $args['id']) {
+                    $args['instance'] = new \Slohmaier\CalDAVSuite\CardDAVAddressbook(
+                        $id, $book['displayName'], $client, $bookUrl
+                    );
+                    break;
+                }
+            }
+        } catch (\Exception $e) {
+            // silently skip
         }
 
         return $args;
