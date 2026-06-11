@@ -6,7 +6,7 @@ use Slohmaier\CalDAVSuite\CalDAVClient;
 
 class caldav_suite extends rcube_plugin
 {
-    public $task = 'calendar|tasks|settings|mail';
+    public $task = 'calendar|tasks|settings|mail|addressbook';
 
     private $rc;
 
@@ -383,13 +383,18 @@ class caldav_suite extends rcube_plugin
             $calendars = count(array_filter($collections, fn($c) => $c->supportsEvents()));
             $taskLists = count(array_filter($collections, fn($c) => $c->supportsTodos()));
 
+            // Also test CardDAV
+            $cardClient = new \Slohmaier\CalDAVSuite\CardDAVClient($url, $username, $password);
+            $addressbooks = count($cardClient->discoverAddressbooks());
+
             $this->rc->output->command('plugin.caldav-test-result', [
-                'success'   => true,
-                'calendars' => $calendars,
-                'tasklists' => $taskLists,
+                'success'      => true,
+                'calendars'    => $calendars,
+                'tasklists'    => $taskLists,
+                'addressbooks' => $addressbooks,
             ]);
             $this->rc->output->show_message(
-                sprintf($this->gettext('connection_success'), $calendars, $taskLists),
+                sprintf($this->gettext('connection_success_full'), $calendars, $taskLists, $addressbooks),
                 'confirmation'
             );
         } catch (\Exception $e) {

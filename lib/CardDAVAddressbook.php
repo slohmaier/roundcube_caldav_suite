@@ -38,7 +38,7 @@ class CardDAVAddressbook extends \rcube_addressbook
         return $this->name;
     }
 
-    public function set_search_set($filter)
+    public function set_search_set($filter): void
     {
         $this->filter = $filter;
     }
@@ -48,7 +48,7 @@ class CardDAVAddressbook extends \rcube_addressbook
         return $this->filter;
     }
 
-    public function reset()
+    public function reset(): void
     {
         $this->filter = null;
         $this->contacts = null;
