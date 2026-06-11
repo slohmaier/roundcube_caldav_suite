@@ -59,13 +59,18 @@ class CardDAVAddressbook extends \rcube_addressbook
     {
         $this->loadContacts();
 
-        $result = new \rcube_result_set();
+        $records = [];
         foreach ($this->contacts as $contact) {
             $record = $contact->toRcubeRecord();
             if ($this->filter && !$this->matchFilter($record)) {
                 continue;
             }
-            $result->add($record);
+            $records[] = $record;
+        }
+
+        $result = new \rcube_result_set(count($records));
+        foreach ($records as $rec) {
+            $result->add($rec);
         }
 
         $this->result = $result;
@@ -76,8 +81,8 @@ class CardDAVAddressbook extends \rcube_addressbook
     {
         $this->loadContacts();
 
-        $result = new \rcube_result_set();
         $value_lower = mb_strtolower($value);
+        $records = [];
 
         foreach ($this->contacts as $contact) {
             $record = $contact->toRcubeRecord();
@@ -102,8 +107,13 @@ class CardDAVAddressbook extends \rcube_addressbook
             }
 
             if ($match) {
-                $result->add($record);
+                $records[] = $record;
             }
+        }
+
+        $result = new \rcube_result_set(count($records));
+        foreach ($records as $rec) {
+            $result->add($rec);
         }
 
         $this->result = $result;
