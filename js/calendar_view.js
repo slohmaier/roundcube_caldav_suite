@@ -374,10 +374,12 @@
                         var e = new Date(item.ev.end || item.ev.start);
                         var durationH = Math.max((e - s) / 3600000, 0.5);
                         var heightPx = Math.round(durationH * 40);
+                        var topPx = Math.round(s.getMinutes() * 40 / 60);
                         var color = getCalendarColor(item.ev.calendarId);
                         var widthPct = Math.floor(100 / item.totalCols);
                         var leftPct = item.col * widthPct;
                         html += '<div class="week-event-inline" style="height:' + heightPx + 'px;'
+                            + 'top:' + topPx + 'px;'
                             + 'left:' + leftPct + '%;width:' + widthPct + '%;'
                             + 'background:' + color + '30;border-left:3px solid ' + color + '" '
                             + 'data-url="' + item.ev.url + '" tabindex="0" role="button">'
@@ -452,10 +454,12 @@
                     var e = new Date(item.ev.end || item.ev.start);
                     var durationH = Math.max((e - s) / 3600000, 0.5);
                     var heightPx = Math.round(durationH * 40);
+                    var topPx = Math.round(s.getMinutes() * 40 / 60);
                     var color = getCalendarColor(item.ev.calendarId);
                     var widthPct = Math.floor(100 / item.totalCols);
                     var leftPct = item.col * widthPct;
                     html += '<div class="day-event-inline" style="height:' + heightPx + 'px;'
+                        + 'top:' + topPx + 'px;'
                         + 'left:' + leftPct + '%;width:' + widthPct + '%;'
                         + 'background:' + color + '30;border-left:3px solid ' + color + '" '
                         + 'data-url="' + item.ev.url + '" tabindex="0" role="button">'
