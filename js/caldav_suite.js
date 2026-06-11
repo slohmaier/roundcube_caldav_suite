@@ -102,7 +102,8 @@ if (window.rcmail) {
         rcmail.addEventListener('plugin.caldav-test-result', function(data) {
             $('#caldav-test-btn').prop('disabled', false);
             if (data.success) {
-                $('#caldav-test-result').text('✓ ' + data.calendars + ' Kalender, ' + data.tasklists + ' Listen').css('color', 'green');
+                var msg = '✓ ' + data.calendars + ' Kalender, ' + data.tasklists + ' Aufgabenlisten, ' + (data.addressbooks || 0) + ' Adressbücher';
+                $('#caldav-test-result').text(msg).css('color', 'green');
             } else {
                 $('#caldav-test-result').text('✗ Verbindung fehlgeschlagen').css('color', 'red');
             }

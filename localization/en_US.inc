@@ -10,6 +10,7 @@ $labels['caldav_password'] = 'Password';
 $labels['password_hint'] = 'Leave empty to keep current password';
 $labels['test_connection'] = 'Test Connection';
 $labels['connection_success'] = 'Connected: %d calendars, %d task lists';
+$labels['connection_success_full'] = 'Connected: %d calendars, %d task lists, %d addressbooks';
 $labels['connection_failed'] = 'Connection failed';
 $labels['display_settings'] = 'Display';
 $labels['default_view'] = 'Default View';
