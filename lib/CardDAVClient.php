@@ -21,49 +21,101 @@ class CardDAVClient
     }
 
     /**
-     * Discover all addressbooks from the base URL.
+     * Discover all addressbooks via principal + addressbook-home-set discovery.
+     * Falls back to Depth-1 scan on base URL and user principal path.
      * @return array<string, array{url: string, displayName: string}>
      */
     public function discoverAddressbooks(): array
     {
-        $props = [
-            '{DAV:}resourcetype',
-            '{DAV:}displayname',
-        ];
+        $searchUrls = [$this->baseUrl];
 
         try {
-            $responses = $this->client->propFind($this->baseUrl, $props, 1);
+            $principalUrl = $this->findCurrentUserPrincipal($this->baseUrl);
+            if ($principalUrl) {
+                $abHome = $this->findAddressbookHome($principalUrl);
+                if ($abHome) {
+                    $searchUrls = [$abHome];
+                } else {
+                    array_unshift($searchUrls, $principalUrl);
+                }
+            }
         } catch (\Exception $e) {
-            return [];
+            // fall through to scan
         }
 
+        $props = ['{DAV:}resourcetype', '{DAV:}displayname'];
         $books = [];
-        foreach ($responses as $href => $propSet) {
-            if ($href === $this->baseUrl || $href === $this->baseUrl . '/') {
+
+        foreach ($searchUrls as $url) {
+            try {
+                $responses = $this->client->propFind($url, $props, 1);
+            } catch (\Exception $e) {
                 continue;
             }
 
-            $resourceType = $propSet['{DAV:}resourcetype'] ?? null;
-            $isAddressbook = false;
+            foreach ($responses as $href => $propSet) {
+                $fullUrl = $this->resolveUrl($url, $href);
+                if ($fullUrl === $url || $fullUrl === rtrim($url, '/') || $fullUrl . '/' === $url) {
+                    continue;
+                }
 
-            if ($resourceType instanceof \Sabre\DAV\Xml\Property\ResourceType) {
-                $isAddressbook = $resourceType->is('{urn:ietf:params:xml:ns:carddav}addressbook');
+                $resourceType = $propSet['{DAV:}resourcetype'] ?? null;
+                if (!($resourceType instanceof \Sabre\DAV\Xml\Property\ResourceType)) {
+                    continue;
+                }
+                if (!$resourceType->is('{urn:ietf:params:xml:ns:carddav}addressbook')) {
+                    continue;
+                }
+
+                $displayName = $propSet['{DAV:}displayname'] ?? basename(rtrim($href, '/'));
+                $books[$fullUrl] = [
+                    'url' => $fullUrl,
+                    'displayName' => is_string($displayName) ? $displayName : basename(rtrim($href, '/')),
+                ];
             }
 
-            if (!$isAddressbook) {
-                continue;
-            }
-
-            $displayName = $propSet['{DAV:}displayname'] ?? basename(rtrim($href, '/'));
-            $fullUrl = $this->resolveUrl($this->baseUrl, $href);
-
-            $books[$fullUrl] = [
-                'url' => $fullUrl,
-                'displayName' => is_string($displayName) ? $displayName : basename(rtrim($href, '/')),
-            ];
+            if (!empty($books)) break;
         }
 
         return $books;
+    }
+
+    private function findCurrentUserPrincipal(string $url): ?string
+    {
+        try {
+            $response = $this->client->propFind($url, ['{DAV:}current-user-principal']);
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        $principal = $response['{DAV:}current-user-principal'] ?? null;
+        if (is_array($principal) && isset($principal[0]['value'])) {
+            return $this->resolveUrl($url, $principal[0]['value']);
+        }
+        if (is_string($principal)) {
+            return $this->resolveUrl($url, $principal);
+        }
+        return null;
+    }
+
+    private function findAddressbookHome(string $principalUrl): ?string
+    {
+        try {
+            $response = $this->client->propFind($principalUrl, [
+                '{urn:ietf:params:xml:ns:carddav}addressbook-home-set',
+            ]);
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        $home = $response['{urn:ietf:params:xml:ns:carddav}addressbook-home-set'] ?? null;
+        if (is_array($home) && isset($home[0]['value'])) {
+            return $this->resolveUrl($principalUrl, $home[0]['value']);
+        }
+        if (is_string($home)) {
+            return $this->resolveUrl($principalUrl, $home);
+        }
+        return null;
     }
 
     /**
