@@ -68,6 +68,9 @@ class CardDAVAddressbook extends \rcube_addressbook
             $records[] = $record;
         }
 
+        // Sort by display name
+        usort($records, fn($a, $b) => strcasecmp($a['name'] ?? '', $b['name'] ?? ''));
+
         $result = new \rcube_result_set(count($records));
         foreach ($records as $rec) {
             $result->add($rec);
@@ -81,15 +84,22 @@ class CardDAVAddressbook extends \rcube_addressbook
     {
         $this->loadContacts();
 
-        $value_lower = mb_strtolower($value);
+        $value_lower = mb_strtolower(is_array($value) ? implode(' ', $value) : $value);
         $records = [];
+        $allFields = ['name', 'firstname', 'surname', 'email', 'phone', 'organization'];
 
         foreach ($this->contacts as $contact) {
             $record = $contact->toRcubeRecord();
             $match = false;
 
             $searchFields = is_array($fields) ? $fields : [$fields];
+            // '*' means search all fields
+            if (in_array('*', $searchFields)) {
+                $searchFields = $allFields;
+            }
+
             foreach ($searchFields as $field) {
+                if ($field === '*') continue;
                 $fieldVal = $record[$field] ?? '';
                 if (is_array($fieldVal)) {
                     foreach ($fieldVal as $v) {
@@ -99,7 +109,7 @@ class CardDAVAddressbook extends \rcube_addressbook
                         }
                     }
                 } else {
-                    if (str_contains(mb_strtolower($fieldVal), $value_lower)) {
+                    if (str_contains(mb_strtolower((string)$fieldVal), $value_lower)) {
                         $match = true;
                     }
                 }
@@ -110,6 +120,8 @@ class CardDAVAddressbook extends \rcube_addressbook
                 $records[] = $record;
             }
         }
+
+        usort($records, fn($a, $b) => strcasecmp($a['name'] ?? '', $b['name'] ?? ''));
 
         $result = new \rcube_result_set(count($records));
         foreach ($records as $rec) {
