@@ -112,7 +112,76 @@ class CalDAVClient
   </C:filter>
 </C:calendar-query>';
 
-        return $this->queryObjects($calendarUrl, $body, 'VEVENT');
+        return $this->queryEvents($calendarUrl, $body, $start, $end);
+    }
+
+    /**
+     * Query and expand recurring events into individual instances.
+     * @return CalendarObject[]
+     */
+    private function queryEvents(string $url, string $body, \DateTimeInterface $start, \DateTimeInterface $end): array
+    {
+        $response = $this->client->request('REPORT', $url, $body, [
+            'Content-Type' => 'application/xml; charset=utf-8',
+            'Depth' => '1',
+        ]);
+
+        if ($response['statusCode'] !== 207) {
+            return [];
+        }
+
+        $objects = [];
+        $parsed = $this->client->parseMultiStatus($response['body']);
+
+        foreach ($parsed as $href => $propSet) {
+            $calData = $propSet[200]['{urn:ietf:params:xml:ns:caldav}calendar-data'] ?? null;
+            $etag = $propSet[200]['{DAV:}getetag'] ?? null;
+
+            if (!$calData) {
+                continue;
+            }
+
+            try {
+                $vcalendar = VObject\Reader::read($calData);
+                $fullUrl = $this->resolveUrl($url, $href);
+                $etagClean = is_string($etag) ? trim($etag, '"') : null;
+
+                $vevent = $vcalendar->VEVENT ?? null;
+                if (!$vevent) continue;
+
+                if (isset($vevent->RRULE)) {
+                    $uid = (string)($vevent->UID ?? '');
+                    if (!$uid) continue;
+
+                    $it = new VObject\Recur\EventIterator($vcalendar, $uid);
+                    $it->fastForward($start);
+                    $limit = 200;
+                    while ($it->valid() && $it->getDTStart() < $end && $limit-- > 0) {
+                        $instance = $it->getEventObject();
+                        $objects[] = new CalendarObject(
+                            url: $fullUrl,
+                            etag: $etagClean,
+                            component: $instance,
+                            vcalendar: $vcalendar,
+                            rawData: $calData,
+                        );
+                        $it->next();
+                    }
+                } else {
+                    $objects[] = new CalendarObject(
+                        url: $fullUrl,
+                        etag: $etagClean,
+                        component: $vevent,
+                        vcalendar: $vcalendar,
+                        rawData: $calData,
+                    );
+                }
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
+
+        return $objects;
     }
 
     /**
