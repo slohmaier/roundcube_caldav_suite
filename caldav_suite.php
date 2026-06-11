@@ -6,7 +6,7 @@ use Slohmaier\CalDAVSuite\CalDAVClient;
 
 class caldav_suite extends rcube_plugin
 {
-    public $task = '*';
+    public $task = '.*';
 
     private $rc;
 
