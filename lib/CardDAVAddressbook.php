@@ -22,6 +22,7 @@ class CardDAVAddressbook extends \rcube_addressbook
     private string $addressbookUrl;
     private ?array $contacts = null;
     private $filter = null;
+    private ?array $searchFilter = null;
     private int $result_count = 0;
 
     public function __construct(string $id, string $name, CardDAVClient $client, string $addressbookUrl)
@@ -41,6 +42,9 @@ class CardDAVAddressbook extends \rcube_addressbook
     public function set_search_set($filter): void
     {
         $this->filter = $filter;
+        if (is_array($filter) && isset($filter['_carddav_search'])) {
+            $this->searchFilter = $filter;
+        }
     }
 
     public function get_search_set()
@@ -51,6 +55,7 @@ class CardDAVAddressbook extends \rcube_addressbook
     public function reset(): void
     {
         $this->filter = null;
+        $this->searchFilter = null;
         $this->contacts = null;
         $this->result = null;
     }
@@ -62,7 +67,7 @@ class CardDAVAddressbook extends \rcube_addressbook
         $records = [];
         foreach ($this->contacts as $contact) {
             $record = $contact->toRcubeRecord();
-            if ($this->filter && !$this->matchFilter($record)) {
+            if ($this->searchFilter && !$this->matchSearchFilter($record)) {
                 continue;
             }
             $records[] = $record;
@@ -85,38 +90,24 @@ class CardDAVAddressbook extends \rcube_addressbook
         $this->loadContacts();
 
         $value_lower = mb_strtolower(is_array($value) ? implode(' ', $value) : $value);
-        $records = [];
         $allFields = ['name', 'firstname', 'surname', 'email', 'phone', 'organization'];
 
+        $searchFields = is_array($fields) ? $fields : [$fields];
+        if ($fields === '*' || in_array('*', $searchFields)) {
+            $searchFields = $allFields;
+        }
+
+        $this->searchFilter = [
+            '_carddav_search' => true,
+            'fields' => $searchFields,
+            'value' => $value_lower,
+        ];
+        $this->filter = $this->searchFilter;
+
+        $records = [];
         foreach ($this->contacts as $contact) {
             $record = $contact->toRcubeRecord();
-            $match = false;
-
-            $searchFields = is_array($fields) ? $fields : [$fields];
-            // '*' means search all fields
-            if (in_array('*', $searchFields)) {
-                $searchFields = $allFields;
-            }
-
-            foreach ($searchFields as $field) {
-                if ($field === '*') continue;
-                $fieldVal = $record[$field] ?? '';
-                if (is_array($fieldVal)) {
-                    foreach ($fieldVal as $v) {
-                        if (str_contains(mb_strtolower($v), $value_lower)) {
-                            $match = true;
-                            break;
-                        }
-                    }
-                } else {
-                    if (str_contains(mb_strtolower((string)$fieldVal), $value_lower)) {
-                        $match = true;
-                    }
-                }
-                if ($match) break;
-            }
-
-            if ($match) {
+            if ($this->matchSearchFilter($record)) {
                 $records[] = $record;
             }
         }
@@ -124,8 +115,10 @@ class CardDAVAddressbook extends \rcube_addressbook
         usort($records, fn($a, $b) => strcasecmp($a['name'] ?? '', $b['name'] ?? ''));
 
         $result = new \rcube_result_set(count($records));
-        foreach ($records as $rec) {
-            $result->add($rec);
+        if ($select) {
+            foreach ($records as $rec) {
+                $result->add($rec);
+            }
         }
 
         $this->result = $result;
@@ -259,16 +252,25 @@ class CardDAVAddressbook extends \rcube_addressbook
         $this->contacts = $this->client->getContacts($this->addressbookUrl);
     }
 
-    private function matchFilter(array $record): bool
+    private function matchSearchFilter(array $record): bool
     {
-        if (!$this->filter) return true;
-        // Simple string match across all fields
-        $filterLower = mb_strtolower($this->filter);
-        foreach (['name', 'firstname', 'surname', 'email', 'organization'] as $field) {
-            $val = $record[$field] ?? '';
-            if (is_array($val)) $val = implode(' ', $val);
-            if (str_contains(mb_strtolower($val), $filterLower)) {
-                return true;
+        if (!$this->searchFilter) return true;
+
+        $value = $this->searchFilter['value'];
+        $fields = $this->searchFilter['fields'];
+
+        foreach ($fields as $field) {
+            $fieldVal = $record[$field] ?? '';
+            if (is_array($fieldVal)) {
+                foreach ($fieldVal as $v) {
+                    if (str_contains(mb_strtolower($v), $value)) {
+                        return true;
+                    }
+                }
+            } else {
+                if (str_contains(mb_strtolower((string)$fieldVal), $value)) {
+                    return true;
+                }
             }
         }
         return false;
