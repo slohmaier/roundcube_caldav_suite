@@ -68,7 +68,6 @@ class CardDAVAddressbook extends \rcube_addressbook
             $result->add($record);
         }
 
-        $result->count = $result->count();
         $this->result = $result;
         return $result;
     }
@@ -107,7 +106,6 @@ class CardDAVAddressbook extends \rcube_addressbook
             }
         }
 
-        $result->count = $result->count();
         $this->result = $result;
         return $result;
     }

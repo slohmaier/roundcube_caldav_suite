@@ -6,7 +6,7 @@ use Slohmaier\CalDAVSuite\CalDAVClient;
 
 class caldav_suite extends rcube_plugin
 {
-    public $task = 'calendar|tasks|settings|mail|addressbook';
+    public $task = 'calendar|tasks|settings|mail|contacts';
 
     private $rc;
 
@@ -59,10 +59,9 @@ class caldav_suite extends rcube_plugin
             'innerclass' => 'button-inner',
         ], 'taskbar');
 
-        if (in_array($this->rc->task, ['calendar', 'tasks', 'settings'])) {
-            $this->include_stylesheet($this->local_skin_path() . '/styles/caldav_suite.css');
-            $this->include_script('js/caldav_suite.js');
-        }
+        // CSS and base JS on all tasks (needed for taskbar icons + settings)
+        $this->include_stylesheet($this->local_skin_path() . '/styles/caldav_suite.css');
+        $this->include_script('js/caldav_suite.js');
 
         if ($this->rc->task === 'calendar') {
             $this->include_script('js/calendar_view.js');
@@ -575,8 +574,8 @@ class caldav_suite extends rcube_plugin
                     'groups'   => false,
                 ];
             }
-        } catch (\Exception $e) {
-            // silently skip
+        } catch (\Throwable $e) {
+            rcube::raise_error($e->getMessage(), true, false);
         }
 
         return $args;
@@ -584,7 +583,7 @@ class caldav_suite extends rcube_plugin
 
     public function addressbook_get($args)
     {
-        if (!str_starts_with($args['id'], 'caldav_')) {
+        if (!is_string($args['id']) || !str_starts_with($args['id'], 'caldav_')) {
             return $args;
         }
 
@@ -609,8 +608,8 @@ class caldav_suite extends rcube_plugin
                     break;
                 }
             }
-        } catch (\Exception $e) {
-            // silently skip
+        } catch (\Throwable $e) {
+            rcube::raise_error($e->getMessage(), true, false);
         }
 
         return $args;
