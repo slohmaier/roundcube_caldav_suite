@@ -61,6 +61,7 @@
 .week-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); position: relative; }
 .week-event-inline { position: absolute; left: 0; right: 0; z-index: 2; font-size: 0.75em; padding: 2px 4px; overflow: hidden; border-radius: 2px; cursor: pointer; }
 .week-event-inline:focus { outline: 2px solid var(--color-main, #4fc3f7); z-index: 10; }
+.week-travel-block { position: absolute; left: 0; right: 0; z-index: 1; font-size: 0.7em; padding: 2px 4px; overflow: hidden; border-radius: 2px; background: rgba(128,128,128,0.2); border-left: 3px solid rgba(128,128,128,0.5); color: var(--color-font, #666); font-style: italic; }
 
 /* ---- Day View ---- */
 

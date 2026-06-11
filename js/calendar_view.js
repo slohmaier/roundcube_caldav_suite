@@ -351,6 +351,25 @@
                 html += '<div class="week-cell">';
                 dayEventColumns[d].forEach(function(item) {
                     var s = new Date(item.ev.start);
+                    var travelMin = parseTravelMinutes(item.ev.travel_mode);
+                    var travelStartH = travelMin ? s.getHours() - (travelMin / 60) : -1;
+                    var travelHour = travelMin ? Math.floor((s.getTime() - travelMin * 60000) / 3600000 % 24) : -1;
+
+                    // Travel time block (rendered at the hour the travel starts)
+                    if (travelMin && Math.floor(travelStartH) === h) {
+                        var travelStart = new Date(s.getTime() - travelMin * 60000);
+                        var travelOffsetMin = travelStart.getMinutes();
+                        var travelTopPx = Math.round(travelOffsetMin * 40 / 60);
+                        var travelHeightPx = Math.round(travelMin * 40 / 60);
+                        var widthPct = Math.floor(100 / item.totalCols);
+                        var leftPct = item.col * widthPct;
+                        html += '<div class="week-travel-block" style="height:' + travelHeightPx + 'px;'
+                            + 'top:' + travelTopPx + 'px;left:' + leftPct + '%;width:' + widthPct + '%;'
+                            + '" aria-label="' + travelMin + ' Minuten Wegzeit">'
+                            + travelMin + ' Min. Wegzeit'
+                            + '</div>';
+                    }
+
                     if (s.getHours() === h) {
                         var e = new Date(item.ev.end || item.ev.start);
                         var durationH = Math.max((e - s) / 3600000, 0.5);
@@ -412,6 +431,23 @@
             html += '<div class="day-cell">';
             dayLayout.forEach(function(item) {
                 var s = new Date(item.ev.start);
+                var travelMin = parseTravelMinutes(item.ev.travel_mode);
+                var travelStartH = travelMin ? s.getHours() - (travelMin / 60) : -1;
+
+                if (travelMin && Math.floor(travelStartH) === h) {
+                    var travelStart = new Date(s.getTime() - travelMin * 60000);
+                    var travelOffsetMin = travelStart.getMinutes();
+                    var travelTopPx = Math.round(travelOffsetMin * 40 / 60);
+                    var travelHeightPx = Math.round(travelMin * 40 / 60);
+                    var widthPct = Math.floor(100 / item.totalCols);
+                    var leftPct = item.col * widthPct;
+                    html += '<div class="week-travel-block" style="height:' + travelHeightPx + 'px;'
+                        + 'top:' + travelTopPx + 'px;left:' + leftPct + '%;width:' + widthPct + '%;'
+                        + '" aria-label="' + travelMin + ' Minuten Wegzeit">'
+                        + travelMin + ' Min. Wegzeit'
+                        + '</div>';
+                }
+
                 if (s.getHours() === h) {
                     var e = new Date(item.ev.end || item.ev.start);
                     var durationH = Math.max((e - s) / 3600000, 0.5);
@@ -558,6 +594,13 @@
             var evEnd = new Date(ev.end || ev.start).getTime();
             return evStart < dayEnd && evEnd > dayStart;
         });
+    }
+
+    function parseTravelMinutes(mode) {
+        if (!mode) return 0;
+        if (mode === 'auto') return 0;
+        var n = parseInt(mode, 10);
+        return isNaN(n) ? 0 : n;
     }
 
     function pad2(n) { return n < 10 ? '0' + n : '' + n; }
