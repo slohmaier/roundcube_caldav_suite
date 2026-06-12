@@ -107,6 +107,26 @@ class CalendarObject
         return null;
     }
 
+    public function getReminderMinutes(): ?string
+    {
+        foreach ($this->component->getComponents() as $child) {
+            if ($child->name === 'VALARM' && isset($child->TRIGGER)) {
+                $trigger = (string)$child->TRIGGER;
+                if (preg_match('/^-?PT?(\d+)([MHDS])/i', $trigger, $m)) {
+                    $val = (int)$m[1];
+                    $unit = strtoupper($m[2]);
+                    if ($unit === 'H') $val *= 60;
+                    if ($unit === 'D') $val *= 1440;
+                    return (string)$val;
+                }
+                if ($trigger === 'P0D' || $trigger === 'PT0S' || $trigger === '-PT0M') {
+                    return '0';
+                }
+            }
+        }
+        return null;
+    }
+
     /**
      * Serialize to array for JSON API responses.
      */
@@ -133,6 +153,7 @@ class CalendarObject
             $data['allDay'] = $this->isAllDay();
             $data['travel_mode'] = $this->getTravelMode();
             $data['location_geo'] = $this->getGeo();
+            $data['reminder_minutes'] = $this->getReminderMinutes();
         }
 
         if ($this->component->name === 'VTODO') {

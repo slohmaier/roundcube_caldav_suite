@@ -30,7 +30,7 @@ class CalendarBackend
                 $vevent->add('X-APPLE-TRAVEL-ADVISORY-BEHAVIOR', 'AUTOMATIC');
             } elseif (is_numeric($data['travel_mode'])) {
                 $minutes = (int)$data['travel_mode'];
-                $vevent->add('X-APPLE-TRAVEL-DURATION', 'PT' . $minutes . 'M');
+                $vevent->add('X-APPLE-TRAVEL-DURATION', 'PT' . $minutes . 'M', ['VALUE' => 'DURATION']);
             }
         }
 
@@ -41,12 +41,21 @@ class CalendarBackend
             $vevent->add('X-APPLE-STRUCTURED-LOCATION',
                 'geo:' . $geo,
                 [
-                    'VALUE'          => 'URI',
-                    'X-APPLE-RADIUS' => '70',
-                    'X-TITLE'        => $locName,
+                    'VALUE'                    => 'URI',
+                    'X-APPLE-RADIUS'           => '70',
+                    'X-APPLE-REFERENCEFRAME'   => '1',
+                    'X-TITLE'                  => $locName,
                 ]
             );
             $vevent->add('GEO', str_replace(',', ';', $geo));
+        }
+
+        // Reminder/Alarm
+        if (!empty($data['reminder_minutes'])) {
+            $alarm = $vevent->add('VALARM');
+            $alarm->add('ACTION', 'DISPLAY');
+            $alarm->add('DESCRIPTION', $data['title'] ?? 'Erinnerung');
+            $alarm->add('TRIGGER', '-PT' . (int)$data['reminder_minutes'] . 'M');
         }
 
         $tz = new \DateTimeZone($data['timezone'] ?? 'Europe/Berlin');

@@ -76,3 +76,6 @@ $labels['geocode_url'] = 'Server URL (self-hosted)';
 $labels['geocode_url_hint'] = 'Empty = public instance. For self-hosted: e.g. https://nominatim.example.com';
 $labels['extra_caldav_urls'] = 'Additional CalDAV URLs';
 $labels['extra_urls_hint'] = 'One URL per line. For shared calendars, e.g. https://radicale.example.com/shared/';
+$labels['reminder'] = 'Reminder';
+$labels['reminder_none'] = 'None';
+$labels['reminder_at_time'] = 'At time of event';
