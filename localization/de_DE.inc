@@ -76,3 +76,6 @@ $labels['geocode_url'] = 'Server URL (eigene Instanz)';
 $labels['geocode_url_hint'] = 'Leer = öffentliche Instanz. Für self-hosted: z.B. https://nominatim.example.com';
 $labels['extra_caldav_urls'] = 'Weitere CalDAV URLs';
 $labels['extra_urls_hint'] = 'Eine URL pro Zeile. Für gemeinsame Kalender, z.B. https://radicale.example.com/shared/';
+$labels['reminder'] = 'Erinnerung';
+$labels['reminder_none'] = 'Keine';
+$labels['reminder_at_time'] = 'Zum Zeitpunkt';
