@@ -235,6 +235,19 @@ class CalDAVClient
     }
 
     /**
+     * Fetch and parse a single calendar object (.ics).
+     */
+    public function getObject(string $url): ?\Sabre\VObject\Component\VCalendar
+    {
+        $response = $this->client->request('GET', $url);
+        if (!in_array($response['statusCode'], [200, 207]) || empty($response['body'])) {
+            return null;
+        }
+        $vobj = \Sabre\VObject\Reader::read($response['body']);
+        return $vobj instanceof \Sabre\VObject\Component\VCalendar ? $vobj : null;
+    }
+
+    /**
      * Delete a calendar object.
      */
     public function deleteObject(string $url, ?string $etag = null): bool
