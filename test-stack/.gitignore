@@ -1,0 +1,6 @@
+# generierte, bereinigte Composer-Autoload fuer den Container
+vendor-runtime/
+# generierte Screenshots
+screenshots/out/
+# Playwright
+screenshots/node_modules/

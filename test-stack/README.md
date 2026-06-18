@@ -5,13 +5,31 @@ CalDAV/CardDAV-Server, **ohne Live-Daten**. Mountet dieses Repo direkt als Round
 
 ## Schnellstart
 
+Voraussetzung: einmalig im Repo-Root `composer install` (erzeugt `vendor/`).
+
 ```bash
 cd test-stack
-docker compose up -d      # zieht Images, startet 3 Container
-./setup.sh                # User + CalDAV-Prefs + Collections anlegen
+./start.sh                # Autoload bereinigen -> up -> einrichten (alles in einem)
+```
+
+Oder manuell (Reihenfolge wichtig — `prep` MUSS vor `up` laufen):
+
+```bash
+./prep-runtime-vendor.sh  # bereinigte Composer-Autoload erzeugen (siehe unten)
+docker compose up -d
+./setup.sh
 ```
 
 Dann im Browser: <http://127.0.0.1:8099> — Login **test / test**.
+
+> **Warum `prep-runtime-vendor.sh`?** Das Repo zieht via `roundcube/plugin-installer`
+> transitiv eine komplette `roundcube/roundcubemail`-Kopie ins `vendor/` (gebraucht von
+> den PHPUnit-Tests für die `rcube_*`-Basisklassen). Im laufenden Roundcube kollidieren
+> diese Klassen mit dem echten Core → das Plugin lädt nicht. `prep` erzeugt unter
+> `vendor-runtime/` eine bereinigte Composer-Autoload (ohne roundcubemail), die der
+> Container über das echte `vendor/composer/` legt. Das echte `vendor/` bleibt unberührt,
+> PHPUnit nutzt es weiter. Bei einer **echten** Installation (`composer require … ` direkt
+> in Roundcube) entsteht diese verschachtelte Kopie nicht — dort ist nichts zu tun.
 
 Radicale direkt: <http://127.0.0.1:5233> (Login test / test).
 
