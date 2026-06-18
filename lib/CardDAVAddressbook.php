@@ -12,6 +12,7 @@ class CardDAVAddressbook extends \rcube_addressbook
     public $readonly = false;
     public $searchonly = false;
     public $group_id = null;
+    public $result = null;
     public $coltypes = [
         'name', 'firstname', 'surname', 'email', 'phone', 'organization',
     ];
