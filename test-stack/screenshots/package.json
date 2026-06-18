@@ -1,0 +1,9 @@
+{
+  "name": "caldav-suite-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Seed demo data and capture Roundcube screenshots of the caldav_suite plugin",
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
