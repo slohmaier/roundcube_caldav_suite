@@ -127,6 +127,40 @@ class CalendarObject
         return null;
     }
 
+    public function getRrule(): ?string
+    {
+        return isset($this->component->RRULE) ? (string)$this->component->RRULE : null;
+    }
+
+    /** @return string[] */
+    public function getCategories(): array
+    {
+        if (!isset($this->component->CATEGORIES)) {
+            return [];
+        }
+        $out = [];
+        foreach ($this->component->CATEGORIES as $cat) {
+            foreach ($cat->getParts() as $part) {
+                if (trim((string)$part) !== '') {
+                    $out[] = (string)$part;
+                }
+            }
+        }
+        return $out;
+    }
+
+    public function getUrl(): ?string
+    {
+        return isset($this->component->URL) ? (string)$this->component->URL : null;
+    }
+
+    public function getPercentComplete(): ?int
+    {
+        return isset($this->component->{'PERCENT-COMPLETE'})
+            ? (int)(string)$this->component->{'PERCENT-COMPLETE'}
+            : null;
+    }
+
     /**
      * Serialize to array for JSON API responses.
      */
@@ -154,13 +188,22 @@ class CalendarObject
             $data['travel_mode'] = $this->getTravelMode();
             $data['location_geo'] = $this->getGeo();
             $data['reminder_minutes'] = $this->getReminderMinutes();
+            $data['rrule'] = $this->getRrule();
+            $data['categories'] = $this->getCategories();
+            $data['url'] = $this->getUrl();
+            $data['status'] = $this->getStatus();
         }
 
         if ($this->component->name === 'VTODO') {
+            $data['start'] = $this->getStart()?->format('c');
             $data['due'] = $this->getDue()?->format('c');
             $data['completed'] = $this->isCompleted();
             $data['priority'] = $this->getPriority();
             $data['status'] = $this->getStatus();
+            $data['percent_complete'] = $this->getPercentComplete();
+            $data['categories'] = $this->getCategories();
+            $data['rrule'] = $this->getRrule();
+            $data['url'] = $this->getUrl();
         }
 
         return $data;

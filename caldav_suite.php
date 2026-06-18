@@ -222,7 +222,14 @@ class caldav_suite extends rcube_plugin
         $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
 
         $backend = new \Slohmaier\CalDAVSuite\CalendarBackend();
-        $ical = $backend->buildICalEvent($data);
+
+        // Edit: bestehendes Objekt holen und mergen (erhaelt RRULE/ATTENDEE/etc.),
+        // sonst neu bauen.
+        if ($existingUrl && ($existing = $client->getObject($existingUrl))) {
+            $ical = $backend->updateICalEvent($existing->serialize(), $data) ?: $backend->buildICalEvent($data);
+        } else {
+            $ical = $backend->buildICalEvent($data);
+        }
 
         $url = $existingUrl ?: (rtrim($calendarUrl, '/') . '/' . \Sabre\VObject\UUIDUtil::getUUID() . '.ics');
         $success = $client->putObject($url, $ical, $etag ?: null);
@@ -318,7 +325,14 @@ class caldav_suite extends rcube_plugin
         $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
 
         $backend = new \Slohmaier\CalDAVSuite\TaskBackend();
-        $ical = $backend->buildICalTodo($data);
+
+        // Edit: bestehendes Objekt holen und mergen (erhaelt RRULE/eigene Props),
+        // sonst neu bauen.
+        if ($existingUrl && ($existing = $client->getObject($existingUrl))) {
+            $ical = $backend->updateICalTodo($existing->serialize(), $data) ?: $backend->buildICalTodo($data);
+        } else {
+            $ical = $backend->buildICalTodo($data);
+        }
 
         $url = $existingUrl ?: (rtrim($listUrl, '/') . '/' . \Sabre\VObject\UUIDUtil::getUUID() . '.ics');
         $success = $client->putObject($url, $ical, $etag ?: null);

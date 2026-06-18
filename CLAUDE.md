@@ -408,3 +408,61 @@ neu → **Email/Telefon beim Speichern verworfen/gewiped**. Fix in
 alle `<col>` und `<col>:<subtype>`-Keys einsammelt und als vCard-`TYPE` setzt (FN/N/
 EMAIL/TEL/ORG). Danach `readonly=false` wieder gesetzt (war als Notbremse `true`).
 Verifiziert im rc-test-Stack: HOME+WORK-Email, Telefon, Org persistieren + round-trippen.
+
+## Unterstützte Felder (Stand 2026-06-18)
+
+Was das Plugin schreibt UND zurueckliest (Round-Trip getestet, Unit + gegen echtes
+Radicale). Nicht behandelte Felder gehen beim Edit NICHT verloren — siehe "Fetch-Merge".
+
+### Kontakte (vCard 3.0)
+
+- Name: FN + N (Nachname, Vorname, middlename, prefix, suffix — alle 5 N-Teile)
+- Spitzname (NICKNAME), Jobtitel (TITLE)
+- Organisation + Abteilung (strukturiertes ORG: org;department)
+- E-Mail mit Subtype (EMAIL;TYPE=HOME/WORK/...) — mehrere, je Subtype
+- Telefon mit Subtype (TEL;TYPE=HOME/WORK/CELL/...)
+- Adresse strukturiert (ADR;TYPE=...: street/locality/region/zipcode/country), mehrere
+- Webseite (URL), Instant Messaging (IMPP; Subtype via X-SERVICE-TYPE)
+- Geburtstag (BDAY), Jahrestag (ANNIVERSARY) — Datums-Normalisierung auf YYYY-MM-DD
+- Notizen (NOTE)
+- Firmenkontakte: leeres FN faellt auf ORG zurueck (Sortierung)
+- coltypes erweitert -> Roundcube-Formular zeigt all diese Felder
+
+### Termine (VEVENT, iCal RFC 5545)
+
+- Titel (SUMMARY), Start/Ende (DTSTART/DTEND), Ganztags (VALUE=DATE, Ende exklusiv +1)
+- Zeitzone via TZID; DST korrekt (Sommer +02:00 / Winter +01:00 fuer Europe/Berlin getestet)
+- Ort (LOCATION), Beschreibung (DESCRIPTION), URL, STATUS, TRANSP, CLASS
+- **Recurrence (RRULE)** — Lesen + Schreiben + beim Edit erhalten
+- Kategorien (CATEGORIES), Erinnerung (VALARM/TRIGGER)
+- Apple-Fahrtzeit: X-APPLE-TRAVEL-ADVISORY-BEHAVIOR (auto) / X-APPLE-TRAVEL-DURATION (Minuten)
+- Geo-Location: X-APPLE-STRUCTURED-LOCATION + GEO (Apple-Maps-Fahrtzeit)
+
+### Aufgaben (VTODO)
+
+- Titel, Beschreibung, Ort, URL
+- Faelligkeit (DUE), Start (DTSTART) — mit Zeitzone
+- Prioritaet (high=1/medium=5/low=9/none), Fortschritt (PERCENT-COMPLETE)
+- Status/Erledigt (STATUS + COMPLETED), Kategorien (CATEGORIES), Recurrence (RRULE)
+- Abhaken (Toggle): holt VTODO, flippt nur Status, erhaelt alle anderen Felder
+
+### Fetch-Merge-Edit (wichtig)
+
+Kontakte modifizieren die bestehende vCard in-place; Events/Tasks holen beim Edit das
+bestehende Objekt (`CalDAVClient::getObject`) und mergen nur die uebergebenen Felder
+(`updateICalEvent` / `updateICalTodo`). So bleiben Felder, die das Formular nicht kennt
+(RRULE, ATTENDEE, ORGANIZER, SEQUENCE, EXDATE, RELATED-TO, eigene X-Props), beim
+Speichern **erhalten** statt verloren zu gehen. Verifiziert: Titel-Edit eines Serien-
+termins behaelt die RRULE.
+
+### Noch NICHT als eigene Formularfelder
+
+ATTENDEE/ORGANIZER (Einladungen/iTip), EXDATE/RECURRENCE-ID-Ausnahmen, mehrere VALARMs,
+PHOTO-Upload — werden beim Edit aber dank Fetch-Merge erhalten, nur nicht via UI editiert.
+
+### Tests
+
+`php vendor/bin/phpunit --testsuite unit` — 149 Unit-Tests (Backends, ContactCard,
+CalendarObject, CardDAVAddressbook mit gemocktem Client, Recurrence, Zeitzonen/DST,
+Fetch-Merge, alle Felder, Sonderzeichen-Roundtrip). Integration gegen echtes Radicale
+im rc-test-Stack verifiziert.
