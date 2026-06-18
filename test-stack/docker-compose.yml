@@ -1,0 +1,46 @@
+# Reproduzierbarer Test-Stack fuer caldav_suite.
+# Bringt Roundcube + Radicale (CalDAV/CardDAV) + Greenmail (Dummy-IMAP/SMTP) hoch
+# und mountet DIESES Plugin-Repo direkt als Roundcube-Plugin.
+#
+#   cd test-stack && docker compose up -d && ./setup.sh
+#   -> http://127.0.0.1:8099   Login: test / test
+#
+# Alle Ports nur auf 127.0.0.1 (kein LAN-Expose).
+networks:
+  rctest:
+
+volumes:
+  radicale-data:
+
+services:
+  rc-test-radicale:
+    image: tomsquest/docker-radicale:latest
+    networks: [rctest]
+    ports: ["127.0.0.1:5233:5232"]
+    volumes:
+      - ./radicale-config:/config:ro
+      - radicale-data:/data
+
+  rc-test-imap:
+    image: greenmail/standalone:latest
+    networks: [rctest]
+    ports: ["127.0.0.1:3143:3143"]
+    environment:
+      - GREENMAIL_OPTS=-Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled -Dgreenmail.verbose
+
+  rc-test-roundcube:
+    image: roundcube/roundcubemail:latest
+    networks: [rctest]
+    ports: ["127.0.0.1:8099:80"]
+    environment:
+      - ROUNDCUBEMAIL_DB_TYPE=sqlite
+      - ROUNDCUBEMAIL_DEFAULT_HOST=rc-test-imap
+      - ROUNDCUBEMAIL_DEFAULT_PORT=3143
+      - ROUNDCUBEMAIL_SMTP_SERVER=rc-test-imap
+      - ROUNDCUBEMAIL_SMTP_PORT=3025
+      - ROUNDCUBEMAIL_PLUGINS=caldav_suite
+      - ROUNDCUBEMAIL_SKIN=elastic
+    volumes:
+      # Dieses Repo wird direkt als Plugin gemountet (inkl. vendor/).
+      - ..:/var/www/html/plugins/caldav_suite:ro
+    depends_on: [rc-test-radicale, rc-test-imap]
