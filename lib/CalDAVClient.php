@@ -225,7 +225,7 @@ class CalDAVClient
     {
         $headers = ['Content-Type' => 'text/calendar; charset=utf-8'];
         if ($etag) {
-            $headers['If-Match'] = $etag;
+            $headers['If-Match'] = '"' . trim($etag, '"') . '"';  // ETag gequotet (Radicale verlangt Quotes)
         } else {
             $headers['If-None-Match'] = '*';
         }
@@ -241,7 +241,7 @@ class CalDAVClient
     {
         $headers = [];
         if ($etag) {
-            $headers['If-Match'] = $etag;
+            $headers['If-Match'] = '"' . trim($etag, '"') . '"';  // ETag gequotet (Radicale verlangt Quotes)
         }
 
         $response = $this->client->request('DELETE', $url, null, $headers);
