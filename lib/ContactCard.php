@@ -20,7 +20,7 @@ class ContactCard
 
     public function getDisplayName(): string
     {
-        if (isset($this->vcard->FN)) {
+        if (isset($this->vcard->FN) && trim((string)$this->vcard->FN) !== '') {
             return (string)$this->vcard->FN;
         }
         $parts = [];
@@ -29,7 +29,15 @@ class ContactCard
             if (!empty($n[1])) $parts[] = $n[1]; // given
             if (!empty($n[0])) $parts[] = $n[0]; // family
         }
-        return implode(' ', $parts) ?: '(Ohne Name)';
+        if ($parts) {
+            return implode(' ', $parts);
+        }
+        // Firmenkontakte (Apple X-ABSHOWAS:COMPANY): Name aus ORG ableiten,
+        // sonst leerer FN -> Eintrag sortiert vor allen Namen.
+        if (isset($this->vcard->ORG) && trim((string)$this->vcard->ORG) !== '') {
+            return (string)$this->vcard->ORG;
+        }
+        return '(Ohne Name)';
     }
 
     public function getFirstName(): string
@@ -86,24 +94,50 @@ class ContactCard
             'name' => $this->getDisplayName(),
             'firstname' => $this->getFirstName(),
             'surname' => $this->getLastName(),
-            'email' => $this->getEmail(),
             'organization' => $this->getOrganization() ?? '',
             '_url' => $this->url,
             '_etag' => $this->etag,
             '_raw' => $this->rawData,
         ];
 
-        // Multiple emails
-        $emails = $this->getEmails();
-        if (count($emails) > 1) {
-            $record['email'] = $emails;
+        // Emails mit Subtype-Keys (email:work / email:home / ...), damit
+        // Roundcube das richtige Label zeigt UND der Subtype round-trippt.
+        if (isset($this->vcard->EMAIL)) {
+            foreach ($this->vcard->EMAIL as $email) {
+                $val = trim((string)$email);
+                if ($val === '') continue;
+                $record['email:' . $this->subtypeOf($email, 'home')][] = $val;
+            }
         }
 
-        // Phone
-        if ($phone = $this->getPhone()) {
-            $record['phone'] = $phone;
+        // Telefonnummern analog (phone:work / phone:home / phone:cell / ...)
+        if (isset($this->vcard->TEL)) {
+            foreach ($this->vcard->TEL as $tel) {
+                $val = trim((string)$tel);
+                if ($val === '') continue;
+                $record['phone:' . $this->subtypeOf($tel, 'home')][] = $val;
+            }
         }
 
         return $record;
+    }
+
+    /**
+     * Roundcube-Subtype aus dem vCard-TYPE-Parameter ableiten (work/home/cell/...).
+     * Generische Marker (internet/voice/pref) werden uebersprungen.
+     */
+    private function subtypeOf($prop, string $default): string
+    {
+        $param = $prop['TYPE'] ?? null;
+        if ($param !== null) {
+            foreach ($param->getParts() as $t) {
+                $t = strtolower(trim($t));
+                if ($t === '' || in_array($t, ['internet', 'voice', 'pref'], true)) {
+                    continue;
+                }
+                return $t;
+            }
+        }
+        return $default;
     }
 }
