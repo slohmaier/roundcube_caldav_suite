@@ -176,7 +176,7 @@ class CardDAVClient
     {
         $headers = ['Content-Type' => 'text/vcard; charset=utf-8'];
         if ($etag) {
-            $headers['If-Match'] = $etag;
+            $headers['If-Match'] = '"' . trim($etag, '"') . '"';  // ETag gequotet (Radicale verlangt Quotes)
         }
 
         $response = $this->client->request('PUT', $url, $vcardData, $headers);
@@ -190,7 +190,7 @@ class CardDAVClient
     {
         $headers = [];
         if ($etag) {
-            $headers['If-Match'] = $etag;
+            $headers['If-Match'] = '"' . trim($etag, '"') . '"';  // ETag gequotet (Radicale verlangt Quotes)
         }
 
         $response = $this->client->request('DELETE', $url, null, $headers);
