@@ -154,28 +154,11 @@ class CardDAVAddressbook extends \rcube_addressbook
 
     public function insert($save_data, $check = false)
     {
-        $vcard = new \Sabre\VObject\Component\VCard([
-            'FN' => trim(($save_data['firstname'] ?? '') . ' ' . ($save_data['surname'] ?? '')),
-            'N' => [
-                $save_data['surname'] ?? '',
-                $save_data['firstname'] ?? '',
-                '', '', '',
-            ],
-        ]);
-
-        $emails = is_array($save_data['email'] ?? null) ? $save_data['email'] : [$save_data['email'] ?? ''];
-        foreach (array_filter($emails) as $email) {
-            $vcard->add('EMAIL', $email);
-        }
-        if (!empty($save_data['phone'])) {
-            $vcard->add('TEL', $save_data['phone']);
-        }
-        if (!empty($save_data['organization'])) {
-            $vcard->add('ORG', $save_data['organization']);
-        }
-
+        $vcard = new \Sabre\VObject\Component\VCard(['VERSION' => '3.0']);
         $uid = \Sabre\VObject\UUIDUtil::getUUID();
         $vcard->add('UID', $uid);
+
+        $this->applySaveData($vcard, $save_data);
 
         $url = rtrim($this->addressbookUrl, '/') . '/' . $uid . '.vcf';
         if ($this->client->putContact($url, $vcard->serialize())) {
@@ -194,19 +177,7 @@ class CardDAVAddressbook extends \rcube_addressbook
             $record = $contact->toRcubeRecord();
             if ($record['ID'] === $id) {
                 $vcard = $contact->vcard;
-                $vcard->FN = trim(($save_data['firstname'] ?? '') . ' ' . ($save_data['surname'] ?? ''));
-                $vcard->N = [
-                    $save_data['surname'] ?? '',
-                    $save_data['firstname'] ?? '',
-                    '', '', '',
-                ];
-
-                // Remove old emails, add new
-                $vcard->remove('EMAIL');
-                $emails = is_array($save_data['email'] ?? null) ? $save_data['email'] : [$save_data['email'] ?? ''];
-                foreach (array_filter($emails) as $email) {
-                    $vcard->add('EMAIL', $email);
-                }
+                $this->applySaveData($vcard, $save_data);
 
                 if ($this->client->putContact($record['_url'], $vcard->serialize(), $record['_etag'])) {
                     $this->contacts = null;
@@ -240,6 +211,76 @@ class CardDAVAddressbook extends \rcube_addressbook
         }
 
         return $deleted;
+    }
+
+    /**
+     * Map Roundcube save_data (incl. subtype keys like "email:home", "phone:cell")
+     * onto a vCard. Used by insert() and update().
+     */
+    private function applySaveData($vcard, array $save_data): void
+    {
+        // Display name: prefer Roundcube's composed "name", else firstname+surname
+        $name = trim((string) ($save_data['name'] ?? ''));
+        if ($name === '') {
+            $name = trim(($save_data['firstname'] ?? '') . ' ' . ($save_data['surname'] ?? ''));
+        }
+        $vcard->FN = $name;
+        $vcard->N = [
+            $save_data['surname'] ?? '',
+            $save_data['firstname'] ?? '',
+            $save_data['middlename'] ?? '',
+            $save_data['prefix'] ?? '',
+            $save_data['suffix'] ?? '',
+        ];
+
+        // EMAIL: collect bare "email" + subtyped "email:home"/"email:work"/...
+        $vcard->remove('EMAIL');
+        foreach ($this->collectSubtyped($save_data, 'email') as [$subtype, $value]) {
+            $prop = $vcard->add('EMAIL', $value);
+            if ($subtype !== '') {
+                $prop['TYPE'] = strtoupper($subtype);
+            }
+        }
+
+        // TEL: collect "phone" + "phone:home"/"phone:cell"/...
+        $vcard->remove('TEL');
+        foreach ($this->collectSubtyped($save_data, 'phone') as [$subtype, $value]) {
+            $prop = $vcard->add('TEL', $value);
+            if ($subtype !== '') {
+                $prop['TYPE'] = strtoupper($subtype);
+            }
+        }
+
+        // ORG (single)
+        $vcard->remove('ORG');
+        if (!empty($save_data['organization'])) {
+            $vcard->add('ORG', $save_data['organization']);
+        }
+    }
+
+    /**
+     * Gather all values for a column from save_data, honouring Roundcube's
+     * "<col>:<subtype>" key convention. Returns list of [subtype, value].
+     */
+    private function collectSubtyped(array $save_data, string $col): array
+    {
+        $out = [];
+        foreach ($save_data as $key => $values) {
+            if ($key !== $col && strpos((string) $key, $col . ':') !== 0) {
+                continue;
+            }
+            $subtype = ($key === $col) ? '' : substr((string) $key, strlen($col) + 1);
+            foreach ((array) $values as $v) {
+                if (is_string($v)) {
+                    $v = trim($v);
+                }
+                if ($v === '' || $v === null) {
+                    continue;
+                }
+                $out[] = [$subtype, $v];
+            }
+        }
+        return $out;
     }
 
     public function close() {}

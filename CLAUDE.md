@@ -312,3 +312,99 @@ npx playwright test
 # Alles
 composer test:all
 ```
+
+## Manuelles Debug-Test-System (rc-test) — KONKRET, funktioniert
+
+Isolierte Docker-Umgebung um Plugin-Bugs zu debuggen OHNE Live-Daten anzufassen.
+Liegt auf polo unter `/home/stefan/rc-test/`. So wird es aufgesetzt:
+
+### Aufbau
+
+`docker-compose.yml` mit drei Services in einem eigenen Netz `rctest`:
+
+- **rc-test-radicale** (`tomsquest/docker-radicale`) — CardDAV/CalDAV-Server,
+  `127.0.0.1:5233:5232`. Mounts: `./radicale-config:/config:ro`, `./radicale-data:/data`.
+- **rc-test-imap** (`greenmail/standalone`) — Dummy-IMAP/SMTP damit Roundcube startet,
+  `127.0.0.1:3143:3143`, `GREENMAIL_OPTS=-Dgreenmail.setup.test.all -Dgreenmail.auth.disabled`.
+- **rc-test-roundcube** (`roundcube/roundcubemail:latest`) — `127.0.0.1:8099:80`,
+  `ROUNDCUBEMAIL_DB_TYPE=sqlite`, `DEFAULT_HOST=rc-test-imap`, `DEFAULT_PORT=3143`,
+  `PLUGINS=caldav_suite`, `SKIN=elastic`. **Mount: `./caldav_suite:/var/www/html/plugins/caldav_suite`**
+  (die zu testende Arbeitskopie des Plugins — hier rein editieren).
+
+### Radicale-Setup (Testkontakt)
+
+- `radicale-config/config`: `[auth] type=htpasswd htpasswd_encryption=plain`,
+  `[storage] filesystem_folder=/data/collections`, `[rights] type=owner_only`.
+- `radicale-config/users`: `test:test`.
+- **`chmod -R a+rX radicale-config`** — sonst „Permission denied: /config/config" (Container-User).
+- Testkontakt: `radicale-data/collections/collection-root/test/contacts/.Radicale.props`
+  = `{"tag": "VADDRESSBOOK", "D:displayname": "Test Contacts"}` + eine `.vcf` (BEGIN:VCARD…).
+
+### Caldav-Quelle erscheint nur mit USER-PREFS (nicht config.inc.php!)
+
+Das Plugin liest URL/User/Passwort aus **`$this->rc->user->get_prefs()`**, NICHT aus
+`config.inc.php`. Passwort wird `$rcmail->decrypt()`-t. Darum nach dem ersten Login
+(Browser oder curl, `test`/`test`) die Prefs für den Test-User per PHP setzen:
+
+```bash
+docker compose exec -T rc-test-roundcube php <<'PHP'
+<?php
+define('INSTALL_PATH','/var/www/html/');
+require_once INSTALL_PATH.'program/include/clisetup.php';
+$rc=rcmail::get_instance();
+$u=new rcube_user(1);              // user_id des Test-Logins
+$u->save_prefs([
+  'caldav_suite_url'      => 'http://rc-test-radicale:5232',  // Container-Name, internes Netz
+  'caldav_suite_username' => 'test',
+  'caldav_suite_password' => $rc->encrypt('test'),            // MUSS verschlüsselt sein
+]);
+PHP
+```
+
+Danach taucht die Quelle `caldav_<md5(bookUrl)>` im Adressbuch auf.
+
+### Save via curl treiben (Bug reproduzieren)
+
+```bash
+J=/tmp/c.txt; B=http://127.0.0.1:8099
+TOKEN=$(curl -s -c $J "$B/" | grep -oP 'name="_token"[^>]*value="\K[^"]+')
+curl -s -b $J -c $J -X POST "$B/?_task=login&_action=login" \
+  --data-urlencode "_token=$TOKEN" --data-urlencode "_user=test" --data-urlencode "_pass=test" -o /dev/null
+SRC=$(curl -s -b $J "$B/?_task=addressbook" | grep -oE 'caldav_[a-f0-9]{32}' | head -1)
+RT=$(curl -s -b $J "$B/?_task=addressbook" | grep -oP '"request_token":"\K[^"]+' | head -1)
+curl -s -b $J -H "X-Requested-With: XMLHttpRequest" "$B/?_task=addressbook&_action=save" \
+  --data-urlencode "_token=$RT" --data-urlencode "_source=$SRC" --data-urlencode "_cid=<md5(url)>" \
+  --data-urlencode "_name=Max Testmann" --data-urlencode "_firstname=Max" --data-urlencode "_surname=Testmann" \
+  --data-urlencode "_email[]=neu@example.com" --data-urlencode "_subtype_email[]=home" \
+  --data-urlencode "_phone[]=+49 89 1" --data-urlencode "_subtype_phone[]=home" \
+  --data-urlencode "_organization=Firma" --data-urlencode "_framed=1"
+# Ergebnis prüfen: radicale-data/.../contacts/*.vcf ansehen
+```
+
+`_cid` = `md5($contact_url)` (Record-ID). Mehrere `_email[]`+`_subtype_email[]`-Paare
+für Multi-Value.
+
+### STOLPERSTEINE (haben Stunden gekostet)
+
+1. **Debug-Logs world-writable machen.** Der Webprozess läuft als `www-data` (uid 33).
+   Eine per `docker exec` (root) erzeugte Logdatei kann www-data NICHT beschreiben →
+   `@file_put_contents()` schlägt **still** fehl und man denkt der Code laufe nicht.
+   Fix: `touch /tmp/x.log && chmod 666 /tmp/x.log` IM Container, dann reinschreiben.
+2. **OPcache.** Nach jeder PHP-Änderung `docker compose restart rc-test-roundcube`
+   (sonst läuft alter Bytecode trotz geänderter Datei).
+3. **Gebündelte Roundcube im Plugin.** `vendor/roundcube/roundcubemail/` (Dev-Artefakt,
+   ~23 MB) bringt eine eigene `autoload_classmap.php` mit, die Core-Klassen (z.B.
+   `rcmail_action_contacts_save`) auf die vendored Kopie mappt. War HIER nicht die
+   Bug-Ursache, aber Lärm/Verwechslungsgefahr — **gehört nicht ins deploybare Plugin**
+   (mit `composer install --no-dev` bauen, roundcubemail ausschließen).
+
+### Gefundener Bug + Fix (2026-06-18) — Kontakt-Editieren
+
+Roundcube liefert `update()`/`insert()` Multi-Value-Felder mit **Subtype-Keys**:
+`save_data['email:home']`, `['email:work']`, `['phone:cell']` usw. — NICHT `['email']`.
+Der alte Code las nur `$save_data['email']` → Key fehlte → `remove('EMAIL')` + nichts
+neu → **Email/Telefon beim Speichern verworfen/gewiped**. Fix in
+`lib/CardDAVAddressbook.php`: gemeinsamer `applySaveData()` + `collectSubtyped()`, der
+alle `<col>` und `<col>:<subtype>`-Keys einsammelt und als vCard-`TYPE` setzt (FN/N/
+EMAIL/TEL/ORG). Danach `readonly=false` wieder gesetzt (war als Notbremse `true`).
+Verifiziert im rc-test-Stack: HOME+WORK-Email, Telefon, Org persistieren + round-trippen.
