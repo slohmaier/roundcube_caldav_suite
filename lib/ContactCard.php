@@ -89,16 +89,41 @@ class ContactCard
      */
     public function toRcubeRecord(): array
     {
+        $n = isset($this->vcard->N) ? $this->vcard->N->getParts() : [];
+        $org = isset($this->vcard->ORG) ? $this->vcard->ORG->getParts() : [];
+
         $record = [
             'ID' => md5($this->url),
             'name' => $this->getDisplayName(),
-            'firstname' => $this->getFirstName(),
-            'surname' => $this->getLastName(),
-            'organization' => $this->getOrganization() ?? '',
+            'firstname' => $n[1] ?? '',
+            'surname' => $n[0] ?? '',
+            'middlename' => $n[2] ?? '',
+            'prefix' => $n[3] ?? '',
+            'suffix' => $n[4] ?? '',
+            'organization' => $org[0] ?? '',
             '_url' => $this->url,
             '_etag' => $this->etag,
             '_raw' => $this->rawData,
         ];
+
+        if (!empty($org[1])) {
+            $record['department'] = $org[1];
+        }
+        if (isset($this->vcard->NICKNAME) && (string)$this->vcard->NICKNAME !== '') {
+            $record['nickname'] = (string)$this->vcard->NICKNAME;
+        }
+        if (isset($this->vcard->TITLE) && (string)$this->vcard->TITLE !== '') {
+            $record['jobtitle'] = (string)$this->vcard->TITLE;
+        }
+        if (isset($this->vcard->NOTE) && (string)$this->vcard->NOTE !== '') {
+            $record['notes'] = (string)$this->vcard->NOTE;
+        }
+        if (isset($this->vcard->BDAY) && (string)$this->vcard->BDAY !== '') {
+            $record['birthday'] = (string)$this->vcard->BDAY;
+        }
+        if (isset($this->vcard->ANNIVERSARY) && (string)$this->vcard->ANNIVERSARY !== '') {
+            $record['anniversary'] = (string)$this->vcard->ANNIVERSARY;
+        }
 
         // Emails mit Subtype-Keys (email:work / email:home / ...), damit
         // Roundcube das richtige Label zeigt UND der Subtype round-trippt.
@@ -116,6 +141,43 @@ class ContactCard
                 $val = trim((string)$tel);
                 if ($val === '') continue;
                 $record['phone:' . $this->subtypeOf($tel, 'home')][] = $val;
+            }
+        }
+
+        // Webseiten (website:subtype)
+        if (isset($this->vcard->URL)) {
+            foreach ($this->vcard->URL as $url) {
+                $val = trim((string)$url);
+                if ($val === '') continue;
+                $record['website:' . $this->subtypeOf($url, 'homepage')][] = $val;
+            }
+        }
+
+        // Instant Messaging (im:subtype) — Subtype aus X-SERVICE-TYPE oder TYPE
+        if (isset($this->vcard->IMPP)) {
+            foreach ($this->vcard->IMPP as $impp) {
+                $val = trim((string)$impp);
+                if ($val === '') continue;
+                $sub = isset($impp['X-SERVICE-TYPE'])
+                    ? strtolower((string)$impp['X-SERVICE-TYPE'])
+                    : $this->subtypeOf($impp, 'jabber');
+                $record['im:' . $sub][] = $val;
+            }
+        }
+
+        // Adressen (address:subtype mit Roundcube-Childs)
+        if (isset($this->vcard->ADR)) {
+            foreach ($this->vcard->ADR as $adr) {
+                $p = $adr->getParts();
+                $entry = [
+                    'street'   => $p[2] ?? '',
+                    'locality' => $p[3] ?? '',
+                    'region'   => $p[4] ?? '',
+                    'zipcode'  => $p[5] ?? '',
+                    'country'  => $p[6] ?? '',
+                ];
+                if (trim(implode('', $entry)) === '') continue;
+                $record['address:' . $this->subtypeOf($adr, 'home')][] = $entry;
             }
         }
 

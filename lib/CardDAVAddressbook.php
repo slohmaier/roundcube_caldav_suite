@@ -14,7 +14,10 @@ class CardDAVAddressbook extends \rcube_addressbook
     public $group_id = null;
     public $result = null;
     public $coltypes = [
-        'name', 'firstname', 'surname', 'email', 'phone', 'organization',
+        'name', 'firstname', 'surname', 'middlename', 'prefix', 'suffix',
+        'nickname', 'jobtitle', 'organization', 'department',
+        'email', 'phone', 'address', 'website', 'im',
+        'birthday', 'anniversary', 'notes',
     ];
 
     private string $id;
@@ -220,10 +223,14 @@ class CardDAVAddressbook extends \rcube_addressbook
      */
     private function applySaveData($vcard, array $save_data): void
     {
-        // Display name: prefer Roundcube's composed "name", else firstname+surname
+        // --- Name (FN + strukturierter N) ---
         $name = trim((string) ($save_data['name'] ?? ''));
         if ($name === '') {
-            $name = trim(($save_data['firstname'] ?? '') . ' ' . ($save_data['surname'] ?? ''));
+            $composed = trim(preg_replace('/\s+/', ' ',
+                ($save_data['prefix'] ?? '') . ' ' . ($save_data['firstname'] ?? '') . ' '
+                . ($save_data['middlename'] ?? '') . ' ' . ($save_data['surname'] ?? '') . ' '
+                . ($save_data['suffix'] ?? '')));
+            $name = $composed !== '' ? $composed : trim((string) ($save_data['organization'] ?? ''));
         }
         $vcard->FN = $name;
         $vcard->N = [
@@ -234,7 +241,27 @@ class CardDAVAddressbook extends \rcube_addressbook
             $save_data['suffix'] ?? '',
         ];
 
-        // EMAIL: collect bare "email" + subtyped "email:home"/"email:work"/...
+        // --- Spitzname ---
+        $vcard->remove('NICKNAME');
+        if (!empty($save_data['nickname'])) {
+            $vcard->add('NICKNAME', $save_data['nickname']);
+        }
+
+        // --- Jobtitel ---
+        $vcard->remove('TITLE');
+        if (!empty($save_data['jobtitle'])) {
+            $vcard->add('TITLE', $save_data['jobtitle']);
+        }
+
+        // --- Organisation;Abteilung (strukturiertes ORG) ---
+        $vcard->remove('ORG');
+        $org  = trim((string) ($save_data['organization'] ?? ''));
+        $dept = trim((string) ($save_data['department'] ?? ''));
+        if ($org !== '' || $dept !== '') {
+            $vcard->add('ORG', $dept !== '' ? [$org, $dept] : [$org]);
+        }
+
+        // --- EMAIL (email / email:home / email:work / ...) ---
         $vcard->remove('EMAIL');
         foreach ($this->collectSubtyped($save_data, 'email') as [$subtype, $value]) {
             $prop = $vcard->add('EMAIL', $value);
@@ -243,7 +270,7 @@ class CardDAVAddressbook extends \rcube_addressbook
             }
         }
 
-        // TEL: collect "phone" + "phone:home"/"phone:cell"/...
+        // --- TEL (phone / phone:home / phone:cell / ...) ---
         $vcard->remove('TEL');
         foreach ($this->collectSubtyped($save_data, 'phone') as [$subtype, $value]) {
             $prop = $vcard->add('TEL', $value);
@@ -252,10 +279,80 @@ class CardDAVAddressbook extends \rcube_addressbook
             }
         }
 
-        // ORG (single)
-        $vcard->remove('ORG');
-        if (!empty($save_data['organization'])) {
-            $vcard->add('ORG', $save_data['organization']);
+        // --- ADR (Adresse, strukturiert; address:home / address:work) ---
+        $vcard->remove('ADR');
+        foreach ($this->collectSubtyped($save_data, 'address') as [$subtype, $value]) {
+            if (!is_array($value)) {
+                continue;
+            }
+            // vCard ADR: pobox; extended; street; locality; region; postal-code; country
+            $adr = [
+                '',
+                '',
+                (string) ($value['street']   ?? ''),
+                (string) ($value['locality'] ?? ''),
+                (string) ($value['region']   ?? ''),
+                (string) ($value['zipcode']  ?? ''),
+                (string) ($value['country']  ?? ''),
+            ];
+            if (trim(implode('', $adr)) === '') {
+                continue;
+            }
+            $prop = $vcard->add('ADR', $adr);
+            if ($subtype !== '') {
+                $prop['TYPE'] = strtoupper($subtype);
+            }
+        }
+
+        // --- URL (website / website:homepage / ...) ---
+        $vcard->remove('URL');
+        foreach ($this->collectSubtyped($save_data, 'website') as [$subtype, $value]) {
+            $prop = $vcard->add('URL', $value);
+            if ($subtype !== '') {
+                $prop['TYPE'] = strtoupper($subtype);
+            }
+        }
+
+        // --- IMPP (Instant Messaging; im / im:jabber / ...) ---
+        $vcard->remove('IMPP');
+        foreach ($this->collectSubtyped($save_data, 'im') as [$subtype, $value]) {
+            $prop = $vcard->add('IMPP', $value);
+            if ($subtype !== '') {
+                $prop['X-SERVICE-TYPE'] = $subtype;
+            }
+        }
+
+        // --- Geburtstag / Jahrestag ---
+        $vcard->remove('BDAY');
+        if (!empty($save_data['birthday']) && ($d = $this->normalizeDate($save_data['birthday']))) {
+            $vcard->add('BDAY', $d);
+        }
+        $vcard->remove('ANNIVERSARY');
+        if (!empty($save_data['anniversary']) && ($d = $this->normalizeDate($save_data['anniversary']))) {
+            $vcard->add('ANNIVERSARY', $d);
+        }
+
+        // --- Notizen ---
+        $vcard->remove('NOTE');
+        if (!empty($save_data['notes'])) {
+            $vcard->add('NOTE', $save_data['notes']);
+        }
+    }
+
+    /** Datums-Eingabe (verschiedene Formate) -> YYYY-MM-DD, oder null. */
+    private function normalizeDate($value): ?string
+    {
+        if (is_array($value)) {
+            $value = implode('-', $value);
+        }
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+        try {
+            return (new \DateTimeImmutable($value))->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 
