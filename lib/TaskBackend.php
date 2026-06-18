@@ -56,17 +56,27 @@ class TaskBackend
      */
     public function toggleCompleted(string $url, bool $completed, CalDAVClient $client): ?string
     {
-        // We need to fetch all tasks from the parent collection to find this one
-        // Actually we can do a direct GET on the URL
-        $httpClient = new \Sabre\DAV\Client([
-            'baseUri' => preg_replace('#/[^/]+\.ics$#', '/', $url),
-            'userName' => '', // will use same auth as the CalDAVClient — but we can't access it
-        ]);
+        // Bestehende VTODO holen und nur den Status flippen — so bleiben alle
+        // anderen Felder (Titel, Faelligkeit, Prioritaet, Beschreibung) erhalten.
+        $vcal = $client->getObject($url);
+        if (!$vcal || !isset($vcal->VTODO)) {
+            return null;
+        }
 
-        // Simpler: just build a new VTODO with the toggled status
-        // The caller should have the task data. For now, return null and let the JS
-        // send the full task data for rebuild.
-        return null;
+        $vtodo = $vcal->VTODO;
+        $vtodo->remove('STATUS');
+        $vtodo->remove('COMPLETED');
+        $vtodo->remove('PERCENT-COMPLETE');
+
+        if ($completed) {
+            $vtodo->add('STATUS', 'COMPLETED');
+            $vtodo->add('COMPLETED', new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
+            $vtodo->add('PERCENT-COMPLETE', 100);
+        } else {
+            $vtodo->add('STATUS', 'NEEDS-ACTION');
+        }
+
+        return $vcal->serialize();
     }
 
     /**
