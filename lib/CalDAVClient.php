@@ -387,11 +387,17 @@ class CalDAVClient
                 if ($this->collectionHasComponent($fullUrl, 'VTODO')) {
                     $detected[] = 'VTODO';
                 }
-                // Nur bei eindeutigem Inhalt verengen; leere oder echt
-                // gemischte Collections behalten die Deklaration (beides).
                 if (count($detected) === 1) {
+                    // Inhalt eindeutig -> auf diesen Typ verengen.
                     $components = $detected;
+                } elseif (count($detected) === 0) {
+                    // Leere Collection: kein Inhaltssignal -> Namens-Heuristik
+                    // (z.B. "Langzeiterinnerungen" -> Aufgabenliste).
+                    $components = $this->guessComponentsByName(
+                        is_string($displayName) ? $displayName : ''
+                    );
                 }
+                // count === 2: echt gemischt -> Deklaration (beides) behalten.
             }
 
             $collections[$fullUrl] = new Collection(
@@ -440,6 +446,21 @@ class CalDAVClient
 
         // Mindestens eine <response> mit einem .ics-Objekt?
         return (bool) preg_match('#<[^>]*:?response[^>]*>.*?\.ics#is', $response['body'] ?? '');
+    }
+
+    /**
+     * Letzter Ausweg fuer leere, mehrdeutige Collections (kein Inhalt, keine
+     * Component-Set-Deklaration): Typ aus dem Anzeigenamen raten.
+     */
+    private function guessComponentsByName(string $name): array
+    {
+        $n = mb_strtolower($name);
+        foreach (['erinnerung', 'reminder', 'aufgabe', 'task', 'to-do', 'todo', 'tâche', 'tarea'] as $kw) {
+            if (str_contains($n, $kw)) {
+                return ['VTODO'];
+            }
+        }
+        return ['VEVENT'];
     }
 
     private function parseComponentSet(mixed $componentSet): array
