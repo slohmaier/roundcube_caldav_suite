@@ -373,6 +373,27 @@ class CalDAVClient
             );
 
             $fullUrl = $this->resolveUrl($url, $href);
+
+            // Wenn die Collection BEIDE Typen unterstuetzt (explizit oder via
+            // Default, weil der Server kein supported-calendar-component-set
+            // deklariert — z.B. Apple-Reminders/Kalender auf Radicale), per
+            // Inhalt verfeinern: VTODO-Listen sollen nicht als Kalender und
+            // Kalender nicht als Aufgabenliste erscheinen.
+            if (in_array('VEVENT', $components, true) && in_array('VTODO', $components, true)) {
+                $detected = [];
+                if ($this->collectionHasComponent($fullUrl, 'VEVENT')) {
+                    $detected[] = 'VEVENT';
+                }
+                if ($this->collectionHasComponent($fullUrl, 'VTODO')) {
+                    $detected[] = 'VTODO';
+                }
+                // Nur bei eindeutigem Inhalt verengen; leere oder echt
+                // gemischte Collections behalten die Deklaration (beides).
+                if (count($detected) === 1) {
+                    $components = $detected;
+                }
+            }
+
             $collections[$fullUrl] = new Collection(
                 url: $fullUrl,
                 displayName: is_string($displayName) ? $displayName : basename(rtrim($href, '/')),
@@ -387,6 +408,40 @@ class CalDAVClient
     /**
      * @return string[]
      */
+    /**
+     * Pruefen ob eine Collection mindestens ein Objekt eines bestimmten
+     * Komponententyps (VEVENT/VTODO) enthaelt. Leichtgewichtiger calendar-query
+     * REPORT (nur getetag, keine calendar-data).
+     */
+    private function collectionHasComponent(string $url, string $comp): bool
+    {
+        $body = '<?xml version="1.0" encoding="utf-8" ?>
+<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop><D:getetag/></D:prop>
+  <C:filter>
+    <C:comp-filter name="VCALENDAR">
+      <C:comp-filter name="' . $comp . '"/>
+    </C:comp-filter>
+  </C:filter>
+</C:calendar-query>';
+
+        try {
+            $response = $this->client->request('REPORT', $url, $body, [
+                'Depth'        => '1',
+                'Content-Type' => 'application/xml; charset=utf-8',
+            ]);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        if (($response['statusCode'] ?? 0) !== 207) {
+            return false;
+        }
+
+        // Mindestens eine <response> mit einem .ics-Objekt?
+        return (bool) preg_match('#<[^>]*:?response[^>]*>.*?\.ics#is', $response['body'] ?? '');
+    }
+
     private function parseComponentSet(mixed $componentSet): array
     {
         if ($componentSet === null) {
