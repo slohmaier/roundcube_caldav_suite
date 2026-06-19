@@ -190,7 +190,7 @@ class CalendarObject
             $data['reminder_minutes'] = $this->getReminderMinutes();
             $data['rrule'] = $this->getRrule();
             $data['categories'] = $this->getCategories();
-            $data['url'] = $this->getUrl();
+            $data['link'] = $this->getUrl();
             $data['status'] = $this->getStatus();
         }
 
@@ -203,7 +203,7 @@ class CalendarObject
             $data['percent_complete'] = $this->getPercentComplete();
             $data['categories'] = $this->getCategories();
             $data['rrule'] = $this->getRrule();
-            $data['url'] = $this->getUrl();
+            $data['link'] = $this->getUrl();
         }
 
         return $data;

@@ -41,7 +41,7 @@
 .week-view { position: relative; }
 .week-header { display: flex; border-bottom: 2px solid var(--color-border, #ddd); }
 .week-header .time-gutter { width: 3em; flex-shrink: 0; }
-.week-day-header { flex: 1; text-align: center; padding: 0.4em; font-weight: 600; }
+.week-day-header { flex: 1; min-width: 0; text-align: center; padding: 0.4em; font-weight: 600; }
 .week-day-header.today { color: var(--color-main, #4fc3f7); }
 
 .week-body { position: relative; overflow-y: auto; max-height: calc(100vh - 120px); }
@@ -53,12 +53,12 @@
 /* All-day events row - grows to fit all events, scrolls if too many */
 .week-allday { display: flex; border-bottom: 2px solid var(--color-border, #ddd); max-height: 120px; overflow-y: auto; }
 .week-allday .time-gutter { width: 3em; flex-shrink: 0; font-size: 0.7em; text-align: right; padding-right: 4px; color: var(--color-text-secondary, #888); padding-top: 4px; }
-.week-allday-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); padding: 2px; display: flex; flex-direction: column; gap: 1px; }
+.week-allday-cell { flex: 1; min-width: 0; border-left: 1px solid var(--color-border, #eee); padding: 2px; display: flex; flex-direction: column; gap: 1px; }
 .week-allday-event { font-size: 0.72em; padding: 1px 5px; border-radius: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 .week-allday-event:focus { outline: 2px solid var(--color-main, #4fc3f7); }
 
 /* Inline week events (inside cells, scroll with grid) */
-.week-cell { flex: 1; border-left: 1px solid var(--color-border, #eee); position: relative; }
+.week-cell { flex: 1; min-width: 0; border-left: 1px solid var(--color-border, #eee); position: relative; }
 .week-event-inline { position: absolute; left: 0; right: 0; z-index: 2; font-size: 0.75em; padding: 2px 4px; overflow: hidden; border-radius: 2px; cursor: pointer; }
 .week-event-inline:focus { outline: 2px solid var(--color-main, #4fc3f7); z-index: 10; }
 .week-travel-block { position: absolute; left: 0; right: 0; z-index: 1; font-size: 0.7em; padding: 2px 4px; overflow: hidden; border-radius: 2px; background: rgba(128,128,128,0.2); border-left: 3px solid rgba(128,128,128,0.5); color: var(--color-font, #666); font-style: italic; }
