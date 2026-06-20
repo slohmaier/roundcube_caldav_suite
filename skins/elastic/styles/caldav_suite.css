@@ -96,8 +96,10 @@
 
 .tasklist-list { list-style: none; padding: 0; margin: 0; }
 .tasklist-item { display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.8em; cursor: pointer; border-radius: 4px; }
-/* Fokusrahmen um die ganze Zeile (Box + Label), nicht nur ums Checkbox-Kaestchen */
-.tasklist-item input:focus { outline: none; }
+/* Fokusrahmen um die ganze Zeile (Box + Label), nicht nur ums Checkbox-Kaestchen.
+   Elastic-Skin macht den Checkbox-Fokusring per box-shadow -> mit !important killen,
+   sonst doppelter Rahmen (Kaestchen-Ring innen + Zeilen-Ring aussen). */
+.tasklist-item input:focus { outline: none !important; box-shadow: none !important; }
 .tasklist-item:focus-within { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; background: rgba(79, 195, 247, 0.12); }
 
 .task-list { list-style: none; padding: 0; margin: 0; }
