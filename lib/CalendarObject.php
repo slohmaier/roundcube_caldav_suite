@@ -177,7 +177,9 @@ class CalendarObject
 
         if ($this->component->name === 'VEVENT') {
             if ($this->isAllDay()) {
-                // All-day: send pure dates (Y-m-d) to avoid timezone shift in browser
+                // All-day: send pure dates (Y-m-d) to avoid timezone shift in browser.
+                // DTEND bleibt EXKLUSIV (Folgetag) -- getEventsForDate im Client rechnet
+                // damit. Der Edit-Dialog rechnet fuers Anzeigen -1 Tag (inklusiv).
                 $data['start'] = $this->getStart()?->format('Y-m-d');
                 $data['end'] = $this->getEnd()?->format('Y-m-d');
             } else {

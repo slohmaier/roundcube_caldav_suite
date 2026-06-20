@@ -4,6 +4,14 @@
 
 window.caldav_event_dialog = {
     open: function(eventData, calendars) {
+        // Verschiebt ein "YYYY-MM-DD"-Datum tz-sicher um n Tage (fuer All-Day-DTEND).
+        function ymdShift(ymd, days) {
+            var p = ymd.split('-');
+            var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+            d.setUTCDate(d.getUTCDate() + days);
+            return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+        }
+
         var isEdit = eventData && eventData.url;
         var title = isEdit ? caldav_suite.label('edit_event') : caldav_suite.label('new_event');
 
@@ -20,9 +28,20 @@ window.caldav_event_dialog = {
 
         var ev = Object.assign({}, defaults, eventData || {});
 
-        // Format dates for input fields
-        if (ev.start && ev.start.length > 16) ev.start = ev.start.substr(0, 16);
-        if (ev.end && ev.end.length > 16) ev.end = ev.end.substr(0, 16);
+        // Format dates for input fields. All-day = <input type="date"> (Y-m-d),
+        // timed = <input type="datetime-local"> (Y-m-dTH:i). Beim Bearbeiten eines
+        // bestehenden All-Day-Events kommt start/end als reines Datum -> Input-Typ
+        // muss schon beim Aufbau passen, sonst bleibt das Feld leer.
+        var dateInputType = ev.allDay ? 'date' : 'datetime-local';
+        if (ev.allDay) {
+            if (ev.start) ev.start = ev.start.substr(0, 10);
+            // DTEND ist exklusiv (Folgetag) -> inklusiven letzten Tag anzeigen (-1 Tag).
+            // Die Save-Seite (CalendarBackend) rechnet beim Speichern wieder +1 Tag.
+            if (ev.end) ev.end = ymdShift(ev.end.substr(0, 10), -1);
+        } else {
+            if (ev.start && ev.start.length > 16) ev.start = ev.start.substr(0, 16);
+            if (ev.end && ev.end.length > 16) ev.end = ev.end.substr(0, 16);
+        }
 
         var calOptions = '';
         calendars.forEach(function(cal) {
@@ -43,9 +62,9 @@ window.caldav_event_dialog = {
             + '<input type="checkbox" id="ev-allday"' + (ev.allDay ? ' checked' : '') + ' /> '
             + caldav_suite.label('allday') + '</label></div>'
             + '<div class="prop"><label for="ev-start">' + caldav_suite.label('start') + '</label>'
-            + '<input type="datetime-local" id="ev-start" class="form-control" value="' + ev.start + '" /></div>'
+            + '<input type="' + dateInputType + '" id="ev-start" class="form-control" value="' + ev.start + '" /></div>'
             + '<div class="prop"><label for="ev-end">' + caldav_suite.label('end') + '</label>'
-            + '<input type="datetime-local" id="ev-end" class="form-control" value="' + ev.end + '" /></div>'
+            + '<input type="' + dateInputType + '" id="ev-end" class="form-control" value="' + ev.end + '" /></div>'
             + '<div class="prop"><label for="ev-travel">' + caldav_suite.label('travel_time') + '</label>'
             + '<select id="ev-travel" class="form-control">'
             + '<option value="">' + caldav_suite.label('travel_none') + '</option>'
