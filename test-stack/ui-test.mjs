@@ -138,6 +138,11 @@ else console.log('\n[4] AUFGABEN: uebersprungen (keine VTODO-Aufgaben geseedet)'
 // --- Test 5: Abhaken behaelt den Fokus in der Liste (Regression: Fokus fiel auf <body>) ---
 if (hasTasks) {
   console.log('\n[5] AUFGABEN: Abhaken behaelt Fokus + Pfeil-Navigation');
+  // Regression: role=option-Items duerfen KEINE fokussierbaren Nachfahren haben
+  // (sonst landet NVDA/Klick auf der Checkbox statt auf der Aufgabe).
+  const focusable = await p.evaluate(() =>
+    document.querySelectorAll('#task-list .task-item input, #task-list .task-item button, #task-list .task-item a[href], #task-list .task-item [tabindex]:not([tabindex="-1"]):not(.task-item)').length);
+  ok(focusable === 0, `Keine fokussierbaren Kind-Elemente im Aufgaben-Item (gefunden: ${focusable})`);
   const before = await p.evaluate(() => {
     const items = [...document.querySelectorAll('.task-item')];
     return { n: items.length, first: items[0] && items[0].getAttribute('data-url'),

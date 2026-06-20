@@ -134,16 +134,18 @@
                 task.completed ? 'erledigt' : 'offen'
             ].filter(function(s) { return s; }).join(', ');
 
+            // KEINE fokussierbaren Nachfahren (kein <input>/<button>) im role=option-Item:
+            // NVDA/Browser wuerde sonst Aktivierung/Klick auf das fokussierbare Kind statt
+            // auf die Option routen ("nur Checkbox fokussiert"). Status steckt im aria-label
+            // + .completed-Klasse; Check/Edit sind rein visuelle, per CSS gestylte <span>s.
             html += '<li class="task-item' + (task.completed ? ' completed' : '') + '" data-url="' + task.url + '"'
+                + ' data-etag="' + (task.etag || '') + '"'
                 + ' aria-label="' + rcmail.quote_html(aria) + '">'
-                + '<label class="task-check" aria-hidden="true">'
-                + '<input type="checkbox" tabindex="-1"' + (task.completed ? ' checked' : '')
-                + ' data-url="' + task.url + '" data-etag="' + (task.etag || '') + '" />'
-                + '</label>'
+                + '<span class="task-check" aria-hidden="true"></span>'
                 + '<span class="task-summary" aria-hidden="true">' + rcmail.quote_html(task.summary) + '</span>'
                 + dueHtml
                 + (priorityLabel ? '<span class="task-priority ' + priorityClass + '" aria-hidden="true">' + priorityLabel + '</span>' : '')
-                + '<button class="task-edit btn btn-sm" tabindex="-1" data-url="' + task.url + '" aria-hidden="true">&#9998;</button>'
+                + '<span class="task-edit" aria-hidden="true">&#9998;</span>'
                 + '</li>';
         });
         html += '</ul>';
@@ -154,29 +156,26 @@
             var task = state.tasks.find(function(t) { return t.url === url; });
             if (task) caldav_task_dialog.open(task, state.taskLists);
         };
+        // Ab-/anhaken ueber Item-Attribute (kein <input> mehr). Status = .completed-Klasse.
         var toggleDone = function(item) {
-            var cb = item.querySelector('input[type="checkbox"]');
-            if (!cb) return;
+            if (!item) return;
             pendingFocusUrl = item.getAttribute('data-url');
             // Nachbarn als Fokus-Fallback merken (naechste bevorzugt, sonst vorige Aufgabe).
             pendingFocusFallback = [];
             var next = item.nextElementSibling, prev = item.previousElementSibling;
             if (next) pendingFocusFallback.push(next.getAttribute('data-url'));
             if (prev) pendingFocusFallback.push(prev.getAttribute('data-url'));
-            cb.checked = !cb.checked;
-            $(cb).trigger('change');
+            var nowCompleted = !item.classList.contains('completed');
+            rcmail.http_post('plugin.caldav-task-toggle', {
+                _url: item.getAttribute('data-url'),
+                _etag: item.getAttribute('data-etag') || '',
+                _completed: nowCompleted ? '1' : '0'
+            });
         };
 
-        // Checkbox toggle (Maus + via toggleDone)
-        $('#task-list input[type="checkbox"]').change(function() {
-            rcmail.http_post('plugin.caldav-task-toggle', {
-                _url: $(this).data('url'),
-                _etag: $(this).data('etag'),
-                _completed: this.checked ? '1' : '0'
-            });
-        });
-        // Maus: Klick auf Edit-Button bzw. Titel oeffnet den Dialog
-        $('#task-list .task-edit').click(function() { openEdit($(this).data('url')); });
+        // Maus: Klick auf das Check-Visual hakt ab, Titel/Edit oeffnet den Dialog.
+        $('#task-list .task-check').click(function() { toggleDone($(this).closest('.task-item')[0]); });
+        $('#task-list .task-edit').click(function() { openEdit($(this).closest('.task-item').data('url')); });
         $('#task-list .task-summary').click(function() { openEdit($(this).closest('.task-item').data('url')); });
 
         // Einheitliche, screenreader-navigierbare Liste: Pfeil hoch/runter, Enter = bearbeiten,
