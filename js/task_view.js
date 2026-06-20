@@ -14,7 +14,10 @@
     };
 
     // Nach einem Toggle (Reload) den Fokus wieder auf dieselbe Aufgabe setzen.
+    // Faellt sie aus der Liste (erledigt + "Erledigte zeigen" aus), Fokus auf den
+    // Nachbarn legen, damit er nicht auf <body> faellt und NVDA im Fokus-Modus bleibt.
     var pendingFocusUrl = null;
+    var pendingFocusFallback = null;
 
     rcmail.addEventListener('init', function() {
         if (rcmail.task !== 'tasks') return;
@@ -94,7 +97,14 @@
         });
 
         if (tasks.length === 0) {
-            $('#task-list-container').html('<p class="hint">' + caldav_suite.label('no_tasks') + '</p>');
+            $('#task-list-container').html('<p class="hint" tabindex="-1">' + caldav_suite.label('no_tasks') + '</p>');
+            // Liste leer -> Fokus auf den Hinweis statt verloren auf <body>.
+            if (pendingFocusUrl) {
+                var hint = document.querySelector('#task-list-container .hint');
+                if (hint) hint.focus();
+                pendingFocusUrl = null;
+                pendingFocusFallback = null;
+            }
             return;
         }
 
@@ -148,6 +158,11 @@
             var cb = item.querySelector('input[type="checkbox"]');
             if (!cb) return;
             pendingFocusUrl = item.getAttribute('data-url');
+            // Nachbarn als Fokus-Fallback merken (naechste bevorzugt, sonst vorige Aufgabe).
+            pendingFocusFallback = [];
+            var next = item.nextElementSibling, prev = item.previousElementSibling;
+            if (next) pendingFocusFallback.push(next.getAttribute('data-url'));
+            if (prev) pendingFocusFallback.push(prev.getAttribute('data-url'));
             cb.checked = !cb.checked;
             $(cb).trigger('change');
         };
@@ -175,8 +190,21 @@
 
         // Nach einem Toggle-Reload den Fokus zuruecksetzen.
         if (pendingFocusUrl) {
-            caldav_a11y.focusItemByAttr(document.getElementById('task-list'), 'data-url', pendingFocusUrl);
+            var list = document.getElementById('task-list');
+            var ok = caldav_a11y.focusItemByAttr(list, 'data-url', pendingFocusUrl);
+            // Aufgabe ist aus der Liste gefallen -> Nachbarn probieren.
+            if (!ok && pendingFocusFallback) {
+                for (var i = 0; i < pendingFocusFallback.length && !ok; i++) {
+                    ok = caldav_a11y.focusItemByAttr(list, 'data-url', pendingFocusFallback[i]);
+                }
+            }
+            // Letzter Ausweg: erstes Item, damit der Fokus nie auf <body> faellt.
+            if (!ok && list) {
+                var first = list.querySelector('.task-item');
+                if (first) { first.setAttribute('tabindex', '0'); first.focus(); }
+            }
             pendingFocusUrl = null;
+            pendingFocusFallback = null;
         }
     }
 })();
