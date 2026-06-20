@@ -135,6 +135,44 @@ const hasTasks = await p.waitForFunction(() => document.querySelectorAll('.task-
 if (hasTasks) await probeNavigableList('#task-list', '.task-item', 'AUFGABEN', true);
 else console.log('\n[4] AUFGABEN: uebersprungen (keine VTODO-Aufgaben geseedet)');
 
+// --- Test 5: Abhaken behaelt den Fokus in der Liste (Regression: Fokus fiel auf <body>) ---
+if (hasTasks) {
+  console.log('\n[5] AUFGABEN: Abhaken behaelt Fokus + Pfeil-Navigation');
+  const before = await p.evaluate(() => {
+    const items = [...document.querySelectorAll('.task-item')];
+    return { n: items.length, first: items[0] && items[0].getAttribute('data-url'),
+             second: items[1] && items[1].getAttribute('data-url') };
+  });
+  // Erstes Item fokussieren und per Leertaste abhaken (erledigt -> faellt aus der Liste).
+  await p.evaluate(() => document.querySelector('#task-list .task-item').focus());
+  await p.waitForTimeout(150);
+  await p.keyboard.press(' ');
+  // Auf Reload warten: entweder Item-Anzahl sinkt oder das erste Item ist weg.
+  await p.waitForFunction(
+    (b) => { const it = [...document.querySelectorAll('.task-item')];
+             return it.length !== b.n || !(it[0] && it[0].getAttribute('data-url') === b.first); },
+    before, { timeout: 8000 }
+  ).catch(() => {});
+  await p.waitForTimeout(300);
+  const after = await p.evaluate(() => {
+    const a = document.activeElement;
+    return { onBody: a === document.body || a === document.documentElement,
+             onTask: !!(a && a.closest && a.closest('.task-item')),
+             onHint: !!(a && a.classList && a.classList.contains('hint')),
+             remaining: document.querySelectorAll('.task-item').length };
+  });
+  ok(!after.onBody, `Fokus nicht auf <body> nach Abhaken (Task: ${after.onTask}, Hint: ${after.onHint})`);
+  ok(after.onTask || after.onHint, 'Fokus liegt auf Nachbar-Aufgabe oder Leer-Hinweis');
+  if (after.remaining > 1) {
+    await p.keyboard.press('ArrowDown'); await p.waitForTimeout(200);
+    const moved = await p.evaluate(() => {
+      const items = [...document.querySelectorAll('.task-item')];
+      return items.indexOf(document.activeElement) > 0;
+    });
+    ok(moved, 'ArrowDown funktioniert nach dem Abhaken weiter');
+  }
+}
+
 await b.close();
 console.log(`\n${fails.length ? 'FEHLGESCHLAGEN: ' + fails.length : 'ALLE TESTS GRUEN'}`);
 process.exit(fails.length ? 1 : 0);
