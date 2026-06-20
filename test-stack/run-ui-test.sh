@@ -31,6 +31,23 @@ if($r){ $u=new rcube_user((int)$r["user_id"]); $u->save_prefs(["caldav_suite_url
 echo ">> Demo-Woche seeden ..."
 $DOCKER compose exec -T rc-test-roundcube php < screenshots/seed.php
 
+echo ">> VTODO-Aufgaben seeden ..."
+RAD="http://127.0.0.1:5233"; RU="test:test"
+curl -s -o /dev/null -u "$RU" -X MKCALENDAR "$RAD/test/aufgaben/" \
+  -H "Content-Type: application/xml" --data '<?xml version="1.0"?>
+<C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:set><D:prop>
+ <D:displayname>Aufgaben</D:displayname>
+ <C:supported-calendar-component-set><C:comp name="VTODO"/></C:supported-calendar-component-set>
+</D:prop></D:set></C:mkcalendar>' || true
+i=0
+for t in "Steuererklaerung abgeben|20260625|1" "Reifen wechseln|20260622|5" "Geschenk besorgen|20260621|9" "Arzt anrufen||" "Rechnung zahlen|20260618|1"; do
+  i=$((i+1)); IFS='|' read -r SUM DUE PRIO <<< "$t"
+  DUELINE=""; [ -n "$DUE" ] && DUELINE="DUE;VALUE=DATE:$DUE\n"
+  PRIOLINE=""; [ -n "$PRIO" ] && PRIOLINE="PRIORITY:$PRIO\n"
+  printf "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//test//EN\nBEGIN:VTODO\nUID:uitodo$i\nSUMMARY:$SUM\n${DUELINE}${PRIOLINE}STATUS:NEEDS-ACTION\nEND:VTODO\nEND:VCALENDAR\n" \
+    | curl -s -o /dev/null -u "$RU" -X PUT "$RAD/test/aufgaben/uitodo$i.ics" -H "Content-Type: text/calendar" --data-binary @- || true
+done
+
 echo ">> OPcache klaeren (restart) ..."
 $DOCKER compose restart rc-test-roundcube >/dev/null 2>&1
 sleep 5

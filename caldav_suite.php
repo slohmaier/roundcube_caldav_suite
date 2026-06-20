@@ -62,11 +62,11 @@ class caldav_suite extends rcube_plugin
         // CSS and base JS on all tasks (needed for taskbar icons + settings)
         $this->include_stylesheet($this->local_skin_path() . '/styles/caldav_suite.css');
         $this->include_script('js/caldav_suite.js');
+        $this->include_script('js/a11y.js');
 
         if ($this->rc->task === 'calendar') {
             $this->include_script('js/calendar_view.js');
             $this->include_script('js/event_dialog.js');
-            $this->include_script('js/a11y.js');
 
             if (empty($this->rc->action) || $this->rc->action === 'index') {
                 $this->calendar_view();
@@ -77,7 +77,6 @@ class caldav_suite extends rcube_plugin
         if ($this->rc->task === 'tasks') {
             $this->include_script('js/task_view.js');
             $this->include_script('js/task_dialog.js');
-            $this->include_script('js/a11y.js');
 
             if (empty($this->rc->action) || $this->rc->action === 'index') {
                 $this->tasks_view();

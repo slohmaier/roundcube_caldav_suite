@@ -92,6 +92,49 @@ for (const kind of ['.week-allday-event', '.week-event-inline']) {
   await closeDialog();
 }
 
+// --- Test 4: Einheitliche, navigierbare Listen (Kalender-Liste + Aufgaben) ---
+async function probeNavigableList(containerSel, itemSel, label, opensDialog) {
+  console.log(`\n[4] ${label}: ARIA-Listbox + Pfeil-Navigation`);
+  const info = await p.evaluate(({ containerSel, itemSel }) => {
+    const c = document.querySelector(containerSel);
+    const items = c ? [...c.querySelectorAll(itemSel)] : [];
+    return {
+      cRole: c && c.getAttribute('role'), cLabel: c && c.getAttribute('aria-label'), n: items.length,
+      roles: items.slice(0, 3).map(i => i.getAttribute('role')),
+      label0: items[0] && (items[0].getAttribute('aria-label') || ''),
+      ti0: items[0] && items[0].getAttribute('tabindex'), ti1: items[1] && items[1].getAttribute('tabindex'),
+    };
+  }, { containerSel, itemSel });
+  ok(info.cRole === 'listbox', `${label} Container role=listbox`);
+  ok(!!info.cLabel, `${label} Container aria-label ("${info.cLabel}")`);
+  ok(info.n > 1, `${label} Items: ${info.n}`);
+  ok(info.roles.every(r => r === 'option'), `${label} Items role=option`);
+  ok(!!info.label0, `${label} Items aria-label ("${(info.label0 || '').slice(0, 36)}")`);
+  ok(info.ti0 === '0' && info.ti1 === '-1', `${label} Roving-Tabindex`);
+  await p.evaluate(s => document.querySelector(s).focus(), `${containerSel} ${itemSel}`);
+  await p.waitForTimeout(150);
+  await p.keyboard.press('ArrowDown'); await p.waitForTimeout(200);
+  const idx = await p.evaluate(itemSel => [...document.querySelectorAll(itemSel)].indexOf(document.activeElement), `${containerSel} ${itemSel}`);
+  ok(idx === 1, `${label} ArrowDown bewegt Fokus zum naechsten Item`);
+  if (opensDialog) {
+    await p.keyboard.press('Enter'); await p.waitForTimeout(600);
+    ok(await p.evaluate(() => !!document.querySelector('.ui-dialog')), `${label} Enter oeffnet Dialog`);
+    await closeDialog();
+  }
+}
+
+await p.goto(`${B}/?_task=calendar`, { waitUntil: 'networkidle' });
+await p.waitForFunction(() => document.querySelectorAll('.calendar-list li').length > 0, { timeout: 10000 }).catch(() => {});
+await p.waitForTimeout(700);
+await p.click('.view-btn[data-view="list"]');
+await p.waitForFunction(() => document.querySelectorAll('.list-event').length > 0, { timeout: 12000 }).catch(() => {});
+await probeNavigableList('.list-view', '.list-event', 'KALENDER-LISTE', true);
+
+await p.goto(`${B}/?_task=tasks`, { waitUntil: 'networkidle' });
+const hasTasks = await p.waitForFunction(() => document.querySelectorAll('.task-item').length > 0, { timeout: 12000 }).then(() => true).catch(() => false);
+if (hasTasks) await probeNavigableList('#task-list', '.task-item', 'AUFGABEN', true);
+else console.log('\n[4] AUFGABEN: uebersprungen (keine VTODO-Aufgaben geseedet)');
+
 await b.close();
 console.log(`\n${fails.length ? 'FEHLGESCHLAGEN: ' + fails.length : 'ALLE TESTS GRUEN'}`);
 process.exit(fails.length ? 1 : 0);

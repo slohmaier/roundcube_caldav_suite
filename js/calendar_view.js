@@ -493,42 +493,48 @@
             return;
         }
 
-        var html = '<div class="list-view" role="list" aria-label="Event list">';
+        var openEv = function(url) {
+            var ev = state.events.find(function(e) { return e.url === url; });
+            if (ev) caldav_event_dialog.open(ev, state.calendars);
+        };
+
+        var html = '<div class="list-view">';
         var lastDate = '';
 
         events.forEach(function(ev) {
             var dateStr = ev.start ? ev.start.substr(0, 10) : '';
             if (dateStr !== lastDate) {
-                if (lastDate) html += '</ul>';
-                html += '<h3 class="list-date">' + caldav_suite.formatDateLong(ev.start) + '</h3>';
-                html += '<ul class="list-events" role="list">';
+                // Datum-Trenner nur visuell -- das Datum steckt im aria-label jedes Items.
+                html += '<div class="list-date" role="presentation">' + caldav_suite.formatDateLong(ev.start) + '</div>';
                 lastDate = dateStr;
             }
 
             var color = getCalendarColor(ev.calendarId);
             var time = ev.allDay ? 'Ganztägig' : caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end);
-            var travelHtml = '';
+            var travelHtml = '', travelLbl = '';
             if (ev.travel_mode) {
-                var travelLabel = ev.travel_mode === 'auto' ? 'Fahrzeit: Auto' : 'Fahrzeit: ' + ev.travel_mode + ' min';
-                travelHtml = '<span class="event-travel" aria-label="' + travelLabel + '">🚗 ' + (ev.travel_mode === 'auto' ? 'Auto' : ev.travel_mode + ' min') + '</span>';
+                travelLbl = ev.travel_mode === 'auto' ? 'Fahrzeit Auto' : 'Fahrzeit ' + ev.travel_mode + ' Minuten';
+                travelHtml = '<span class="event-travel" aria-hidden="true">🚗 ' + (ev.travel_mode === 'auto' ? 'Auto' : ev.travel_mode + ' min') + '</span>';
             }
-            html += '<li class="list-event" data-url="' + ev.url + '" tabindex="0" role="listitem">'
+            var aria = [caldav_suite.formatDateLong(ev.start), time, ev.summary, ev.location || '', travelLbl]
+                .filter(function(s) { return s; }).join(', ');
+            // role/tabindex setzt makeListNavigable; Inhalt aria-hidden -> NVDA liest nur das aria-label
+            html += '<div class="list-event" data-url="' + ev.url + '" aria-label="' + rcmail.quote_html(aria) + '">'
                 + '<span class="event-color-dot" style="background:' + color + '" aria-hidden="true"></span>'
-                + '<span class="event-time">' + time + '</span>'
-                + '<span class="event-summary">' + rcmail.quote_html(ev.summary) + '</span>'
-                + (ev.location ? '<span class="event-location">' + rcmail.quote_html(ev.location) + '</span>' : '')
+                + '<span class="event-time" aria-hidden="true">' + time + '</span>'
+                + '<span class="event-summary" aria-hidden="true">' + rcmail.quote_html(ev.summary) + '</span>'
+                + (ev.location ? '<span class="event-location" aria-hidden="true">' + rcmail.quote_html(ev.location) + '</span>' : '')
                 + travelHtml
-                + '</li>';
+                + '</div>';
         });
-        html += '</ul></div>';
+        html += '</div>';
 
         container.html(html);
-        container.find('.list-event').click(function() {
-            var url = $(this).data('url');
-            var ev = state.events.find(function(e) { return e.url === url; });
-            if (ev) caldav_event_dialog.open(ev, state.calendars);
-        }).on('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') { $(this).click(); e.preventDefault(); }
+        container.find('.list-event').click(function() { openEv($(this).data('url')); });
+        caldav_a11y.makeListNavigable(container.find('.list-view')[0], {
+            itemSelector: '.list-event',
+            label: 'Terminliste',
+            onActivate: function(item) { openEv(item.getAttribute('data-url')); }
         });
     }
 
