@@ -17,9 +17,16 @@
 /* ---- Calendar Sidebar ---- */
 
 .calendar-list { list-style: none; padding: 0; margin: 0; }
-.calendar-item { display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.8em; cursor: pointer; }
+.calendar-item { display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.8em; cursor: pointer; border-radius: 4px; }
 .calendar-item:hover { background: rgba(0,0,0,0.05); }
 .cal-color { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+/* Visuelle Checkbox (kein natives <input>) + Fokus-Markierung der aktiven Option */
+.calendar-check { flex-shrink: 0; width: 1.1em; height: 1.1em; box-sizing: border-box;
+    border: 2px solid var(--color-border, #888); border-radius: 3px; position: relative; }
+.calendar-item.checked .calendar-check { background: var(--color-main, #4fc3f7); border-color: var(--color-main, #4fc3f7); }
+.calendar-item.checked .calendar-check::after { content: '\2713'; color: #fff; position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
+[role="listbox"]:focus .calendar-item[aria-selected="true"] { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; background: rgba(79, 195, 247, 0.12); }
 .cal-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- Month View ---- */

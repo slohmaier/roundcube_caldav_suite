@@ -132,7 +132,9 @@ class caldav_suite extends rcube_plugin
 
     public function render_calendar_list($attrib)
     {
-        return '<div id="calendar-list" role="group" aria-label="' . $this->gettext('calendars') . '"></div>';
+        // Inneres <ul> wird per JS zur beschrifteten role=listbox (makeListNavigable);
+        // Wrapper bleibt presentational, sonst doppelte Label-Ansage.
+        return '<div id="calendar-list"></div>';
     }
 
     public function render_calendar_grid($attrib)

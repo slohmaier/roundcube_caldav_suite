@@ -143,6 +143,21 @@ await p.click('.view-btn[data-view="list"]');
 await p.waitForFunction(() => document.querySelectorAll('.list-event').length > 0, { timeout: 12000 }).catch(() => {});
 await probeNavigableList('.list-view', '.list-event', 'KALENDER-LISTE', true);
 
+// Kalender-Sidebar (Liste der Kalender zum Ein-/Ausblenden) navigierbar wie Aufgabenlisten-Sidebar
+const calSidebar = await p.waitForFunction(() => document.querySelectorAll('#calendar-ul .calendar-item').length > 1, { timeout: 8000 }).then(() => true).catch(() => false);
+if (calSidebar) {
+  await probeNavigableList('#calendar-ul', '.calendar-item', 'KALENDER-SIDEBAR', false);
+  const cf = await p.evaluate(() => document.querySelectorAll('#calendar-ul .calendar-item input, #calendar-ul .calendar-item button, #calendar-ul .calendar-item [tabindex]:not([tabindex="-1"]):not(.calendar-item)').length);
+  ok(cf === 0, `Kalender-Sidebar: keine fokussierbaren Kind-Elemente (gefunden: ${cf})`);
+  const c1 = await p.evaluate(() => { const c = document.querySelector('#calendar-ul'); c.focus(); const it = document.getElementById(c.getAttribute('aria-activedescendant')); return it && it.classList.contains('checked'); });
+  await p.keyboard.press(' '); await p.waitForTimeout(250);
+  const c2 = await p.evaluate(() => { const c = document.querySelector('#calendar-ul'); const it = document.getElementById(c.getAttribute('aria-activedescendant')); return { checked: it && it.classList.contains('checked'), label: it && it.getAttribute('aria-label') }; });
+  ok(c1 !== c2.checked, `Kalender-Sidebar: Leertaste blendet Kalender ein/aus (${c1} -> ${c2.checked})`);
+  ok(/eingeblendet|ausgeblendet/.test(c2.label || ''), `Kalender-Sidebar: aria-label nennt Status ("${c2.label}")`);
+} else {
+  console.log('\n[4] KALENDER-SIDEBAR: uebersprungen (<2 Kalender geseedet)');
+}
+
 await p.goto(`${B}/?_task=tasks`, { waitUntil: 'networkidle' });
 const hasTasks = await p.waitForFunction(() => document.querySelectorAll('.task-item').length > 0, { timeout: 12000 }).then(() => true).catch(() => false);
 if (hasTasks) await probeNavigableList('#task-list', '.task-item', 'AUFGABEN', true);
