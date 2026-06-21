@@ -74,6 +74,11 @@ class caldav_suite extends rcube_plugin
             }
         }
 
+        if ($this->rc->task === 'addressbook') {
+            // Kontaktliste (Roundcube-Core): Namens-Zelle bei Auswahl fokussieren -> Sprachausgabe
+            $this->include_script('js/contacts_a11y.js');
+        }
+
         if ($this->rc->task === 'tasks') {
             $this->include_script('js/task_view.js');
             $this->include_script('js/task_dialog.js');
