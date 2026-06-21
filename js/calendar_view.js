@@ -190,23 +190,42 @@
     // ---- Calendar Sidebar ----
 
     function renderCalendarList() {
-        var html = '<ul class="calendar-list" role="list">';
+        var calAria = function(cal, on) {
+            return cal.name + ', ' + (on ? 'eingeblendet' : 'ausgeblendet');
+        };
+        // Navigierbare Liste wie Aufgabenlisten-Sidebar: role=option-Items, KEINE
+        // fokussierbaren Kinder (kein <input>). Status via .checked-Klasse + aria-label.
+        var html = '<ul id="calendar-ul" class="calendar-list">';
         state.calendars.forEach(function(cal) {
-            var checked = state.visibleCalendars[cal.id] ? 'checked' : '';
-            html += '<li>'
-                + '<label class="calendar-item">'
-                + '<input type="checkbox" ' + checked + ' data-cal-id="' + cal.id + '" aria-label="' + cal.name + '" />'
-                + '<span class="cal-color" style="background:' + cal.color + '"></span>'
-                + '<span class="cal-name">' + rcmail.quote_html(cal.name) + '</span>'
-                + '</label></li>';
+            var on = !!state.visibleCalendars[cal.id];
+            html += '<li class="calendar-item' + (on ? ' checked' : '') + '" data-cal-id="' + cal.id + '"'
+                + ' aria-label="' + rcmail.quote_html(calAria(cal, on)) + '">'
+                + '<span class="calendar-check" aria-hidden="true"></span>'
+                + '<span class="cal-color" aria-hidden="true" style="background:' + cal.color + '"></span>'
+                + '<span class="cal-name" aria-hidden="true">' + rcmail.quote_html(cal.name) + '</span>'
+                + '</li>';
         });
         html += '</ul>';
         $('#calendar-list').html(html);
 
-        $('#calendar-list input[type="checkbox"]').change(function() {
-            var id = $(this).data('cal-id');
-            state.visibleCalendars[id] = this.checked;
+        var toggleCal = function(item) {
+            if (!item) return;
+            var id = item.getAttribute('data-cal-id');
+            var on = !item.classList.contains('checked');
+            state.visibleCalendars[id] = on;
+            item.classList.toggle('checked', on);
+            var cal = state.calendars.find(function(c) { return String(c.id) === String(id); });
+            if (cal) item.setAttribute('aria-label', calAria(cal, on));
             renderCurrentView();
+        };
+
+        $('#calendar-list .calendar-item').click(function() { toggleCal(this); });
+
+        caldav_a11y.makeListNavigable(document.getElementById('calendar-ul'), {
+            itemSelector: '.calendar-item',
+            label: caldav_suite.label('calendars'),
+            onToggle: toggleCal,
+            onActivate: toggleCal
         });
     }
 
