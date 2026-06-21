@@ -10,24 +10,22 @@
   <div class="scroller">
     <roundcube:object name="plugin.tasklistlist" />
   </div>
-  <div class="footer">
-    <label class="toggle">
-      <input type="checkbox" id="show-completed" />
-      <span><roundcube:label name="caldav_suite.show_completed" /></span>
-    </label>
-  </div>
 </div>
 
 <div id="layout-content" class="selected" role="main">
   <div class="header" role="toolbar" aria-label="Task toolbar">
     <span class="header-title"><roundcube:label name="caldav_suite.tasks" /></span>
     <span class="toolbar">
+      <select id="task-filter" aria-label="<roundcube:label name='caldav_suite.filter' />">
+        <option value="open"><roundcube:label name="caldav_suite.filter_open" /></option>
+        <option value="completed"><roundcube:label name="caldav_suite.filter_completed" /></option>
+        <option value="all"><roundcube:label name="caldav_suite.filter_all" /></option>
+      </select>
       <select id="task-sort" aria-label="<roundcube:label name='caldav_suite.sort_by' />">
         <option value="due"><roundcube:label name="caldav_suite.sort_due_date" /></option>
         <option value="priority"><roundcube:label name="caldav_suite.sort_priority" /></option>
         <option value="created"><roundcube:label name="caldav_suite.sort_created" /></option>
       </select>
-      <span class="spacer"></span>
       <button type="button" class="btn btn-primary btn-sm" id="btn-new-task"><roundcube:label name="caldav_suite.new_task" /></button>
     </span>
   </div>
