@@ -33,6 +33,7 @@
         $('#btn-next').click(function() { navigate(1); });
         $('#btn-today').click(function() { state.currentDate = new Date(); loadAndRender(); });
         $('#btn-new-event').click(function() { caldav_event_dialog.open(null, state.calendars); });
+        $('#btn-pick-week').click(openWeekPicker);
 
         $('.view-btn').click(function() {
             switchView($(this).data('view'));
@@ -43,6 +44,8 @@
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             if (e.key === 'ArrowLeft') { navigate(-1); e.preventDefault(); }
             if (e.key === 'ArrowRight') { navigate(1); e.preventDefault(); }
+            if (e.key === 'k' || e.key === 'K') { navigate(-1); e.preventDefault(); } // vorige Woche/Periode
+            if (e.key === 'j' || e.key === 'J') { navigate(1); e.preventDefault(); }  // naechste Woche/Periode
             if (e.key === 't' || e.key === 'T') { state.currentDate = new Date(); loadAndRender(); }
             if (e.key === 'm' || e.key === 'M') switchView('month');
             if (e.key === 'w' || e.key === 'W') switchView('week');
@@ -99,15 +102,43 @@
             case 'month': d = new Date(d.getFullYear(), d.getMonth() + direction, 1); break;
             case 'week': d = new Date(d.getTime() + direction * 7 * 86400000); break;
             case 'day': d = new Date(d.getTime() + direction * 86400000); break;
-            case 'list': d = new Date(d.getFullYear(), d.getMonth() + direction, 1); break;
+            case 'list': d = new Date(d.getTime() + direction * 7 * 86400000); break; // wochenweise
         }
         state.currentDate = d;
         loadAndRender();
     }
 
     function loadAndRender() {
+        state.pendingAnnounce = true;   // nach dem Laden Range + Anzahl ansagen
         updateTitle();
         loadEvents();
+    }
+
+    // Lesbarer Wochen-Range, z.B. "15. – 21. Juni 2026" bzw. "29. Juni – 5. Juli 2026".
+    function weekRangeText(start, end) {
+        var sd = start.getDate(), ed = end.getDate();
+        var sm = MONTHS[start.getMonth()], em = MONTHS[end.getMonth()], ey = end.getFullYear();
+        if (start.getMonth() === end.getMonth() && start.getFullYear() === ey) {
+            return sd + '. – ' + ed + '. ' + em + ' ' + ey;
+        }
+        return sd + '. ' + sm + ' – ' + ed + '. ' + em + ' ' + ey;
+    }
+
+    function openWeekPicker() {
+        var d = state.currentDate;
+        var val = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+        var html = '<div class="propform">'
+            + '<label for="weekpick-date">' + rcmail.quote_html(caldav_suite.label('pick_week_hint')) + '</label>'
+            + '<input type="date" id="weekpick-date" class="form-control" value="' + val + '" />'
+            + '</div>';
+        caldav_suite.dialog(caldav_suite.label('pick_week'), html, [
+            { label: caldav_suite.label('jump'), action: function(dlg) {
+                var v = dlg.find('#weekpick-date').val();
+                if (v) { state.currentDate = new Date(v + 'T12:00:00'); loadAndRender(); }
+            } },
+            { label: caldav_suite.label('cancel'), close: true }
+        ]);
+        setTimeout(function() { $('#weekpick-date').focus(); }, 50);
     }
 
     function loadEvents() {
@@ -149,8 +180,15 @@
                 end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
                 break;
             case 'list':
-                start = new Date(d.getFullYear(), d.getMonth(), 1);
-                end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+                // Listenansicht wochenweise (wie 'week')
+                start = new Date(d);
+                var dowL = start.getDay();
+                var firstDayL = rcmail.env.caldav_first_day || 1;
+                start.setDate(start.getDate() - ((dowL - firstDayL + 7) % 7));
+                start.setHours(0, 0, 0, 0);
+                end = new Date(start);
+                end.setDate(end.getDate() + 6);
+                end.setHours(23, 59, 59);
                 break;
         }
         return { start: start, end: end };
@@ -161,13 +199,12 @@
         var title = '';
         switch (state.currentView) {
             case 'month':
-            case 'list':
                 title = MONTHS[d.getMonth()] + ' ' + d.getFullYear();
                 break;
             case 'week':
+            case 'list':
                 var range = getViewRange();
-                title = range.start.getDate() + '.' + (range.start.getMonth()+1) + '. – ' +
-                        range.end.getDate() + '.' + (range.end.getMonth()+1) + '.' + range.end.getFullYear();
+                title = weekRangeText(range.start, range.end);
                 break;
             case 'day':
                 title = caldav_suite.formatDateLong(d.toISOString());
@@ -184,6 +221,13 @@
             case 'week':  renderWeek(container);  break;
             case 'day':   renderDay(container);   break;
             case 'list':  renderList(container);  break;
+        }
+        // Nur bei Range-Wechsel (navigate/heute/Woche-wählen/View-Wechsel) ansagen,
+        // nicht beim blossen Ein-/Ausblenden eines Kalenders.
+        if (state.pendingAnnounce) {
+            state.pendingAnnounce = false;
+            var cnt = getVisibleEvents().length;
+            caldav_suite.announce($('#calendar-title').text() + ', ' + cnt + ' ' + (cnt === 1 ? 'Termin' : 'Termine'));
         }
     }
 
@@ -514,8 +558,13 @@
         var events = getVisibleEvents();
         events.sort(function(a, b) { return (a.start || '') < (b.start || '') ? -1 : 1; });
 
+        // Range-Header (fokussierbare Ueberschrift): macht die angezeigte Woche + Anzahl klar.
+        var cnt = events.length;
+        var header = '<h3 class="list-range" tabindex="-1">Woche ' + rcmail.quote_html($('#calendar-title').text())
+            + ' — ' + cnt + ' ' + (cnt === 1 ? 'Termin' : 'Termine') + '</h3>';
+
         if (events.length === 0) {
-            container.html('<p class="hint">' + caldav_suite.label('no_events') + '</p>');
+            container.html(header + '<p class="hint">' + caldav_suite.label('no_events') + '</p>');
             return;
         }
 
@@ -524,7 +573,7 @@
             if (ev) caldav_event_dialog.open(ev, state.calendars);
         };
 
-        var html = '<div class="list-view">';
+        var html = header + '<div class="list-view">';
         var lastDate = '';
 
         events.forEach(function(ev) {

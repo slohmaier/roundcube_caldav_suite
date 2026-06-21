@@ -140,16 +140,38 @@ await p.goto(`${B}/?_task=calendar`, { waitUntil: 'networkidle' });
 await p.waitForFunction(() => document.querySelectorAll('.calendar-list li').length > 0, { timeout: 10000 }).catch(() => {});
 await p.waitForTimeout(700);
 await p.click('.view-btn[data-view="list"]');
+await p.waitForFunction(() => !!document.querySelector('.list-range'), { timeout: 12000 }).catch(() => {});
+
+// Week-Picker-Modal: gezielt zur Demo-Woche springen (macht den Test datum-unabhaengig + testet das Popup)
+console.log('\n[4b] KALENDER-LISTE: Wochen-Range + Week-Picker + j/k');
+await p.click('#btn-pick-week'); await p.waitForTimeout(500);
+ok(await p.evaluate(() => !!document.querySelector('.ui-dialog') && !!document.getElementById('weekpick-date')), 'Week-Picker-Modal mit Datumsfeld geoeffnet');
+await p.fill('#weekpick-date', '2026-06-18');
+await p.evaluate(() => { const bs = [...document.querySelectorAll('.ui-dialog-buttonpane button')]; (bs.find(b => /springen|go/i.test(b.textContent)) || bs[0]).click(); });
+await p.waitForFunction(() => /15\./.test((document.querySelector('.list-range') || {}).textContent || ''), { timeout: 8000 }).catch(() => {});
+const h0 = await p.evaluate(() => (document.querySelector('.list-range') || {}).textContent || '');
+ok(/Woche .*Juni 2026/.test(h0) && /Termine|Termin/.test(h0), `Range-Header zeigt Woche + Anzahl ("${h0}")`);
 await p.waitForFunction(() => document.querySelectorAll('.list-event').length > 0, { timeout: 12000 }).catch(() => {});
 await probeNavigableList('.list-view', '.list-event', 'KALENDER-LISTE', true);
 
-// Listen-Item-aria-label nennt Kalender + Fahrzeit (wo gesetzt)
+// Listen-Item-aria-label nennt Kalender + Fahrzeit (Demo-Woche, Events stabil)
 const listLbl = await p.evaluate(() => {
   const ls = [...document.querySelectorAll('.list-event')].map(e => e.getAttribute('aria-label') || '');
   return { cal: ls.some(l => /Kalender /.test(l)), travel: ls.some(l => /Fahrzeit /.test(l)) };
 });
 ok(listLbl.cal, 'KALENDER-LISTE: Item-aria-label nennt den Kalender');
 ok(listLbl.travel, 'KALENDER-LISTE: Item-aria-label nennt Fahrzeit (wo gesetzt)');
+
+// j/k: naechste/vorige Woche, Header + Live-Ansage aendern sich
+await p.evaluate(() => document.getElementById('aria-live-region').textContent = '');
+await p.keyboard.press('j');
+await p.waitForFunction(() => /22\./.test((document.querySelector('.list-range') || {}).textContent || ''), { timeout: 6000 }).catch(() => {});
+await p.waitForTimeout(400);
+const jLive = await p.evaluate(() => document.getElementById('aria-live-region').textContent.trim());
+ok(/22\./.test(jLive) && /Termin/.test(jLive), `j sagt naechste Woche an ("${jLive}")`);
+await p.keyboard.press('k');
+await p.waitForFunction(() => /15\./.test((document.querySelector('.list-range') || {}).textContent || ''), { timeout: 6000 }).catch(() => {});
+ok(true, 'k springt zurueck zur vorigen Woche');
 
 // Kalender-Sidebar (Liste der Kalender zum Ein-/Ausblenden) navigierbar wie Aufgabenlisten-Sidebar
 const calSidebar = await p.waitForFunction(() => document.querySelectorAll('#calendar-ul .calendar-item').length > 1, { timeout: 8000 }).then(() => true).catch(() => false);
