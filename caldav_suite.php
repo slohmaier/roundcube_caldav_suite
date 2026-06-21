@@ -74,6 +74,11 @@ class caldav_suite extends rcube_plugin
             }
         }
 
+        if ($this->rc->task === 'addressbook') {
+            // Adressbuch-/Gruppen-Sidebar navigierbar + sprechend (aria-activedescendant)
+            $this->include_script('js/addressbook_a11y.js');
+        }
+
         if ($this->rc->task === 'tasks') {
             $this->include_script('js/task_view.js');
             $this->include_script('js/task_dialog.js');
