@@ -236,6 +236,13 @@
         return '#4fc3f7';
     }
 
+    function getCalendarName(calendarId) {
+        for (var i = 0; i < state.calendars.length; i++) {
+            if (state.calendars[i].id === calendarId) return state.calendars[i].name;
+        }
+        return '';
+    }
+
     function getVisibleEvents() {
         return state.events.filter(function(ev) {
             return state.visibleCalendars[ev.calendarId] !== false;
@@ -529,13 +536,16 @@
             }
 
             var color = getCalendarColor(ev.calendarId);
+            var calName = getCalendarName(ev.calendarId);
             var time = ev.allDay ? 'Ganztägig' : caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end);
             var travelHtml = '', travelLbl = '';
             if (ev.travel_mode) {
-                travelLbl = ev.travel_mode === 'auto' ? 'Fahrzeit Auto' : 'Fahrzeit ' + ev.travel_mode + ' Minuten';
+                travelLbl = ev.travel_mode === 'auto' ? 'Fahrzeit automatisch' : 'Fahrzeit ' + ev.travel_mode + ' Minuten';
                 travelHtml = '<span class="event-travel" aria-hidden="true">🚗 ' + (ev.travel_mode === 'auto' ? 'Auto' : ev.travel_mode + ' min') + '</span>';
             }
-            var aria = [caldav_suite.formatDateLong(ev.start), time, ev.summary, ev.location || '', travelLbl]
+            // aria-label: Datum, Zeit, Titel, Ort, KALENDER, Fahrzeit -> NVDA liest alles am Item.
+            var aria = [caldav_suite.formatDateLong(ev.start), time, ev.summary, ev.location || '',
+                        (calName ? 'Kalender ' + calName : ''), travelLbl]
                 .filter(function(s) { return s; }).join(', ');
             // role/tabindex setzt makeListNavigable; Inhalt aria-hidden -> NVDA liest nur das aria-label
             html += '<div class="list-event" data-url="' + ev.url + '" aria-label="' + rcmail.quote_html(aria) + '">'

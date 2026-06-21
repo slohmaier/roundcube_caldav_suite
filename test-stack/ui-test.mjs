@@ -143,6 +143,14 @@ await p.click('.view-btn[data-view="list"]');
 await p.waitForFunction(() => document.querySelectorAll('.list-event').length > 0, { timeout: 12000 }).catch(() => {});
 await probeNavigableList('.list-view', '.list-event', 'KALENDER-LISTE', true);
 
+// Listen-Item-aria-label nennt Kalender + Fahrzeit (wo gesetzt)
+const listLbl = await p.evaluate(() => {
+  const ls = [...document.querySelectorAll('.list-event')].map(e => e.getAttribute('aria-label') || '');
+  return { cal: ls.some(l => /Kalender /.test(l)), travel: ls.some(l => /Fahrzeit /.test(l)) };
+});
+ok(listLbl.cal, 'KALENDER-LISTE: Item-aria-label nennt den Kalender');
+ok(listLbl.travel, 'KALENDER-LISTE: Item-aria-label nennt Fahrzeit (wo gesetzt)');
+
 // Kalender-Sidebar (Liste der Kalender zum Ein-/Ausblenden) navigierbar wie Aufgabenlisten-Sidebar
 const calSidebar = await p.waitForFunction(() => document.querySelectorAll('#calendar-ul .calendar-item').length > 1, { timeout: 8000 }).then(() => true).catch(() => false);
 if (calSidebar) {
