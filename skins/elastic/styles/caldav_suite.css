@@ -87,7 +87,10 @@
 .list-events { list-style: none; padding: 0; margin: 0; }
 .list-event { display: flex; align-items: center; gap: 0.6em; padding: 0.5em 0.4em; border-bottom: 1px solid var(--color-border, #eee); cursor: pointer; }
 .list-event:hover { background: rgba(0,0,0,0.03); }
-.list-event:focus { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; }
+/* activedescendant: Container selbst kriegt KEINEN Rahmen (kein "ganze Liste"-Kasten);
+   stattdessen die aktive Option hervorheben, solange die Listbox fokussiert ist. */
+[role="listbox"]:focus { outline: none; }
+[role="listbox"]:focus .list-event[aria-selected="true"] { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; background: rgba(79, 195, 247, 0.12); }
 
 .event-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .list-event .event-time { font-size: 0.85em; color: var(--color-text-secondary, #666); min-width: 10em; }
@@ -106,8 +109,7 @@
 .tasklist-item.checked .tasklist-check::after { content: '\2713'; color: #fff; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
 /* Fokus/Auswahl der ganzen Zeile (role=option), wie die Hauptliste */
-.tasklist-item:focus { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; }
-.tasklist-item[aria-selected="true"] { background: rgba(79, 195, 247, 0.12); }
+[role="listbox"]:focus .tasklist-item[aria-selected="true"] { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; background: rgba(79, 195, 247, 0.12); }
 
 .task-list { list-style: none; padding: 0; margin: 0; }
 .task-item { display: flex; align-items: center; gap: 0.5em; padding: 0.6em 1em; border-bottom: 1px solid var(--color-border, #eee); }
@@ -121,8 +123,7 @@
 .task-edit { cursor: pointer; }
 .task-summary { flex: 1; cursor: pointer; }
 /* Fokus/Auswahl der ganzen Aufgaben-Zeile (role=option), nicht nur eines Teils */
-.task-item:focus { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; }
-.task-item[aria-selected="true"] { background: rgba(79, 195, 247, 0.12); }
+[role="listbox"]:focus .task-item[aria-selected="true"] { outline: 2px solid var(--color-main, #4fc3f7); outline-offset: -2px; background: rgba(79, 195, 247, 0.12); }
 
 .task-due { font-size: 0.8em; color: var(--color-text-secondary, #888); padding: 2px 6px; border-radius: 3px; background: rgba(0,0,0,0.05); }
 .task-due.overdue { color: #e53935; background: rgba(229, 57, 53, 0.1); font-weight: 600; }

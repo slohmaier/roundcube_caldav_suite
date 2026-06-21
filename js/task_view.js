@@ -225,11 +225,9 @@
                     ok = caldav_a11y.focusItemByAttr(list, 'data-url', pendingFocusFallback[i]);
                 }
             }
-            // Letzter Ausweg: erstes Item, damit der Fokus nie auf <body> faellt.
-            if (!ok && list) {
-                var first = list.querySelector('.task-item');
-                if (first) { first.setAttribute('tabindex', '0'); first.focus(); }
-            }
+            // Letzter Ausweg: Listbox-Container fokussieren (sein focus-Handler setzt die
+            // erste Option aktiv), damit der Fokus nie auf <body> faellt.
+            if (!ok && list) { list.focus(); }
             pendingFocusUrl = null;
             pendingFocusFallback = null;
         }

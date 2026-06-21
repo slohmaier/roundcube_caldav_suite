@@ -92,30 +92,43 @@ for (const kind of ['.week-allday-event', '.week-event-inline']) {
   await closeDialog();
 }
 
-// --- Test 4: Einheitliche, navigierbare Listen (Kalender-Liste + Aufgaben) ---
+// --- Test 4: Einheitliche, navigierbare Listen (aria-activedescendant) ---
+// EIN Tab-Stopp = der Listbox-Container (tabindex=0), Pfeiltasten bewegen die aktive
+// Option via aria-activedescendant, der Fokus bleibt auf dem Container.
 async function probeNavigableList(containerSel, itemSel, label, opensDialog) {
-  console.log(`\n[4] ${label}: ARIA-Listbox + Pfeil-Navigation`);
+  console.log(`\n[4] ${label}: ARIA-Listbox + activedescendant-Navigation`);
   const info = await p.evaluate(({ containerSel, itemSel }) => {
     const c = document.querySelector(containerSel);
     const items = c ? [...c.querySelectorAll(itemSel)] : [];
     return {
-      cRole: c && c.getAttribute('role'), cLabel: c && c.getAttribute('aria-label'), n: items.length,
+      cRole: c && c.getAttribute('role'), cLabel: c && c.getAttribute('aria-label'),
+      cTab: c && c.getAttribute('tabindex'), n: items.length,
       roles: items.slice(0, 3).map(i => i.getAttribute('role')),
       label0: items[0] && (items[0].getAttribute('aria-label') || ''),
-      ti0: items[0] && items[0].getAttribute('tabindex'), ti1: items[1] && items[1].getAttribute('tabindex'),
+      ids: items.slice(0, 2).map(i => i.id),
+      itemHasTabstop: items.some(i => i.getAttribute('tabindex') === '0'),
     };
   }, { containerSel, itemSel });
   ok(info.cRole === 'listbox', `${label} Container role=listbox`);
   ok(!!info.cLabel, `${label} Container aria-label ("${info.cLabel}")`);
+  ok(info.cTab === '0', `${label} Container tabindex=0 (genau EIN Tab-Stopp)`);
   ok(info.n > 1, `${label} Items: ${info.n}`);
   ok(info.roles.every(r => r === 'option'), `${label} Items role=option`);
   ok(!!info.label0, `${label} Items aria-label ("${(info.label0 || '').slice(0, 36)}")`);
-  ok(info.ti0 === '0' && info.ti1 === '-1', `${label} Roving-Tabindex`);
-  await p.evaluate(s => document.querySelector(s).focus(), `${containerSel} ${itemSel}`);
+  ok(info.ids.every(id => id), `${label} Optionen haben ids (fuer activedescendant)`);
+  ok(!info.itemHasTabstop, `${label} Keine Option ist eigener Tab-Stopp`);
+  // Container fokussieren -> erste Option aktiv; ArrowDown -> zweite Option aktiv
+  await p.evaluate(s => document.querySelector(s).focus(), containerSel);
   await p.waitForTimeout(150);
   await p.keyboard.press('ArrowDown'); await p.waitForTimeout(200);
-  const idx = await p.evaluate(itemSel => [...document.querySelectorAll(itemSel)].indexOf(document.activeElement), `${containerSel} ${itemSel}`);
-  ok(idx === 1, `${label} ArrowDown bewegt Fokus zum naechsten Item`);
+  const nav = await p.evaluate(({ containerSel, itemSel }) => {
+    const c = document.querySelector(containerSel);
+    const items = [...c.querySelectorAll(itemSel)];
+    const id = c.getAttribute('aria-activedescendant');
+    return { idx: items.findIndex(i => i.id === id), onContainer: document.activeElement === c };
+  }, { containerSel, itemSel });
+  ok(nav.idx === 1, `${label} ArrowDown bewegt aktive Option zum naechsten Item (idx=${nav.idx})`);
+  ok(nav.onContainer, `${label} Fokus bleibt auf dem Container`);
   if (opensDialog) {
     await p.keyboard.press('Enter'); await p.waitForTimeout(600);
     ok(await p.evaluate(() => !!document.querySelector('.ui-dialog')), `${label} Enter oeffnet Dialog`);
@@ -148,8 +161,8 @@ if (hasTasks) {
     return { n: items.length, first: items[0] && items[0].getAttribute('data-url'),
              second: items[1] && items[1].getAttribute('data-url') };
   });
-  // Erstes Item fokussieren und per Leertaste abhaken (erledigt -> faellt aus der Liste).
-  await p.evaluate(() => document.querySelector('#task-list .task-item').focus());
+  // Listbox fokussieren (erste Option aktiv) und per Leertaste abhaken (faellt aus der Liste).
+  await p.evaluate(() => document.querySelector('#task-list').focus());
   await p.waitForTimeout(150);
   await p.keyboard.press(' ');
   // Auf Reload warten: entweder Item-Anzahl sinkt oder das erste Item ist weg.
@@ -160,21 +173,20 @@ if (hasTasks) {
   ).catch(() => {});
   await p.waitForTimeout(300);
   const after = await p.evaluate(() => {
-    const a = document.activeElement;
+    const a = document.activeElement, list = document.querySelector('#task-list');
+    const ad = list && list.getAttribute('aria-activedescendant');
     return { onBody: a === document.body || a === document.documentElement,
-             onTask: !!(a && a.closest && a.closest('.task-item')),
+             onList: !!(list && a === list && ad && document.getElementById(ad)),
              onHint: !!(a && a.classList && a.classList.contains('hint')),
              remaining: document.querySelectorAll('.task-item').length };
   });
-  ok(!after.onBody, `Fokus nicht auf <body> nach Abhaken (Task: ${after.onTask}, Hint: ${after.onHint})`);
-  ok(after.onTask || after.onHint, 'Fokus liegt auf Nachbar-Aufgabe oder Leer-Hinweis');
+  ok(!after.onBody, `Fokus nicht auf <body> nach Abhaken (Liste: ${after.onList}, Hint: ${after.onHint})`);
+  ok(after.onList || after.onHint, 'Fokus auf der Listbox (aktive Option gesetzt) oder Leer-Hinweis');
   if (after.remaining > 1) {
+    const adBefore = await p.evaluate(() => document.querySelector('#task-list').getAttribute('aria-activedescendant'));
     await p.keyboard.press('ArrowDown'); await p.waitForTimeout(200);
-    const moved = await p.evaluate(() => {
-      const items = [...document.querySelectorAll('.task-item')];
-      return items.indexOf(document.activeElement) > 0;
-    });
-    ok(moved, 'ArrowDown funktioniert nach dem Abhaken weiter');
+    const adAfter = await p.evaluate(() => document.querySelector('#task-list').getAttribute('aria-activedescendant'));
+    ok(adBefore && adAfter && adBefore !== adAfter, `ArrowDown funktioniert nach dem Abhaken weiter (${adBefore} -> ${adAfter})`);
   }
 }
 
@@ -185,10 +197,10 @@ if (sidebarReady) {
   await probeNavigableList('#tasklist-ul', '.tasklist-item', 'AUFGABENLISTEN-SIDEBAR', false);
   const sf = await p.evaluate(() => document.querySelectorAll('#tasklist-ul .tasklist-item input, #tasklist-ul .tasklist-item button, #tasklist-ul .tasklist-item [tabindex]:not([tabindex="-1"]):not(.tasklist-item)').length);
   ok(sf === 0, `Sidebar: keine fokussierbaren Kind-Elemente (gefunden: ${sf})`);
-  // Leertaste blendet eine Liste ein/aus (.checked toggelt, aria-label nennt Status)
-  const t1 = await p.evaluate(() => { const it = document.querySelector('#tasklist-ul .tasklist-item'); it.focus(); return it.classList.contains('checked'); });
+  // Listbox fokussieren (erste Option aktiv), Leertaste blendet sie ein/aus
+  const t1 = await p.evaluate(() => { const c = document.querySelector('#tasklist-ul'); c.focus(); const it = document.getElementById(c.getAttribute('aria-activedescendant')); return it && it.classList.contains('checked'); });
   await p.keyboard.press(' '); await p.waitForTimeout(250);
-  const t2 = await p.evaluate(() => { const it = document.querySelector('#tasklist-ul .tasklist-item'); return { checked: it.classList.contains('checked'), label: it.getAttribute('aria-label') }; });
+  const t2 = await p.evaluate(() => { const c = document.querySelector('#tasklist-ul'); const it = document.getElementById(c.getAttribute('aria-activedescendant')); return { checked: it && it.classList.contains('checked'), label: it && it.getAttribute('aria-label') }; });
   ok(t1 !== t2.checked, `Leertaste blendet Liste ein/aus (checked ${t1} -> ${t2.checked})`);
   ok(/eingeblendet|ausgeblendet/.test(t2.label || ''), `Sidebar-Item aria-label nennt Status ("${t2.label}")`);
 } else {
