@@ -114,6 +114,13 @@
         loadEvents();
     }
 
+    // Erster Wochentag aus den Einstellungen: 0 = Sonntag, 1 = Montag (Default Montag).
+    // Robust gegen String/0 (frueheres "|| 1" verbog Sonntag faelschlich auf Montag).
+    function getFirstDay() {
+        var fd = parseInt(rcmail.env.caldav_first_day, 10);
+        return (fd === 0 || fd === 1) ? fd : 1;
+    }
+
     // Lesbarer Wochen-Range, z.B. "15. – 21. Juni 2026" bzw. "29. Juni – 5. Juli 2026".
     function weekRangeText(start, end) {
         var sd = start.getDate(), ed = end.getDate();
@@ -160,14 +167,14 @@
                 start = new Date(d.getFullYear(), d.getMonth(), 1);
                 end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
                 // Extend to full weeks
-                var firstDay = rcmail.env.caldav_first_day || 1;
+                var firstDay = getFirstDay();
                 while (start.getDay() !== firstDay) start.setDate(start.getDate() - 1);
                 while (end.getDay() !== (firstDay + 6) % 7) end.setDate(end.getDate() + 1);
                 break;
             case 'week':
                 start = new Date(d);
                 var dow = start.getDay();
-                var firstDay = rcmail.env.caldav_first_day || 1;
+                var firstDay = getFirstDay();
                 var diff = (dow - firstDay + 7) % 7;
                 start.setDate(start.getDate() - diff);
                 start.setHours(0, 0, 0, 0);
@@ -183,7 +190,7 @@
                 // Listenansicht wochenweise (wie 'week')
                 start = new Date(d);
                 var dowL = start.getDay();
-                var firstDayL = rcmail.env.caldav_first_day || 1;
+                var firstDayL = getFirstDay();
                 start.setDate(start.getDate() - ((dowL - firstDayL + 7) % 7));
                 start.setHours(0, 0, 0, 0);
                 end = new Date(start);
@@ -304,7 +311,7 @@
 
         var html = '<table class="calendar-month" role="grid" aria-label="' + MONTHS[d.getMonth()] + ' ' + d.getFullYear() + '">';
         html += '<thead><tr>';
-        var firstDay = rcmail.env.caldav_first_day || 1;
+        var firstDay = getFirstDay();
         for (var i = 0; i < 7; i++) {
             var dayIdx = (firstDay + i) % 7;
             var dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
