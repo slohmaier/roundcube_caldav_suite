@@ -47,6 +47,15 @@ for t in "Steuererklaerung abgeben|20260625|1" "Reifen wechseln|20260622|5" "Ges
   printf "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//test//EN\nBEGIN:VTODO\nUID:uitodo$i\nSUMMARY:$SUM\n${DUELINE}${PRIOLINE}STATUS:NEEDS-ACTION\nEND:VTODO\nEND:VCALENDAR\n" \
     | curl -s -o /dev/null -u "$RU" -X PUT "$RAD/test/aufgaben/uitodo$i.ics" -H "Content-Type: text/calendar" --data-binary @- || true
 done
+# Zweite Aufgabenliste (Sidebar-Navigationstest braucht >1 Liste)
+curl -s -o /dev/null -u "$RU" -X MKCALENDAR "$RAD/test/erinnerungen/" \
+  -H "Content-Type: application/xml" --data '<?xml version="1.0"?>
+<C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:set><D:prop>
+ <D:displayname>Erinnerungen</D:displayname>
+ <C:supported-calendar-component-set><C:comp name="VTODO"/></C:supported-calendar-component-set>
+</D:prop></D:set></C:mkcalendar>' || true
+printf "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//test//EN\nBEGIN:VTODO\nUID:uirem1\nSUMMARY:Zahnarzttermin\nDUE;VALUE=DATE:20260701\nSTATUS:NEEDS-ACTION\nEND:VTODO\nEND:VCALENDAR\n" \
+  | curl -s -o /dev/null -u "$RU" -X PUT "$RAD/test/erinnerungen/uirem1.ics" -H "Content-Type: text/calendar" --data-binary @- || true
 
 echo ">> OPcache klaeren (restart) ..."
 $DOCKER compose restart rc-test-roundcube >/dev/null 2>&1

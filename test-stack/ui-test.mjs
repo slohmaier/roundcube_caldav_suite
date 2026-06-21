@@ -178,6 +178,37 @@ if (hasTasks) {
   }
 }
 
+// --- Test 6: Sidebar (Aufgabenlisten) navigierbar wie die Hauptliste + Toolbar ---
+await p.goto(`${B}/?_task=tasks`, { waitUntil: 'networkidle' });
+const sidebarReady = await p.waitForFunction(() => document.querySelectorAll('#tasklist-ul .tasklist-item').length > 1, { timeout: 12000 }).then(() => true).catch(() => false);
+if (sidebarReady) {
+  await probeNavigableList('#tasklist-ul', '.tasklist-item', 'AUFGABENLISTEN-SIDEBAR', false);
+  const sf = await p.evaluate(() => document.querySelectorAll('#tasklist-ul .tasklist-item input, #tasklist-ul .tasklist-item button, #tasklist-ul .tasklist-item [tabindex]:not([tabindex="-1"]):not(.tasklist-item)').length);
+  ok(sf === 0, `Sidebar: keine fokussierbaren Kind-Elemente (gefunden: ${sf})`);
+  // Leertaste blendet eine Liste ein/aus (.checked toggelt, aria-label nennt Status)
+  const t1 = await p.evaluate(() => { const it = document.querySelector('#tasklist-ul .tasklist-item'); it.focus(); return it.classList.contains('checked'); });
+  await p.keyboard.press(' '); await p.waitForTimeout(250);
+  const t2 = await p.evaluate(() => { const it = document.querySelector('#tasklist-ul .tasklist-item'); return { checked: it.classList.contains('checked'), label: it.getAttribute('aria-label') }; });
+  ok(t1 !== t2.checked, `Leertaste blendet Liste ein/aus (checked ${t1} -> ${t2.checked})`);
+  ok(/eingeblendet|ausgeblendet/.test(t2.label || ''), `Sidebar-Item aria-label nennt Status ("${t2.label}")`);
+} else {
+  console.log('\n[6] SIDEBAR: uebersprungen (nur eine Aufgabenliste geseedet)');
+}
+
+// Toolbar: Filter-Dropdown + Neue-Aufgabe neben Sortierung, kein show-completed mehr
+console.log('\n[6b] TOOLBAR: Filter-Dropdown + Layout');
+const tb = await p.evaluate(() => {
+  const f = document.querySelector('#task-filter'), sort = document.querySelector('#task-sort'), newBtn = document.querySelector('#btn-new-task');
+  return {
+    hasFilter: !!f, opts: f ? [...f.options].map(o => o.value) : [],
+    sameBar: !!(f && sort && newBtn && f.closest('.toolbar') === sort.closest('.toolbar') && sort.closest('.toolbar') === newBtn.closest('.toolbar')),
+    showCompleted: !!document.querySelector('#show-completed'),
+  };
+});
+ok(tb.hasFilter && tb.opts.join(',') === 'open,completed,all', `Filter-Dropdown mit Offen/Erledigt/Alle (${tb.opts.join(',')})`);
+ok(tb.sameBar, 'Filter + Sortierung + Neue Aufgabe in einer Toolbar');
+ok(!tb.showCompleted, 'Alte "Erledigte anzeigen"-Checkbox entfernt');
+
 await b.close();
 console.log(`\n${fails.length ? 'FEHLGESCHLAGEN: ' + fails.length : 'ALLE TESTS GRUEN'}`);
 process.exit(fails.length ? 1 : 0);

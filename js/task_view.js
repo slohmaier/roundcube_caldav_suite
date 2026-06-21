@@ -10,7 +10,7 @@
         visibleLists: {},
         tasks: [],
         sortBy: 'due',
-        showCompleted: false
+        filter: 'open'   // 'open' | 'completed' | 'all'
     };
 
     // Nach einem Toggle (Reload) den Fokus wieder auf dieselbe Aufgabe setzen.
@@ -27,7 +27,7 @@
         }
 
         $('#btn-new-task').click(function() { caldav_task_dialog.open(null, state.taskLists); });
-        $('#show-completed').change(function() { state.showCompleted = this.checked; loadTasks(); });
+        $('#task-filter').change(function() { state.filter = this.value; loadTasks(); });
         $('#task-sort').change(function() { state.sortBy = this.value; renderTasks(); });
 
         rcmail.addEventListener('plugin.caldav-tasklists-response', function(data) {
@@ -54,31 +54,59 @@
     });
 
     function loadTasks() {
+        // Nur bei "Offen" duerfen erledigte serverseitig wegfallen; sonst alle holen
+        // und clientseitig filtern (siehe renderTasks).
         rcmail.http_post('plugin.caldav-tasks', {
-            _include_completed: state.showCompleted ? '1' : '0'
+            _include_completed: state.filter === 'open' ? '0' : '1'
         });
     }
 
     function renderTaskListSidebar() {
-        var html = '<ul class="tasklist-list" role="list">';
+        var listAria = function(list, on) {
+            return list.name + ', ' + (on ? 'eingeblendet' : 'ausgeblendet');
+        };
+        var html = '<ul id="tasklist-ul" class="tasklist-list">';
         state.taskLists.forEach(function(list) {
-            html += '<li><label class="tasklist-item">'
-                + '<input type="checkbox" checked data-list-id="' + list.id + '" />'
-                + '<span>' + rcmail.quote_html(list.name) + '</span>'
-                + '</label></li>';
+            var on = state.visibleLists[list.id] !== false;
+            html += '<li class="tasklist-item' + (on ? ' checked' : '') + '" data-list-id="' + list.id + '"'
+                + ' aria-label="' + rcmail.quote_html(listAria(list, on)) + '">'
+                + '<span class="tasklist-check" aria-hidden="true"></span>'
+                + '<span class="tasklist-name" aria-hidden="true">' + rcmail.quote_html(list.name) + '</span>'
+                + '</li>';
         });
         html += '</ul>';
         $('#tasklist-list').html(html);
 
-        $('#tasklist-list input').change(function() {
-            state.visibleLists[$(this).data('list-id')] = this.checked;
+        var toggleList = function(item) {
+            if (!item) return;
+            var id = item.getAttribute('data-list-id');
+            var on = !item.classList.contains('checked');
+            state.visibleLists[id] = on;
+            item.classList.toggle('checked', on);
+            var list = state.taskLists.find(function(l) { return String(l.id) === String(id); });
+            if (list) item.setAttribute('aria-label', listAria(list, on));
             renderTasks();
+        };
+
+        $('#tasklist-list .tasklist-item').click(function() { toggleList(this); });
+
+        // Gleiche Pfeil-Navigation wie die Hauptliste: hoch/runter zwischen den Listen,
+        // Leertaste/Enter blendet die Liste ein/aus. KEINE fokussierbaren Kind-Elemente
+        // (Status via .checked-Klasse + aria-label).
+        caldav_a11y.makeListNavigable(document.getElementById('tasklist-ul'), {
+            itemSelector: '.tasklist-item',
+            label: caldav_suite.label('task_lists'),
+            onToggle: toggleList,
+            onActivate: toggleList
         });
     }
 
     function renderTasks() {
         var tasks = state.tasks.filter(function(t) {
-            return state.visibleLists[t.listId] !== false;
+            if (state.visibleLists[t.listId] === false) return false;
+            if (state.filter === 'open') return !t.completed;
+            if (state.filter === 'completed') return !!t.completed;
+            return true; // 'all'
         });
 
         // Sort

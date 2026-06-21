@@ -137,7 +137,9 @@ class caldav_suite extends rcube_plugin
 
     public function render_tasklist_list($attrib)
     {
-        return '<div id="tasklist-list" role="group" aria-label="' . $this->gettext('task_lists') . '"></div>';
+        // Inneres <ul> wird per JS zur beschrifteten role=listbox (makeListNavigable);
+        // Wrapper bleibt presentational, sonst doppelte Label-Ansage.
+        return '<div id="tasklist-list"></div>';
     }
 
     public function render_task_list($attrib)
