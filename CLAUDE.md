@@ -2,7 +2,7 @@
 
 ## Überblick
 
-Roundcube-Plugin für Kalender und Aufgaben via CalDAV. Verbindet sich als Client auf einen externen CalDAV-Server (Radicale, Baikal, Nextcloud etc.). Kein eigener Server, kein Kolab, keine Schwergewicht-Dependencies.
+Roundcube-Plugin für Kalender, Aufgaben (CalDAV) und Kontakte (CardDAV). Verbindet sich als Client auf einen externen CalDAV-Server (Radicale, Baikal, Nextcloud etc.). Kein eigener Server, kein Kolab, keine Schwergewicht-Dependencies.
 
 ## Zielgruppe
 
@@ -415,6 +415,8 @@ Was das Plugin schreibt UND zurueckliest (Round-Trip getestet, Unit + gegen echt
 Radicale). Nicht behandelte Felder gehen beim Edit NICHT verloren — siehe "Fetch-Merge".
 
 ### Kontakte (vCard 3.0)
+
+- **Empfaenger-Autovervollstaendigung:** `register_carddav_autocomplete()` (startup-Hook, task=mail) traegt die CardDAV-Adressbuch-IDs zur Laufzeit in `autocomplete_addressbooks` ein (Discovery 1x/Session gecacht, nur nicht-leer) -> Kontakte erscheinen in der An:-Suche. Roundcubes Autocomplete iteriert sonst nur konfigurierte Quellen-IDs, und die `caldav_<md5>`-IDs sind dynamisch.
 
 - Name: FN + N (Nachname, Vorname, middlename, prefix, suffix — alle 5 N-Teile)
 - Spitzname (NICKNAME), Jobtitel (TITLE)
