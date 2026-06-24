@@ -15,6 +15,8 @@ as a client. No Kolab, no heavyweight dependencies — just `sabre/dav` + `sabre
 - **Contacts (CardDAV)** — integrates as a Roundcube address book: name parts, nickname,
   job title, organization & department, multiple emails/phones/addresses/URLs/IM with
   subtypes (home/work/cell/…), birthday, anniversary and notes.
+  Contacts also appear in the **recipient autocomplete** when composing mail (the plugin
+  registers its CardDAV sources into `autocomplete_addressbooks` at runtime).
 - **Auto-Discovery** — finds all calendars, task lists and address books from a single URL.
 - **Non-destructive edits** — editing an object only touches the fields you changed;
   anything the form doesn't know (RRULE, ATTENDEE/ORGANIZER, EXDATE, custom `X-` props)
