@@ -41,6 +41,9 @@ class caldav_suite extends rcube_plugin
     {
         $this->add_texts('localization/', true);
 
+        // CardDAV-Adressbuecher in die Empfaenger-Autovervollstaendigung aufnehmen
+        $this->register_carddav_autocomplete();
+
         $this->add_button([
             'command'    => 'calendar',
             'label'      => 'caldav_suite.calendar',
@@ -569,6 +572,50 @@ class caldav_suite extends rcube_plugin
     }
 
     // ---- CardDAV Addressbook Hooks ----
+
+    /**
+     * Traegt die CardDAV-Adressbuecher dieses Plugins in autocomplete_addressbooks ein,
+     * damit Kontakte bei der Empfaenger-Suche im Mail-Composer erscheinen. Roundcubes
+     * Autocomplete iteriert nur die konfigurierten Quellen-IDs; die caldav_*-IDs sind
+     * dynamisch -> hier zur Laufzeit ergaenzen. Discovery 1x pro Session gecacht.
+     */
+    private function register_carddav_autocomplete()
+    {
+        if ($this->rc->task !== 'mail') {
+            return;
+        }
+        $prefs = $this->rc->user->get_prefs();
+        if (empty($prefs['caldav_suite_url'])) {
+            return;
+        }
+
+        // Discovery 1x pro Session cachen; leere Ergebnisse NICHT cachen, damit sich ein
+        // transienter Discovery-Fehler nicht festsetzt (sonst bleibt Autocomplete leer).
+        $ids = $_SESSION['caldav_suite_abook_ids'] ?? [];
+        if (empty($ids)) {
+            try {
+                $username = $prefs['caldav_suite_username'] ?? '';
+                $password = $this->rc->decrypt($prefs['caldav_suite_password'] ?? '');
+                if (!empty($username) && $password !== false) {
+                    $client = new \Slohmaier\CalDAVSuite\CardDAVClient($prefs['caldav_suite_url'], $username, $password);
+                    foreach ($client->discoverAddressbooks() as $bookUrl => $book) {
+                        $ids[] = 'caldav_' . md5($bookUrl);
+                    }
+                }
+            } catch (\Throwable $e) {
+                rcube::raise_error($e->getMessage(), true, false);
+            }
+            if (!empty($ids)) {
+                $_SESSION['caldav_suite_abook_ids'] = $ids;
+            }
+        }
+
+        if (!empty($ids)) {
+            $ac = (array) $this->rc->config->get('autocomplete_addressbooks', 'sql');
+            $merged = array_values(array_unique(array_merge($ac, $ids)));
+            $this->rc->config->set('autocomplete_addressbooks', $merged);
+        }
+    }
 
     public function addressbooks_list($args)
     {
