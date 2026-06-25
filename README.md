@@ -17,6 +17,9 @@ as a client. No Kolab, no heavyweight dependencies — just `sabre/dav` + `sabre
   subtypes (home/work/cell/…), birthday, anniversary and notes.
   Contacts also appear in the **recipient autocomplete** when composing mail (the plugin
   registers its CardDAV sources into `autocomplete_addressbooks` at runtime).
+- **Meeting invitations (iMIP/iTIP)** — calendar invitations in mail show an
+  Accept / Tentative / Decline box plus "propose new time" (COUNTER); accepting
+  writes the event to your calendar and emails an iTIP reply to the organizer.
 - **Auto-Discovery** — finds all calendars, task lists and address books from a single URL.
 - **Non-destructive edits** — editing an object only touches the fields you changed;
   anything the form doesn't know (RRULE, ATTENDEE/ORGANIZER, EXDATE, custom `X-` props)

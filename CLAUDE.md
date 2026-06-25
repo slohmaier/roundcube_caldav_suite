@@ -2,7 +2,7 @@
 
 ## Überblick
 
-Roundcube-Plugin für Kalender, Aufgaben (CalDAV) und Kontakte (CardDAV). Verbindet sich als Client auf einen externen CalDAV-Server (Radicale, Baikal, Nextcloud etc.). Kein eigener Server, kein Kolab, keine Schwergewicht-Dependencies.
+Roundcube-Plugin für Kalender, Aufgaben (CalDAV), Kontakte (CardDAV) und Meeting-Einladungen (iMIP/iTIP). Verbindet sich als Client auf einen externen CalDAV-Server (Radicale, Baikal, Nextcloud etc.). Kein eigener Server, kein Kolab, keine Schwergewicht-Dependencies.
 
 ## Zielgruppe
 
@@ -468,3 +468,24 @@ PHOTO-Upload — werden beim Edit aber dank Fetch-Merge erhalten, nur nicht via 
 CalendarObject, CardDAVAddressbook mit gemocktem Client, Recurrence, Zeitzonen/DST,
 Fetch-Merge, alle Felder, Sonderzeichen-Roundtrip). Integration gegen echtes Radicale
 im rc-test-Stack verifiziert.
+
+## iMIP / iTIP (Kalender-Einladungen in Mails)
+
+`lib/ITip.php` parst `text/calendar`-Parts und baut REPLY/COUNTER (sabre/vobject),
+sendet als iMIP-Mail via Roundcube-SMTP (`rcube::deliver_message` + `Mail_mime`).
+
+- **Hooks:** `message_load` (Einladung in geladener Mail erkennen) + `template_object_messagebody`
+  (Box ueber den Mailtext rendern). **Actions** `plugin.caldav-itip-{reply,counter}` MUESSEN
+  VOR `register_task()` registriert werden, sonst "No handler found".
+- **UI:** `render_itip_box()` -> `role=region` + `<dl>` + Kalender-`<select>` + Button-Gruppe
+  (Annehmen/Vorbehalt/Ablehnen/Vorschlag) + aria-live. `js/itip.js` verdrahtet; Vorschlag-Modal
+  via `caldav_suite.dialog()`. Box traegt `data-msg-uid/-mbox/-mime-id`; der Action-Handler laedt
+  den Part server-seitig nach (vertraut keinem Client-ICS).
+- **Annehmen/Vorbehalt:** Event mit eigenem `PARTSTAT` in den gewaehlten Kalender (`buildStoredEvent`)
+  + REPLY. **Ablehnen:** nur REPLY. **Vorschlag:** COUNTER mit neuer Zeit.
+- **STOLPERSTEIN (PEAR):** Das Plugin buendelt (transitiv via `roundcube/plugin-installer`) eine
+  eigene pear-Kopie und prependet sie per `vendor/composer/include_paths.php` in den include_path.
+  Beim Laden von `Mail_mime` knallt sonst `Cannot redeclare _PEAR_call_destructors`. `ITip::send`
+  nimmt die Plugin-pear-Pfade waehrend des Sendens kurz aus dem include_path.
+- **Test:** `test-stack/run-itip-test.sh` (greenmail SMTP/IMAP, Playwright `itip-test.mjs`):
+  Box-Render + a11y, Annehmen -> CalDAV-Event + REPLY in greenmail, Counter-Modal -> COUNTER-Mail.

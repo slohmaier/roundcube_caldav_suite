@@ -10,6 +10,9 @@ class caldav_suite extends rcube_plugin
 
     private $rc;
 
+    /** Erkannte Kalender-Einladung in der gerade geladenen Mail (oder null). */
+    private $itip = null;
+
     public function init()
     {
         $this->rc = rcmail::get_instance();
@@ -25,6 +28,8 @@ class caldav_suite extends rcube_plugin
         $this->register_action('plugin.caldav-task-delete', [$this, 'action_delete_task']);
         $this->register_action('plugin.caldav-task-toggle', [$this, 'action_toggle_task']);
         $this->register_action('plugin.caldav-test-connection', [$this, 'action_test_connection']);
+        $this->register_action('plugin.caldav-itip-reply', [$this, 'action_itip_reply']);
+        $this->register_action('plugin.caldav-itip-counter', [$this, 'action_itip_counter']);
 
         $this->register_task('calendar');
         $this->register_task('tasks');
@@ -35,6 +40,11 @@ class caldav_suite extends rcube_plugin
         $this->add_hook('preferences_save', [$this, 'preferences_save']);
         $this->add_hook('addressbooks_list', [$this, 'addressbooks_list']);
         $this->add_hook('addressbook_get', [$this, 'addressbook_get']);
+
+        // iMIP / iTIP: Kalender-Einladungen in Mails (Annehmen/Ablehnen/Vorschlag).
+        // Die zugehoerigen Actions werden oben VOR register_task() registriert.
+        $this->add_hook('message_load', [$this, 'on_message_load']);
+        $this->add_hook('template_object_messagebody', [$this, 'mail_itip_box']);
     }
 
     public function startup($args)
@@ -66,6 +76,11 @@ class caldav_suite extends rcube_plugin
         $this->include_stylesheet($this->local_skin_path() . '/styles/caldav_suite.css');
         $this->include_script('js/caldav_suite.js');
         $this->include_script('js/a11y.js');
+
+        // iMIP-Einladungs-UI in der Mailansicht
+        if ($this->rc->task === 'mail') {
+            $this->include_script('js/itip.js');
+        }
 
         if ($this->rc->task === 'calendar') {
             $this->include_script('js/calendar_view.js');
@@ -713,6 +728,292 @@ class caldav_suite extends rcube_plugin
      * Get all CalDAV clients including additional URLs (e.g. shared calendars).
      * @return CalDAVClient[]
      */
+    // ===== iMIP / iTIP (Kalender-Einladungen in Mails) =====
+
+    /** message_load: gerade geladene Mail auf eine REQUEST-Einladung pruefen. */
+    public function on_message_load($args)
+    {
+        $message = $args['object'] ?? null;
+        if (!$message || empty($message->mime_parts)) {
+            return $args;
+        }
+        foreach ($message->mime_parts as $part) {
+            if (strtolower((string) $part->mimetype) !== 'text/calendar') {
+                continue;
+            }
+            $hdrMethod = strtoupper((string) ($part->ctype_parameters['method'] ?? ''));
+            $body      = $message->get_part_body($part->mime_id, false);
+            $parsed    = $body ? \Slohmaier\CalDAVSuite\ITip::parse($body) : null;
+            if ($parsed && ($parsed['method'] === 'REQUEST' || $hdrMethod === 'REQUEST')) {
+                $this->itip = [
+                    'parsed'  => $parsed,
+                    'mbox'    => $message->folder,
+                    'uid'     => $message->uid,
+                    'mime_id' => $part->mime_id,
+                ];
+                break;
+            }
+        }
+        return $args;
+    }
+
+    /** template_object_messagebody: Einladungs-Box ueber den Mailtext setzen. */
+    public function mail_itip_box($args)
+    {
+        if (empty($this->itip)) {
+            return $args;
+        }
+        $args['content'] = $this->render_itip_box($this->itip) . $args['content'];
+        return $args;
+    }
+
+    private function render_itip_box(array $ctx): string
+    {
+        $p   = $ctx['parsed'];
+        $Q   = fn($s) => rcube::Q((string) $s);
+        $g   = fn($k) => $this->gettext($k);
+
+        $when = $this->itip_format_when($p);
+        $org  = $p['organizer'] ? trim(($p['organizer']['name'] ?: '') . ' <' . $p['organizer']['email'] . '>') : '';
+
+        $cals = $this->get_calendars_list();
+        $calSelect = '';
+        if (!empty($cals)) {
+            $opts = '';
+            foreach ($cals as $c) {
+                $opts .= '<option value="' . $Q($c['url']) . '">' . $Q($c['name']) . '</option>';
+            }
+            $calSelect = '<div class="caldav-itip-calsel">'
+                . '<label for="caldav-itip-cal">' . $Q($g('itip_in_calendar')) . '</label> '
+                . '<select id="caldav-itip-cal" class="form-control">' . $opts . '</select>'
+                . '</div>';
+        }
+
+        $details = '<dt>' . $Q($g('itip_when')) . '</dt><dd>' . $Q($when) . '</dd>';
+        if ($p['location'] !== '') {
+            $details .= '<dt>' . $Q($g('itip_where')) . '</dt><dd>' . $Q($p['location']) . '</dd>';
+        }
+        if ($org !== '') {
+            $details .= '<dt>' . $Q($g('itip_organizer')) . '</dt><dd>' . $Q($org) . '</dd>';
+        }
+        $details .= '<dt>' . $Q($g('itip_status')) . '</dt><dd id="caldav-itip-status">' . $Q($g('itip_status_pending')) . '</dd>';
+
+        $startAttr = $p['dtstart'] ? $this->itip_local_dt($p['dtstart']) : '';
+        $endAttr   = $p['dtend'] ? $this->itip_local_dt($p['dtend']) : '';
+
+        $html = '<div class="caldav-itip" role="region" aria-labelledby="caldav-itip-title"'
+            . ' data-msg-uid="' . $Q($ctx['uid']) . '"'
+            . ' data-mbox="' . $Q($ctx['mbox']) . '"'
+            . ' data-mime-id="' . $Q($ctx['mime_id']) . '"'
+            . ' data-start="' . $Q($startAttr) . '" data-end="' . $Q($endAttr) . '"'
+            . ' data-allday="' . ($p['allday'] ? '1' : '0') . '">'
+            . '<h2 id="caldav-itip-title" class="caldav-itip-title">'
+            . '<span class="caldav-itip-badge">' . $Q($g('itip_invitation')) . '</span> '
+            . $Q($p['summary'] !== '' ? $p['summary'] : $g('itip_no_title')) . '</h2>'
+            . '<dl class="caldav-itip-details">' . $details . '</dl>'
+            . $calSelect
+            . '<div class="caldav-itip-actions" role="group" aria-label="' . $Q($g('itip_respond_group')) . '">'
+            . '<button type="button" class="btn btn-primary caldav-itip-reply" data-partstat="ACCEPTED">' . $Q($g('itip_accept')) . '</button>'
+            . '<button type="button" class="btn caldav-itip-reply" data-partstat="TENTATIVE">' . $Q($g('itip_tentative')) . '</button>'
+            . '<button type="button" class="btn caldav-itip-reply" data-partstat="DECLINED">' . $Q($g('itip_decline')) . '</button>'
+            . '<button type="button" class="btn caldav-itip-propose">' . $Q($g('itip_propose')) . '</button>'
+            . '</div>'
+            . '<div class="caldav-itip-live" aria-live="polite"></div>'
+            . '</div>';
+
+        return $html;
+    }
+
+    private function get_calendars_list(): array
+    {
+        $out = [];
+        foreach ($this->get_all_caldav_clients() as $client) {
+            try {
+                foreach ($client->getCalendars() as $cal) {
+                    $out[] = ['url' => $cal->url, 'name' => $cal->displayName];
+                }
+            } catch (\Throwable $e) {
+                // defekten Client ueberspringen
+            }
+        }
+        return $out;
+    }
+
+    private function get_my_emails(): array
+    {
+        $emails = [];
+        foreach ((array) $this->rc->user->list_emails() as $ident) {
+            if (!empty($ident['email'])) {
+                $emails[] = strtolower($ident['email']);
+            }
+        }
+        return array_values(array_unique($emails));
+    }
+
+    private function fetch_itip_ical($mbox, $uid, $mime_id): ?string
+    {
+        if (!$mbox || !$uid || $mime_id === null || $mime_id === '') {
+            return null;
+        }
+        $this->rc->storage->set_folder($mbox);
+        $message = new rcube_message($uid, $mbox);
+        if (empty($message->mime_parts)) {
+            return null;
+        }
+        $body = $message->get_part_body($mime_id, false);
+        return $body ?: null;
+    }
+
+    private function itip_local_dt(\DateTimeInterface $dt): string
+    {
+        try {
+            $tz = new \DateTimeZone($this->rc->config->get('timezone') ?: 'UTC');
+            $d  = new \DateTime('@' . $dt->getTimestamp());
+            $d->setTimezone($tz);
+            return $d->format('Y-m-d\TH:i');
+        } catch (\Throwable $e) {
+            return $dt->format('Y-m-d\TH:i');
+        }
+    }
+
+    private function itip_format_when(array $p): string
+    {
+        if (!$p['dtstart']) {
+            return '';
+        }
+        $start = $this->itip_local_dt($p['dtstart']);
+        if ($p['allday']) {
+            return substr($start, 0, 10);
+        }
+        $s = str_replace('T', ' ', $start);
+        if ($p['dtend']) {
+            $e = $this->itip_local_dt($p['dtend']);
+            return $s . ' – ' . substr($e, 11, 5);
+        }
+        return $s;
+    }
+
+    private function itip_status_word(string $partstat): string
+    {
+        $map = ['ACCEPTED' => 'itip_accepted', 'TENTATIVE' => 'itip_tentatived', 'DECLINED' => 'itip_declined'];
+        return $this->gettext($map[$partstat] ?? 'itip_done');
+    }
+
+    private function itip_respond(bool $ok, string $message, string $status = '', bool $lock = true): void
+    {
+        $this->rc->output->command('plugin.caldav-itip-response', [
+            'success' => $ok,
+            'message' => $message,
+            'status'  => $status,
+            'lock'    => $lock,
+        ]);
+        $this->rc->output->send();
+    }
+
+    public function action_itip_reply()
+    {
+        $partstat = strtoupper((string) rcube_utils::get_input_value('_partstat', rcube_utils::INPUT_POST));
+        $mbox     = rcube_utils::get_input_value('_mbox', rcube_utils::INPUT_POST);
+        $uid      = rcube_utils::get_input_value('_uid', rcube_utils::INPUT_POST);
+        $mime_id  = rcube_utils::get_input_value('_mime_id', rcube_utils::INPUT_POST);
+        $calUrl   = rcube_utils::get_input_value('_calendar_url', rcube_utils::INPUT_POST);
+
+        if (!in_array($partstat, ['ACCEPTED', 'TENTATIVE', 'DECLINED'], true)) {
+            $this->itip_respond(false, $this->gettext('itip_error'));
+            return;
+        }
+
+        $ical = $this->fetch_itip_ical($mbox, $uid, $mime_id);
+        $parsed = $ical ? \Slohmaier\CalDAVSuite\ITip::parse($ical) : null;
+        if (!$parsed) {
+            $this->itip_respond(false, $this->gettext('itip_error'));
+            return;
+        }
+
+        $ident   = $this->rc->user->get_identity() ?: [];
+        $me       = \Slohmaier\CalDAVSuite\ITip::myAttendee($parsed, $this->get_my_emails());
+        $myEmail = $me['email'] ?? ($ident['email'] ?? '');
+        $myName  = $me['name'] ?: ($ident['name'] ?? '');
+
+        // Annehmen/Vorbehalt -> Event in gewaehlten Kalender schreiben
+        if (in_array($partstat, ['ACCEPTED', 'TENTATIVE'], true) && $calUrl) {
+            $stored = \Slohmaier\CalDAVSuite\ITip::buildStoredEvent($ical, $myEmail, $partstat);
+            $client = $this->get_caldav_client();
+            if ($stored && $client) {
+                $slug = preg_replace('/[^A-Za-z0-9._-]/', '', $parsed['uid']) ?: \Sabre\VObject\UUIDUtil::getUUID();
+                $url  = rtrim($calUrl, '/') . '/' . $slug . '.ics';
+                try {
+                    $client->putObject($url, $stored, null);
+                } catch (\Throwable $e) {
+                    // Schreibfehler nicht fatal fuer die REPLY
+                }
+            }
+        }
+
+        // REPLY an Organizer senden
+        $org = $parsed['organizer']['email'] ?? '';
+        if ($org !== '' && $myEmail !== '') {
+            $reply = \Slohmaier\CalDAVSuite\ITip::buildReply($ical, $myEmail, $myName, $partstat);
+            if ($reply) {
+                $word    = $this->itip_status_word($partstat);
+                $subject = $word . ': ' . $parsed['summary'];
+                $body    = sprintf('%s: %s', $parsed['summary'], $word);
+                \Slohmaier\CalDAVSuite\ITip::send($this->rc, $myEmail, $myName, $org, $subject, $body, $reply, 'REPLY');
+            }
+        }
+
+        $this->itip_respond(true, $this->itip_status_word($partstat), $this->itip_status_word($partstat));
+    }
+
+    public function action_itip_counter()
+    {
+        $mbox    = rcube_utils::get_input_value('_mbox', rcube_utils::INPUT_POST);
+        $uid     = rcube_utils::get_input_value('_uid', rcube_utils::INPUT_POST);
+        $mime_id = rcube_utils::get_input_value('_mime_id', rcube_utils::INPUT_POST);
+        $startIn = rcube_utils::get_input_value('_start', rcube_utils::INPUT_POST);
+        $endIn   = rcube_utils::get_input_value('_end', rcube_utils::INPUT_POST);
+        $comment = rcube_utils::get_input_value('_comment', rcube_utils::INPUT_POST);
+
+        $ical   = $this->fetch_itip_ical($mbox, $uid, $mime_id);
+        $parsed = $ical ? \Slohmaier\CalDAVSuite\ITip::parse($ical) : null;
+        if (!$parsed) {
+            $this->itip_respond(false, $this->gettext('itip_error'));
+            return;
+        }
+
+        try {
+            $tz    = new \DateTimeZone($this->rc->config->get('timezone') ?: 'UTC');
+            $start = new \DateTime($startIn, $tz);
+            $end   = new \DateTime($endIn ?: $startIn, $tz);
+        } catch (\Throwable $e) {
+            $this->itip_respond(false, $this->gettext('itip_error'));
+            return;
+        }
+
+        $ident   = $this->rc->user->get_identity() ?: [];
+        $me      = \Slohmaier\CalDAVSuite\ITip::myAttendee($parsed, $this->get_my_emails());
+        $myEmail = $me['email'] ?? ($ident['email'] ?? '');
+        $myName  = $me['name'] ?: ($ident['name'] ?? '');
+
+        $org = $parsed['organizer']['email'] ?? '';
+        if ($org === '' || $myEmail === '') {
+            $this->itip_respond(false, $this->gettext('itip_error'));
+            return;
+        }
+
+        $counter = \Slohmaier\CalDAVSuite\ITip::buildCounter($ical, $start, $end, $comment ?: null);
+        if (!$counter) {
+            $this->itip_respond(false, $this->gettext('itip_error'));
+            return;
+        }
+
+        $subject = $this->gettext('itip_counter_subject') . ': ' . $parsed['summary'];
+        $body    = sprintf('%s: %s', $parsed['summary'], $this->gettext('itip_counter_subject'));
+        \Slohmaier\CalDAVSuite\ITip::send($this->rc, $myEmail, $myName, $org, $subject, $body, $counter, 'COUNTER');
+
+        $this->itip_respond(true, $this->gettext('itip_counter_sent'), $this->gettext('itip_counter_sent'), false);
+    }
+
     private function get_all_caldav_clients(): array
     {
         $clients = [];
