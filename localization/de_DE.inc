@@ -45,6 +45,7 @@ $labels['priority_medium'] = 'Mittel';
 $labels['priority_high'] = 'Hoch';
 $labels['completed'] = 'Erledigt';
 $labels['today'] = 'Heute';
+$labels['current_range'] = 'aktuell';
 $labels['previous'] = 'Zurück';
 $labels['next'] = 'Weiter';
 $labels['pick_week'] = 'Woche wählen';
