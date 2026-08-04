@@ -53,10 +53,17 @@ class ITip
         $dtstart = null;
         $dtend   = null;
         $allday  = false;
+        $floating = false;
         try {
             if (isset($ev->DTSTART)) {
                 $dtstart = $ev->DTSTART->getDateTime();
                 $allday  = !$ev->DTSTART->hasTime();
+                // Floating-Zeiten (kein Z, kein TZID) haben in sabre/vobject die
+                // Zeitzone UTC, duerfen aber NICHT nach lokaler Zeitzone umgerechnet
+                // werden (sonst 09:00 -> 11:00 in Sommerzeit). Als Wandzeit belassen.
+                if (method_exists($ev->DTSTART, 'isFloating') && $ev->DTSTART->isFloating()) {
+                    $floating = true;
+                }
             }
             if (isset($ev->DTEND)) {
                 $dtend = $ev->DTEND->getDateTime();
@@ -75,6 +82,7 @@ class ITip
             'dtstart'     => $dtstart,
             'dtend'       => $dtend,
             'allday'      => $allday,
+            'floating'    => $floating,
             'organizer'   => $org,
             'attendees'   => $attendees,
         ];
