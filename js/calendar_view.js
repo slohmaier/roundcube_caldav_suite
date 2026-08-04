@@ -201,6 +201,17 @@
         return { start: start, end: end };
     }
 
+    // Prueft, ob die aktuell angezeigte Zeitrange das heutige Datum enthaelt.
+    // Liefert true, dann haengt updateTitle den Marker "(aktuell)" an.
+    function isCurrentRange() {
+        var now = new Date();
+        var range = getViewRange();
+        var s = new Date(range.start.getFullYear(), range.start.getMonth(), range.start.getDate());
+        var e = new Date(range.end.getFullYear(), range.end.getMonth(), range.end.getDate());
+        var t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return s.getTime() <= t.getTime() && t.getTime() <= e.getTime();
+    }
+
     function updateTitle() {
         var d = state.currentDate;
         var title = '';
@@ -217,6 +228,7 @@
                 title = caldav_suite.formatDateLong(d.toISOString());
                 break;
         }
+        if (isCurrentRange()) title += ' (' + caldav_suite.label('current_range') + ')';
         $('#calendar-title').text(title);
     }
 
