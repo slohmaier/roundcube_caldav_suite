@@ -9,6 +9,11 @@ class CalDAVClient
 {
     private Client $client;
     private string $baseUrl;
+
+    public function getBaseUrl(): string
+    {
+        return $this->baseUrl;
+    }
     private string $username;
     private string $password;
 
