@@ -2,6 +2,19 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+// Das Plugin buendelt (transitiv) eine eigene pear-Kopie, die composer per
+// include_paths.php in den include_path prependet. Roundcube bringt dieselben
+// pear-Pakete bereits mit -> sonst "Cannot redeclare _PEAR_call_destructors"
+// beim Laden von Mail_mime/PEAR (z.B. im Compose-Fenster). Die Plugin-pear-Pfade
+// daher global entfernen; Roundcubes PEAR/Mail_mime wird genutzt.
+$__caldav_inc = get_include_path();
+$__caldav_clean = array_filter(
+    explode(PATH_SEPARATOR, $__caldav_inc),
+    fn($d) => strpos($d, '/caldav_suite/vendor/pear/') === false
+);
+set_include_path(implode(PATH_SEPARATOR, $__caldav_clean));
+unset($__caldav_inc, $__caldav_clean);
+
 use Slohmaier\CalDAVSuite\CalDAVClient;
 
 class caldav_suite extends rcube_plugin
