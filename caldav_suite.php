@@ -798,8 +798,9 @@ class caldav_suite extends rcube_plugin
         }
         $details .= '<dt>' . $Q($g('itip_status')) . '</dt><dd id="caldav-itip-status">' . $Q($g('itip_status_pending')) . '</dd>';
 
-        $startAttr = $p['dtstart'] ? $this->itip_local_dt($p['dtstart']) : '';
-        $endAttr   = $p['dtend'] ? $this->itip_local_dt($p['dtend']) : '';
+        $floating = !empty($p['floating']);
+        $startAttr = $p['dtstart'] ? $this->itip_local_dt($p['dtstart'], $floating) : '';
+        $endAttr   = $p['dtend'] ? $this->itip_local_dt($p['dtend'], $floating) : '';
 
         $html = '<div class="caldav-itip" role="region" aria-labelledby="caldav-itip-title"'
             . ' data-msg-uid="' . $Q($ctx['uid']) . '"'
@@ -826,6 +827,11 @@ class caldav_suite extends rcube_plugin
 
     private function get_calendars_list(): array
     {
+        // 1x pro Session cachen, damit die iTIP-Box (und Kalenderliste) nicht bei jeder
+        // Einladungsmail einen kompletten CalDAV-Discovery ueber nginx macht (langsam).
+        if (isset($_SESSION['caldav_suite_calendars']) && is_array($_SESSION['caldav_suite_calendars'])) {
+            return $_SESSION['caldav_suite_calendars'];
+        }
         $out = [];
         foreach ($this->get_all_caldav_clients() as $client) {
             try {
@@ -836,6 +842,7 @@ class caldav_suite extends rcube_plugin
                 // defekten Client ueberspringen
             }
         }
+        $_SESSION['caldav_suite_calendars'] = $out;
         return $out;
     }
 
@@ -864,8 +871,15 @@ class caldav_suite extends rcube_plugin
         return $body ?: null;
     }
 
-    private function itip_local_dt(\DateTimeInterface $dt): string
+    private function itip_local_dt(\DateTimeInterface $dt, bool $floating = false): string
     {
+        // Floating-Zeit (kein Z, kein TZID): Wandzeit direkt in Zielzeitzone belassen,
+        // NICHT ueber UTC umrechnen (sonst +2h in Sommerzeit).
+        if ($floating) {
+            $tz = new \DateTimeZone($this->rc->config->get('timezone') ?: 'UTC');
+            $d  = new \DateTime($dt->format('Y-m-d\TH:i'), $tz);
+            return $d->format('Y-m-d\TH:i');
+        }
         try {
             $tz = new \DateTimeZone($this->rc->config->get('timezone') ?: 'UTC');
             $d  = new \DateTime('@' . $dt->getTimestamp());
@@ -881,13 +895,13 @@ class caldav_suite extends rcube_plugin
         if (!$p['dtstart']) {
             return '';
         }
-        $start = $this->itip_local_dt($p['dtstart']);
+        $start = $this->itip_local_dt($p['dtstart'], !empty($p['floating']));
         if ($p['allday']) {
             return substr($start, 0, 10);
         }
         $s = str_replace('T', ' ', $start);
         if ($p['dtend']) {
-            $e = $this->itip_local_dt($p['dtend']);
+            $e = $this->itip_local_dt($p['dtend'], !empty($p['floating']));
             return $s . ' – ' . substr($e, 11, 5);
         }
         return $s;
