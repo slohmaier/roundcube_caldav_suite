@@ -194,39 +194,42 @@ class caldav_suite extends rcube_plugin
 
     public function action_get_calendars()
     {
-        $clients = $this->get_all_caldav_clients();
-        if (empty($clients)) {
-            $this->rc->output->command('plugin.caldav-calendars-response', ['error' => $this->gettext('no_caldav_configured')]);
-            $this->rc->output->send();
-            return;
-        }
-
-        $calendars = [];
-        $prefs = $this->rc->user->get_prefs();
-        $colors = json_decode($prefs['caldav_suite_colors'] ?? '{}', true) ?: [];
-
-        foreach ($clients as $client) {
-            foreach ($client->getCalendars() as $cal) {
-                $calendars[] = [
-                    'id'    => $cal->getId(),
-                    'name'  => $cal->displayName,
-                    'url'   => $cal->url,
-                    'color' => $colors[$cal->getId()] ?? $cal->color ?? '#4fc3f7',
-                ];
+        // Volle Liste aus Session-Cache (kein CalDAV-Discovery pro Request).
+        $cached = $this->get_calendars_list();
+        if (empty($cached)) {
+            $clients = $this->get_all_caldav_clients();
+            if (empty($clients)) {
+                $this->rc->output->command('plugin.caldav-calendars-response', ['error' => $this->gettext('no_caldav_configured')]);
+                $this->rc->output->send();
+                return;
             }
         }
-
+        $calendars = $cached;
         $this->rc->output->command('plugin.caldav-calendars-response', ['calendars' => $calendars]);
         $this->rc->output->send();
     }
 
     public function action_get_events()
     {
-        $clients = $this->get_all_caldav_clients();
-        if (empty($clients)) {
-            $this->rc->output->command('plugin.caldav-events-response', ['error' => $this->gettext('no_caldav_configured')]);
-            $this->rc->output->send();
-            return;
+        // Kalenderliste aus Session-Cache (kein CalDAV-Discover pro Request). Fuer jeden
+        // Cache-Eintrag den passenden CalDAVClient ermitteln (gleicher Cache-Key = gleicher
+        // Haupt- oder extra-Client) und nur getEvents() aufrufen (REPORT).
+        $cached = $this->get_calendars_list();
+        if (empty($cached)) {
+            $clients = $this->get_all_caldav_clients();
+            if (empty($clients)) {
+                $this->rc->output->command('plugin.caldav-events-response', ['error' => $this->gettext('no_caldav_configured')]);
+                $this->rc->output->send();
+                return;
+            }
+            // Fallback ohne Cache (z.B. direkt nach Pref-Aenderung): Discover laeuft einmal.
+            $fallback = [];
+            foreach ($clients as $client) {
+                foreach ($client->getCalendars() as $cal) {
+                    $fallback[] = ['id' => $cal->getId(), 'url' => $cal->url, 'name' => $cal->displayName, 'color' => $cal->color ?? '#4fc3f7'];
+                }
+            }
+            $cached = $fallback;
         }
 
         $start = new \DateTimeImmutable(rcube_utils::get_input_value('_start', rcube_utils::INPUT_POST));
@@ -234,16 +237,37 @@ class caldav_suite extends rcube_plugin
         $calendarIds = rcube_utils::get_input_value('_calendars', rcube_utils::INPUT_POST) ?: [];
 
         $events = [];
-        foreach ($clients as $client) {
-            foreach ($client->getCalendars() as $cal) {
-                if (!empty($calendarIds) && !in_array($cal->getId(), $calendarIds)) {
-                    continue;
+        // Clients cachen pro URL innerhalb dieses Requests (CalDAVClient-Objekt haelt
+        // den persistenten sabre/http-curl-Handle -> keep-alive fuer Folge-REPORTs).
+        $clientByUrl = [];
+        foreach ($this->get_all_caldav_clients() as $client) {
+            $clientByUrl[parse_url($client->getBaseUrl(), PHP_URL_PATH)] = $client;
+        }
+
+        foreach ($cached as $cal) {
+            if (!empty($calendarIds) && !in_array($cal['id'], $calendarIds, true)) {
+                continue;
+            }
+            // Passenden Client anhand URL-Path zuordnen.
+            $path = parse_url($cal['url'], PHP_URL_PATH);
+            // Exakte Treffer bevorzugen (exakter URL-Path), sonst Substring.
+            $client = $clientByUrl[$path] ?? null;
+            if (!$client) {
+                foreach ($clientByUrl as $basePath => $c) {
+                    if ($basePath && str_starts_with($path, rtrim($basePath, '/'))) { $client = $c; break; }
                 }
-                foreach ($client->getEvents($cal->url, $start, $end) as $event) {
+            }
+            if (!$client) {
+                continue;
+            }
+            try {
+                foreach ($client->getEvents($cal['url'], $start, $end) as $event) {
                     $data = $event->toArray();
-                    $data['calendarId'] = $cal->getId();
+                    $data['calendarId'] = $cal['id'];
                     $events[] = $data;
                 }
+            } catch (\Throwable $e) {
+                // einzelnen Kalender ueberspringen
             }
         }
 
@@ -848,23 +872,39 @@ class caldav_suite extends rcube_plugin
 
     private function get_calendars_list(): array
     {
-        // 1x pro Session cachen, damit die iTIP-Box (und Kalenderliste) nicht bei jeder
-        // Einladungsmail einen kompletten CalDAV-Discovery ueber nginx macht (langsam).
-        if (isset($_SESSION['caldav_suite_calendars']) && is_array($_SESSION['caldav_suite_calendars'])) {
-            return $_SESSION['caldav_suite_calendars'];
+        // Volle Kalenderliste (id, url, name, color) 1x pro Session cachen, damit
+        // iTIP-Box, Sidebar und events-AJAX keinen kompletten CalDAV-Discovery
+        // (PROPFIND ueber mehrere Clients) pro Request machen.
+        if (isset($_SESSION['caldav_suite_calendars_full']) && is_array($_SESSION['caldav_suite_calendars_full'])) {
+            return $_SESSION['caldav_suite_calendars_full'];
         }
+        $prefs = $this->rc->user->get_prefs();
+        $colors = json_decode($prefs['caldav_suite_colors'] ?? '{}', true) ?: [];
         $out = [];
         foreach ($this->get_all_caldav_clients() as $client) {
             try {
                 foreach ($client->getCalendars() as $cal) {
-                    $out[] = ['url' => $cal->url, 'name' => $cal->displayName];
+                    $out[] = [
+                        'id'    => $cal->getId(),
+                        'url'   => $cal->url,
+                        'name'  => $cal->displayName,
+                        'color' => $colors[$cal->getId()] ?? $cal->color ?? '#4fc3f7',
+                    ];
                 }
             } catch (\Throwable $e) {
                 // defekten Client ueberspringen
             }
         }
-        $_SESSION['caldav_suite_calendars'] = $out;
+        $_SESSION['caldav_suite_calendars_full'] = $out;
+        // Kompat: alter Cache-Key (nur url+name) weiter pflegen, falls extern genutzt
+        $_SESSION['caldav_suite_calendars'] = array_map(fn($c) => ['url' => $c['url'], 'name' => $c['name']], $out);
         return $out;
+    }
+
+    /** Kalender-Cache invalidieren (nach MKCALENDAR/DELETE etc.). */
+    private function invalidate_calendars_cache(): void
+    {
+        unset($_SESSION['caldav_suite_calendars'], $_SESSION['caldav_suite_calendars_full']);
     }
 
     private function get_my_emails(): array
