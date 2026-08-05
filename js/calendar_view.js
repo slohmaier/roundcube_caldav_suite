@@ -33,7 +33,7 @@
         $('#btn-next').click(function() { navigate(1); });
         $('#btn-today').click(function() { state.currentDate = new Date(); loadAndRender(); });
         $('#btn-new-event').click(function() { caldav_event_dialog.open(null, state.calendars); });
-        $('#btn-pick-week').click(openWeekPicker);
+        $('#btn-range').click(openRangePicker);
 
         $('.view-btn').click(function() {
             switchView($(this).data('view'));
@@ -132,21 +132,21 @@
         return sd + '. ' + sm + ' – ' + ed + '. ' + em + ' ' + ey;
     }
 
-    function openWeekPicker() {
+    function openRangePicker() {
         var d = state.currentDate;
         var val = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
         var html = '<div class="propform">'
-            + '<label for="weekpick-date">' + rcmail.quote_html(caldav_suite.label('pick_week_hint')) + '</label>'
-            + '<input type="date" id="weekpick-date" class="form-control" value="' + val + '" />'
+            + '<label for="rangepick-date">' + rcmail.quote_html(caldav_suite.label('pick_week_hint')) + '</label>'
+            + '<input type="date" id="rangepick-date" class="form-control" value="' + val + '" />'
             + '</div>';
-        caldav_suite.dialog(caldav_suite.label('pick_week'), html, [
+        caldav_suite.dialog(caldav_suite.label('pick_period'), html, [
             { label: caldav_suite.label('jump'), action: function(dlg) {
-                var v = dlg.find('#weekpick-date').val();
+                var v = dlg.find('#rangepick-date').val();
                 if (v) { state.currentDate = new Date(v + 'T12:00:00'); loadAndRender(); }
             } },
             { label: caldav_suite.label('cancel'), close: true }
         ]);
-        setTimeout(function() { $('#weekpick-date').focus(); }, 50);
+        setTimeout(function() { $('#rangepick-date').focus(); }, 50);
     }
 
     function loadEvents() {
@@ -230,7 +230,7 @@
                 break;
         }
         if (isCurrentRange()) title += ' (' + caldav_suite.label('current_range') + ')';
-        $('#calendar-title').text(title);
+        $('#btn-range').text(title);
     }
 
     function renderCurrentView() {
@@ -247,7 +247,7 @@
         if (state.pendingAnnounce) {
             state.pendingAnnounce = false;
             var cnt = getVisibleEvents().length;
-            caldav_suite.announce($('#calendar-title').text() + ', ' + cnt + ' ' + (cnt === 1 ? 'Termin' : 'Termine'));
+            caldav_suite.announce($('#btn-range').text() + ', ' + cnt + ' ' + (cnt === 1 ? 'Termin' : 'Termine'));
         }
     }
 
@@ -596,7 +596,7 @@
 
         // Range-Header (fokussierbare Ueberschrift): macht die angezeigte Woche + Anzahl klar.
         var cnt = events.length;
-        var header = '<h3 class="list-range" tabindex="-1">Woche ' + rcmail.quote_html($('#calendar-title').text())
+        var header = '<h3 class="list-range" tabindex="-1">Woche ' + rcmail.quote_html($('#btn-range').text())
             + ' — ' + cnt + ' ' + (cnt === 1 ? 'Termin' : 'Termine') + '</h3>';
 
         if (events.length === 0) {
