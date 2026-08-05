@@ -206,7 +206,7 @@ class caldav_suite extends rcube_plugin
         $visible = json_decode($prefs['caldav_suite_visible_calendars'] ?? '{}', true) ?: [];
 
         foreach ($clients as $client) {
-            foreach ($client->getCalendars() as $cal) {
+            foreach ($this->get_calendars_cached($client) as $cal) {
                 $id = $cal->getId();
                 $calendars[] = [
                     'id'    => $id,
@@ -261,7 +261,7 @@ class caldav_suite extends rcube_plugin
             // Alle (sichtbaren) Kalender-URLs dieses Clients parallel abfragen.
             $urls = [];
             $urlToCalId = [];
-            foreach ($client->getCalendars() as $cal) {
+            foreach ($this->get_calendars_cached($client) as $cal) {
                 if (!empty($calendarIds) && !in_array($cal->getId(), $calendarIds)) {
                     continue;
                 }
@@ -1104,6 +1104,41 @@ class caldav_suite extends rcube_plugin
         \Slohmaier\CalDAVSuite\ITip::send($this->rc, $myEmail, $myName, $org, $subject, $body, $counter, 'COUNTER');
 
         $this->itip_respond(true, $this->gettext('itip_counter_sent'), $this->gettext('itip_counter_sent'), false);
+    }
+
+    /**
+     * Liefert die Kalender eines Clients, 1x pro Session gecacht (spart den ~2s-Discover
+     * bei jedem AJAX-Request). Rekonstruiert Collection-Objekte aus dem Session-Cache.
+     *
+     * @return \Slohmaier\CalDAVSuite\Collection[]
+     */
+    private function get_calendars_cached(\Slohmaier\CalDAVSuite\CalDAVClient $client): array
+    {
+        $key = 'caldav_suite_cals_' . md5($client->getBaseUrl());
+        if (isset($_SESSION[$key]) && is_array($_SESSION[$key])) {
+            $out = [];
+            foreach ($_SESSION[$key] as $row) {
+                $out[] = new \Slohmaier\CalDAVSuite\Collection(
+                    url: $row['url'],
+                    displayName: $row['name'],
+                    components: $row['components'],
+                    color: $row['color'],
+                );
+            }
+            return $out;
+        }
+        $cals = $client->getCalendars();
+        $rows = [];
+        foreach ($cals as $c) {
+            $rows[] = [
+                'url' => $c->url,
+                'name' => $c->displayName,
+                'components' => $c->components,
+                'color' => $c->color,
+            ];
+        }
+        $_SESSION[$key] = $rows;
+        return $cals;
     }
 
     private function get_all_caldav_clients(): array
