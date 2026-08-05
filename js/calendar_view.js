@@ -263,9 +263,8 @@
         state.calendars.forEach(function(cal) {
             var on = !!state.visibleCalendars[cal.id];
             html += '<li class="calendar-item' + (on ? ' checked' : '') + '" data-cal-id="' + cal.id + '"'
+                + ' style="border-left:4px solid ' + cal.color + '"'
                 + ' aria-label="' + rcmail.quote_html(calAria(cal, on)) + '">'
-                + '<span class="cal-color" aria-hidden="true" style="background:' + cal.color + '"></span>'
-                + '<span class="calendar-check" aria-hidden="true"></span>'
                 + '<span class="cal-name" aria-hidden="true">' + rcmail.quote_html(cal.name) + '</span>'
                 + '</li>';
         });
