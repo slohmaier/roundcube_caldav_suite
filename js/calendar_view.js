@@ -32,7 +32,6 @@
         $('#btn-prev').click(function() { navigate(-1); });
         $('#btn-next').click(function() { navigate(1); });
         $('#btn-today').click(function() { state.currentDate = new Date(); loadAndRender(); });
-        $('#btn-new-event').click(function() { caldav_event_dialog.open(null, state.calendars); });
         $('#btn-range').click(openRangePicker);
 
         $('.view-btn').click(function() {
