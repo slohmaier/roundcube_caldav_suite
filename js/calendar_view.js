@@ -58,7 +58,8 @@
         rcmail.addEventListener('plugin.caldav-calendars-response', function(data) {
             if (data.calendars) {
                 state.calendars = data.calendars;
-                data.calendars.forEach(function(cal) { state.visibleCalendars[cal.id] = true; });
+                state.visibleCalendars = {};
+                data.calendars.forEach(function(cal) { state.visibleCalendars[cal.id] = cal.visible !== false; });
                 renderCalendarList();
                 loadEvents();
             }
@@ -263,14 +264,18 @@
             var on = !!state.visibleCalendars[cal.id];
             html += '<li class="calendar-item' + (on ? ' checked' : '') + '" data-cal-id="' + cal.id + '"'
                 + ' aria-label="' + rcmail.quote_html(calAria(cal, on)) + '">'
-                + '<span class="calendar-check" aria-hidden="true"></span>'
                 + '<span class="cal-color" aria-hidden="true" style="background:' + cal.color + '"></span>'
+                + '<span class="calendar-check" aria-hidden="true"></span>'
                 + '<span class="cal-name" aria-hidden="true">' + rcmail.quote_html(cal.name) + '</span>'
                 + '</li>';
         });
         html += '</ul>';
         $('#calendar-list').html(html);
 
+        var saveVisible = function() {
+            var ids = Object.keys(state.visibleCalendars).filter(function(id) { return state.visibleCalendars[id]; });
+            rcmail.http_post('plugin.caldav-set-visible', { _visible: ids });
+        };
         var toggleCal = function(item) {
             if (!item) return;
             var id = item.getAttribute('data-cal-id');
@@ -279,6 +284,7 @@
             item.classList.toggle('checked', on);
             var cal = state.calendars.find(function(c) { return String(c.id) === String(id); });
             if (cal) item.setAttribute('aria-label', calAria(cal, on));
+            saveVisible();
             renderCurrentView();
         };
 

@@ -43,6 +43,7 @@ class caldav_suite extends rcube_plugin
         $this->register_action('plugin.caldav-test-connection', [$this, 'action_test_connection']);
         $this->register_action('plugin.caldav-itip-reply', [$this, 'action_itip_reply']);
         $this->register_action('plugin.caldav-itip-counter', [$this, 'action_itip_counter']);
+        $this->register_action('plugin.caldav-set-visible', [$this, 'action_set_visible_calendars']);
 
         $this->register_task('calendar');
         $this->register_task('tasks');
@@ -199,19 +200,39 @@ class caldav_suite extends rcube_plugin
         $calendars = [];
         $prefs = $this->rc->user->get_prefs();
         $colors = json_decode($prefs['caldav_suite_colors'] ?? '{}', true) ?: [];
+        $visible = json_decode($prefs['caldav_suite_visible_calendars'] ?? '{}', true) ?: [];
 
         foreach ($clients as $client) {
             foreach ($client->getCalendars() as $cal) {
+                $id = $cal->getId();
                 $calendars[] = [
-                    'id'    => $cal->getId(),
+                    'id'    => $id,
                     'name'  => $cal->displayName,
                     'url'   => $cal->url,
-                    'color' => $colors[$cal->getId()] ?? $cal->color ?? '#4fc3f7',
+                    'color' => $colors[$id] ?? $cal->color ?? '#4fc3f7',
+                    'visible' => array_key_exists($id, $visible) ? (bool)$visible[$id] : true,
                 ];
             }
         }
 
         $this->rc->output->command('plugin.caldav-calendars-response', ['calendars' => $calendars]);
+        $this->rc->output->send();
+    }
+
+    /** Speichert die Sichtbarkeit (an/aus) aller Kalender in den User-Prefs. */
+    public function action_set_visible_calendars()
+    {
+        $ids = rcube_utils::get_input_value('_visible', rcube_utils::INPUT_POST);
+        $visible = [];
+        if (is_array($ids)) {
+            foreach ($ids as $id) {
+                $visible[(string)$id] = true;
+            }
+        }
+        $prefs = $this->rc->user->get_prefs();
+        $prefs['caldav_suite_visible_calendars'] = json_encode($visible);
+        $this->rc->user->save_prefs($prefs);
+        $this->rc->output->command('plugin.caldav-visible-saved', ['ok' => true]);
         $this->rc->output->send();
     }
 
