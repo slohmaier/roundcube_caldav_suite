@@ -241,6 +241,10 @@ class caldav_suite extends rcube_plugin
 
     public function action_get_events()
     {
+        // Zeit- und Memory-Limit fuer grosse Abfragen anheben.
+        @ini_set('memory_limit', '256M');
+        @set_time_limit(120);
+
         $clients = $this->get_all_caldav_clients();
         if (empty($clients)) {
             $this->rc->output->command('plugin.caldav-events-response', ['error' => $this->gettext('no_caldav_configured')]);
@@ -254,13 +258,24 @@ class caldav_suite extends rcube_plugin
 
         $events = [];
         foreach ($clients as $client) {
+            // Alle (sichtbaren) Kalender-URLs dieses Clients parallel abfragen.
+            $urls = [];
+            $urlToCalId = [];
             foreach ($client->getCalendars() as $cal) {
                 if (!empty($calendarIds) && !in_array($cal->getId(), $calendarIds)) {
                     continue;
                 }
-                foreach ($client->getEvents($cal->url, $start, $end) as $event) {
+                $urls[] = $cal->url;
+                $urlToCalId[$cal->url] = $cal->getId();
+            }
+            if (empty($urls)) {
+                continue;
+            }
+            $byUrl = $client->getEventsParallel($urls, $start, $end);
+            foreach ($byUrl as $url => $calEvents) {
+                foreach ($calEvents as $event) {
                     $data = $event->toArray();
-                    $data['calendarId'] = $cal->getId();
+                    $data['calendarId'] = $urlToCalId[$url] ?? '';
                     $events[] = $data;
                 }
             }

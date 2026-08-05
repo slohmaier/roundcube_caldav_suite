@@ -130,8 +130,16 @@ class CalDAVClient
             return [];
         }
 
+        return $this->parseQueryResponse($response['body'], $url, $start, $end);
+    }
+
+    /**
+     * Parst eine calendar-query/sync Multistatus-Antwort zu CalendarObjects.
+     */
+    private function parseQueryResponse(string $body, string $url, \DateTimeInterface $start, \DateTimeInterface $end): array
+    {
         $objects = [];
-        $parsed = $this->client->parseMultiStatus($response['body']);
+        $parsed = $this->client->parseMultiStatus($body);
 
         foreach ($parsed as $href => $propSet) {
             $calData = $propSet[200]['{urn:ietf:params:xml:ns:caldav}calendar-data'] ?? null;
@@ -182,6 +190,70 @@ class CalDAVClient
         }
 
         return $objects;
+    }
+
+    /**
+     * Parallel events query ueber mehrere Kalender-URLs (curl_multi).
+     * @param string[] $calendarUrls
+     * @return array<string, CalendarObject[]> map url => objects
+     */
+    public function getEventsParallel(array $calendarUrls, \DateTimeInterface $start, \DateTimeInterface $end): array
+    {
+        if (empty($calendarUrls)) {
+            return [];
+        }
+        $body = '<?xml version="1.0" encoding="utf-8" ?>
+<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop><D:getetag/><C:calendar-data/></D:prop>
+  <C:filter><C:comp-filter name="VCALENDAR"><C:comp-filter name="VEVENT">
+    <C:time-range start="' . $start->format('Ymd\THis\Z') . '"
+                  end="' . $end->format('Ymd\THis\Z') . '"/>
+  </C:comp-filter></C:comp-filter></C:filter>
+</C:calendar-query>';
+
+        $mh = curl_multi_init();
+        $handles = [];
+        foreach ($calendarUrls as $url) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CUSTOMREQUEST => 'REPORT',
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/xml; charset=utf-8',
+                    'Depth: 1',
+                    'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password),
+                ],
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_TIMEOUT => 60,
+                CURLOPT_SSL_VERIFYPEER => true,
+            ]);
+            $handles[$url] = $ch;
+            curl_multi_add_handle($mh, $ch);
+        }
+
+        // ausfuehren
+        do {
+            $status = curl_multi_exec($mh, $running);
+            if ($running) {
+                curl_multi_select($mh, 1.0);
+            }
+        } while ($running && $status === CURLM_OK);
+
+        $result = [];
+        foreach ($handles as $url => $ch) {
+            $response = curl_multi_getcontent($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+            if ($httpCode === 207 && $response) {
+                $result[$url] = $this->parseQueryResponse($response, $url, $start, $end);
+            } else {
+                $result[$url] = [];
+            }
+        }
+        curl_multi_close($mh);
+
+        return $result;
     }
 
     /**
