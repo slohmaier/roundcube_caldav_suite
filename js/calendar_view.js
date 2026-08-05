@@ -604,12 +604,46 @@
             return;
         }
 
+        var selectedUrl = null;
+        var selectedItem = null;
+
         var openEv = function(url) {
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
         };
+        var deleteEv = function(url) {
+            var ev = state.events.find(function(e) { return e.url === url; });
+            if (!ev) return;
+            if (confirm(caldav_suite.label('confirm_delete_event'))) {
+                rcmail.http_post('plugin.caldav-event-delete', { _url: ev.url, _etag: ev.etag || '' });
+            }
+        };
+        var newEv = function() {
+            caldav_event_dialog.open(null, state.calendars);
+        };
 
-        var html = header + '<ul class="listing">';
+        // Auswahl setzen + Button-Zustaende aktualisieren
+        var setSelection = function(item) {
+            if (!item) return;
+            selectedItem = item;
+            selectedUrl = item.getAttribute('data-url');
+            // alle anderen Items deselektieren
+            var items = container.find('.list-event');
+            items.removeClass('selected');
+            item.addClass('selected');
+            updateActions();
+        };
+        var updateActions = function() {
+            var has = !!selectedUrl;
+            container.find('.btn-evt-edit, .btn-evt-delete').prop('disabled', !has);
+        };
+
+        var html = header + '<div class="list-actions" role="toolbar" aria-label="Termin-Aktionen">'
+            + '<button type="button" class="btn btn-sm btn-evt-new" data-action="new">' + rcmail.quote_html(caldav_suite.label('new_event')) + '</button>'
+            + '<button type="button" class="btn btn-sm btn-evt-edit" data-action="edit" disabled>' + rcmail.quote_html(caldav_suite.label('edit_event')) + '</button>'
+            + '<button type="button" class="btn btn-sm btn-evt-delete" data-action="delete" disabled>' + rcmail.quote_html(caldav_suite.label('delete')) + '</button>'
+            + '</div>'
+            + '<ul class="listing">';
         var lastDate = '';
 
         events.forEach(function(ev) {
@@ -632,28 +666,36 @@
             var aria = [caldav_suite.formatDateLong(ev.start), time, ev.summary, ev.location || '',
                         (calName ? 'Kalender ' + calName : ''), travelLbl]
                 .filter(function(s) { return s; }).join(', ');
-            // role/tabindex setzt makeListNavigable; Inhalt aria-hidden -> NVDA liest nur das aria-label
-            // <a> im Item: Theme uebernimmt Hover/selected-Optik der .listing li a natuerlich.
+            // Klick auf das Item waehlt nur aus (kein sofortiges Edit). Bearbeiten via Button/Enter.
             html += '<li class="list-event" data-url="' + ev.url + '" aria-label="' + rcmail.quote_html(aria) + '">'
-                + '<a href="#" onclick="return false" class="list-event-link">'
                 + '<span class="event-color-dot" style="background:' + color + '" aria-hidden="true"></span>'
                 + '<span class="event-time" aria-hidden="true">' + time + '</span>'
                 + '<span class="event-summary" aria-hidden="true">' + rcmail.quote_html(ev.summary) + '</span>'
                 + (ev.location ? '<span class="event-location" aria-hidden="true">' + rcmail.quote_html(ev.location) + '</span>' : '')
                 + travelHtml
-                + '</a>'
                 + '</li>';
         });
         html += '</ul>';
 
         container.html(html);
-        container.find('.list-event').click(function() { openEv($(this).data('url')); });
-        // <a> innerhalb des Items nicht als Link behandeln (Navigation via makeListNavigable)
-        container.find('.list-event-link').click(function(e) { e.preventDefault(); });
+
+        // Aktionen
+        container.find('.btn-evt-new').click(function() { newEv(); });
+        container.find('.btn-evt-edit').click(function() { if (selectedUrl) openEv(selectedUrl); });
+        container.find('.btn-evt-delete').click(function() { if (selectedUrl) deleteEv(selectedUrl); });
+
+        // Klick auf Item: nur auswaehlen
+        container.find('.list-event').click(function() { setSelection($(this)); });
+
         caldav_a11y.makeListNavigable(container.find('.listing')[0], {
             itemSelector: '.list-event',
             label: 'Terminliste',
-            onActivate: function(item) { openEv(item.getAttribute('data-url')); }
+            onActivate: function(item) { // Enter -> auswaehlen (kein Auto-Edit)
+                setSelection($(item));
+            },
+            onToggle: function(item) { // Leertaste -> auswaehlen
+                setSelection($(item));
+            }
         });
     }
 
