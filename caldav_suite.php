@@ -26,11 +26,6 @@ class caldav_suite extends rcube_plugin
     /** Erkannte Kalender-Einladung in der gerade geladenen Mail (oder null). */
     private $itip = null;
 
-    /** CalDAVClient-Objekte pro Request cachen, damit getCalendars() (intern $this->collections)
-        nicht bei jedem Aufruf erneut PROPFINDs gegen Radicale macht. */
-    private $caldav_main_client = null;
-    private $caldav_extra_clients = null;
-
     public function init()
     {
         $this->rc = rcmail::get_instance();
@@ -721,9 +716,6 @@ class caldav_suite extends rcube_plugin
 
     private function get_caldav_client(): ?CalDAVClient
     {
-        if ($this->caldav_main_client !== null) {
-            return $this->caldav_main_client;
-        }
         $prefs = $this->rc->user->get_prefs();
         $url = $prefs['caldav_suite_url'] ?? '';
         $username = $prefs['caldav_suite_username'] ?? '';
@@ -739,7 +731,7 @@ class caldav_suite extends rcube_plugin
         }
 
         try {
-            return $this->caldav_main_client = new CalDAVClient($url, $username, $decrypted);
+            return new CalDAVClient($url, $username, $decrypted);
         } catch (\Exception $e) {
             return null;
         }
@@ -1051,13 +1043,6 @@ class caldav_suite extends rcube_plugin
 
     private function get_all_caldav_clients(): array
     {
-        if ($this->caldav_extra_clients !== null) {
-            $clients = [];
-            if ($this->caldav_main_client) {
-                $clients[] = $this->caldav_main_client;
-            }
-            return array_merge($clients, $this->caldav_extra_clients);
-        }
         $clients = [];
         $main = $this->get_caldav_client();
         if ($main) {
@@ -1070,20 +1055,18 @@ class caldav_suite extends rcube_plugin
         $password = $prefs['caldav_suite_password'] ?? '';
         $decrypted = $this->rc->decrypt($password);
 
-        $extras = [];
         if (!empty($extraUrls) && $decrypted !== false) {
             foreach (explode("\n", $extraUrls) as $url) {
                 $url = trim($url);
                 if (empty($url)) continue;
                 try {
-                    $extras[] = new CalDAVClient($url, $username, $decrypted);
+                    $clients[] = new CalDAVClient($url, $username, $decrypted);
                 } catch (\Exception $e) {
                     // skip broken URLs
                 }
             }
         }
-        $this->caldav_extra_clients = $extras;
 
-        return array_merge($clients, $extras);
+        return $clients;
     }
 }
