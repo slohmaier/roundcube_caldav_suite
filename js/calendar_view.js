@@ -12,7 +12,14 @@
         calendars: [],
         visibleCalendars: {},
         events: [],
-        loading: false
+        loading: false,
+        // Infinite-Scrolling-Fenster der Listenansicht (geladener Zeitraum)
+        listStart: null,
+        listEnd: null,
+        listLoadingMore: false,
+        listPendingAppend: false,   // beim naechsten response: Events ANHAENGEN
+        listPendingPrepend: false,   // beim naechsten response: Events VORANSTELLEN
+        listScrollBound: false
     };
 
     var DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -66,7 +73,22 @@
 
         rcmail.addEventListener('plugin.caldav-events-response', function(data) {
             state.loading = false;
-            if (data.events) {
+            if (!data.events) { state.listLoadingMore = false; return; }
+
+            if (state.currentView === 'list' && state.listPendingAppend) {
+                // Neuere Termine unten anhaengen
+                state.listPendingAppend = false;
+                state.listLoadingMore = false;
+                state.events = state.events.concat(data.events);
+                renderCurrentView(true); // nur Liste neu rendern, Scroll-Position unten behalten
+            } else if (state.currentView === 'list' && state.listPendingPrepend) {
+                // Aeltere Termine oben voranstellen
+                state.listPendingPrepend = false;
+                state.listLoadingMore = false;
+                state.events = data.events.concat(state.events);
+                renderCurrentView(true);
+            } else {
+                state.listLoadingMore = false;
                 state.events = data.events;
                 renderCurrentView();
             }
@@ -86,6 +108,9 @@
 
     function switchView(view) {
         state.currentView = view;
+        state.listScrollBound = false;
+        state.listPendingAppend = false;
+        state.listPendingPrepend = false;
         highlightActiveView();
         loadAndRender();
         caldav_suite.announce(caldav_suite.label('view_' + view));
@@ -151,12 +176,50 @@
     function loadEvents() {
         var range = getViewRange();
         state.loading = true;
+        // Listenansicht: Fenster merken (fuer Infinite Scrolling)
+        if (state.currentView === 'list') {
+            state.listStart = range.start;
+            state.listEnd = range.end;
+            state.listScrollBound = false;
+            state.listPendingAppend = false;
+            state.listPendingPrepend = false;
+        }
         var visibleIds = Object.keys(state.visibleCalendars).filter(function(id) { return state.visibleCalendars[id]; });
         rcmail.http_post('plugin.caldav-events', {
             _start: range.start.toISOString(),
             _end: range.end.toISOString(),
             _calendars: visibleIds
         });
+    }
+
+    // Laedt einen weiteren Zeitraum-Block fuer die Listenansicht (Infinite Scroll).
+    // direction: -1 = aeltere Termine oben, +1 = neuere Termine unten.
+    function loadListMore(direction) {
+        if (state.listLoadingMore || state.loading) return;
+        if (!state.listStart || !state.listEnd) return;
+        state.listLoadingMore = true;
+
+        var blockDays = 120; // ~4 Monate
+        var newStart, newEnd;
+        if (direction < 0) {
+            newEnd = new Date(state.listStart.getTime());
+            newStart = new Date(newEnd.getTime() - blockDays * 86400000);
+            state.listPendingPrepend = true;
+        } else {
+            newStart = new Date(state.listEnd.getTime());
+            newEnd = new Date(newStart.getTime() + blockDays * 86400000);
+            state.listPendingAppend = true;
+        }
+
+        var visibleIds = Object.keys(state.visibleCalendars).filter(function(id) { return state.visibleCalendars[id]; });
+        rcmail.http_post('plugin.caldav-events', {
+            _start: newStart.toISOString(),
+            _end: newEnd.toISOString(),
+            _calendars: visibleIds
+        });
+        // Fenster erweitern, damit naechstes Nachladen korrekt anknuepft
+        state.listStart = direction < 0 ? newStart : state.listStart;
+        state.listEnd = direction > 0 ? newEnd : state.listEnd;
     }
 
     function getViewRange() {
@@ -187,14 +250,11 @@
                 end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
                 break;
             case 'list':
-                // Listenansicht wochenweise (wie 'week')
-                start = new Date(d);
-                var dowL = start.getDay();
-                var firstDayL = getFirstDay();
-                start.setDate(start.getDate() - ((dowL - firstDayL + 7) % 7));
+                // Listenansicht: grosses Startfenster (1 Monat zurueck, 8 Monate vor).
+                // Weitere Bloecke werden per Infinite-Scrolling nachgeladen.
+                start = new Date(d.getFullYear(), d.getMonth() - 1, 1);
                 start.setHours(0, 0, 0, 0);
-                end = new Date(start);
-                end.setDate(end.getDate() + 6);
+                end = new Date(d.getFullYear(), d.getMonth() + 8, 1);
                 end.setHours(23, 59, 59);
                 break;
         }
@@ -232,14 +292,20 @@
         $('#btn-range').text(title);
     }
 
-    function renderCurrentView() {
+    function renderCurrentView(keepScroll) {
         updateTitle();
         var container = $('#calendar-grid');
+        // Scroll-Position vor dem Re-Render merken (fuer Infinite Scrolling)
+        var scroller = container.closest('.scroller')[0];
+        var prevScrollTop = scroller ? scroller.scrollTop : 0;
         switch (state.currentView) {
             case 'month': renderMonth(container); break;
             case 'week':  renderWeek(container);  break;
             case 'day':   renderDay(container);   break;
-            case 'list':  renderList(container);  break;
+            case 'list':  renderList(container, keepScroll);  break;
+        }
+        if (keepScroll && scroller) {
+            scroller.scrollTop = prevScrollTop;
         }
         // Nur bei Range-Wechsel (navigate/heute/Woche-wählen/View-Wechsel) ansagen,
         // nicht beim blossen Ein-/Ausblenden eines Kalenders.
@@ -589,7 +655,7 @@
 
     // ---- List/Agenda View (accessible) ----
 
-    function renderList(container) {
+    function renderList(container, keepScroll) {
         var events = getVisibleEvents();
         events.sort(function(a, b) { return (a.start || '') < (b.start || '') ? -1 : 1; });
 
@@ -715,6 +781,19 @@
                 toggleSelection($(item));
             }
         });
+
+        // Infinite Scrolling: am unteren/oberen Rand neuen Block laden.
+        var scroller = container.closest('.scroller')[0];
+        if (scroller && !state.listScrollBound) {
+            state.listScrollBound = true;
+            $(scroller).on('scroll', function() {
+                var el = scroller;
+                var nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+                var nearTop = el.scrollTop < 150;
+                if (nearBottom) loadListMore(1);
+                else if (nearTop) loadListMore(-1);
+            });
+        }
     }
 
     // ---- Helpers ----
