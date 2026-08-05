@@ -310,11 +310,37 @@ class caldav_suite extends rcube_plugin
     public function action_delete_event()
     {
         $client = $this->get_caldav_client();
-        $url = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
-        $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
+        // Einzel-URL (ueberl. fuer Alt-Aufrufe) oder mehrere URLs (Multiselection)
+        $urls = rcube_utils::get_input_value('_urls', rcube_utils::INPUT_POST);
+        if (is_array($urls)) {
+            $urls = array_values(array_filter($urls, 'is_string'));
+        } else {
+            $u = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
+            $urls = $u !== '' ? [$u] : [];
+        }
 
-        if ($client && $client->deleteObject($url, $etag ?: null)) {
-            $this->rc->output->show_message($this->gettext('event_deleted'), 'confirmation');
+        if (!$client || empty($urls)) {
+            $this->rc->output->show_message($this->gettext('error_deleting'), 'error');
+            $this->rc->output->send();
+            return;
+        }
+
+        $ok = 0;
+        foreach ($urls as $url) {
+            try {
+                if ($client->deleteObject($url)) {
+                    $ok++;
+                }
+            } catch (\Throwable $e) {
+                // einzelnen Termin ueberspringen
+            }
+        }
+
+        if ($ok > 0) {
+            $this->rc->output->show_message(
+                $ok === count($urls) ? $this->gettext('event_deleted') : $this->gettext('error_deleting'),
+                $ok === count($urls) ? 'confirmation' : 'error'
+            );
             $this->rc->output->command('plugin.caldav-event-deleted', ['success' => true]);
         } else {
             $this->rc->output->show_message($this->gettext('error_deleting'), 'error');

@@ -604,38 +604,52 @@
             return;
         }
 
-        var selectedUrl = null;
-        var selectedItem = null;
+        var selectedUrls = {};
 
         var openEv = function(url) {
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
         };
-        var deleteEv = function(url) {
-            var ev = state.events.find(function(e) { return e.url === url; });
-            if (!ev) return;
-            if (confirm(caldav_suite.label('confirm_delete_event'))) {
-                rcmail.http_post('plugin.caldav-event-delete', { _url: ev.url, _etag: ev.etag || '' });
+        var deleteEv = function() {
+            var urls = Object.keys(selectedUrls);
+            if (!urls.length) return;
+            var n = urls.length;
+            var msg = n === 1 ? caldav_suite.label('confirm_delete_event') : n + ' Termine wirklich löschen?';
+            if (confirm(msg)) {
+                rcmail.http_post('plugin.caldav-event-delete', { _urls: urls });
             }
         };
         var newEv = function() {
             caldav_event_dialog.open(null, state.calendars);
         };
 
-        // Auswahl setzen + Button-Zustaende aktualisieren
-        var setSelection = function(item) {
-            if (!item) return;
-            selectedItem = item;
-            selectedUrl = item.getAttribute('data-url');
-            // alle anderen Items deselektieren
-            var items = container.find('.list-event');
-            items.removeClass('selected');
-            item.addClass('selected');
+        var selectedCount = function() { return Object.keys(selectedUrls).length; };
+
+        // einzelnes Item togglen (Multi: Strg+Klick / Leertaste); add==true erzwingt Anwaehlen
+        var toggleOne = function(item, add) {
+            var url = item.getAttribute('data-url');
+            if (url === null) return;
+            var on;
+            if (add === true) { selectedUrls[url] = true; on = true; }
+            else if (selectedUrls[url]) { delete selectedUrls[url]; on = false; }
+            else { selectedUrls[url] = true; on = true; }
+            item.classList.toggle('selected', on);
             updateActions();
         };
+        var toggleSelection = function(item) { toggleOne(item); };
+
+        // Auswahl setzen: nur dieses Item (Rest deselektiert)
+        var setSelection = function(item) {
+            if (!item) return;
+            selectedUrls = {};
+            toggleOne(item, true);
+        };
+
         var updateActions = function() {
-            var has = !!selectedUrl;
-            container.find('.btn-evt-edit, .btn-evt-delete').prop('disabled', !has);
+            var n = selectedCount();
+            // Delete bei >=1, Edit nur bei genau 1
+            container.find('.btn-evt-delete').prop('disabled', n === 0);
+            container.find('.btn-evt-edit').prop('disabled', n !== 1);
         };
 
         var html = header + '<div class="list-actions" role="toolbar" aria-label="Termin-Aktionen">'
@@ -681,20 +695,25 @@
 
         // Aktionen
         container.find('.btn-evt-new').click(function() { newEv(); });
-        container.find('.btn-evt-edit').click(function() { if (selectedUrl) openEv(selectedUrl); });
-        container.find('.btn-evt-delete').click(function() { if (selectedUrl) deleteEv(selectedUrl); });
+        container.find('.btn-evt-edit').click(function() {
+            if (selectedCount() === 1) openEv(Object.keys(selectedUrls)[0]);
+        });
+        container.find('.btn-evt-delete').click(function() { deleteEv(); });
 
-        // Klick auf Item: nur auswaehlen
-        container.find('.list-event').click(function() { setSelection($(this)); });
+        // Klick: Strg+Klick togglet (Multi), normaler Klick selektiert einzeln
+        container.find('.list-event').click(function(e) {
+            if (e.ctrlKey || e.metaKey) { toggleSelection($(this)); }
+            else { setSelection($(this)); }
+        });
 
         caldav_a11y.makeListNavigable(container.find('.listing')[0], {
             itemSelector: '.list-event',
             label: 'Terminliste',
-            onActivate: function(item) { // Enter -> auswaehlen (kein Auto-Edit)
+            onActivate: function(item) { // Enter -> einzelne Auswahl setzen
                 setSelection($(item));
             },
-            onToggle: function(item) { // Leertaste -> auswaehlen
-                setSelection($(item));
+            onToggle: function(item) { // Leertaste -> Multiselect togglen
+                toggleSelection($(item));
             }
         });
     }
