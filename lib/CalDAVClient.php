@@ -542,6 +542,163 @@ class CalDAVClient
         return $objects;
     }
 
+    /**
+     * Holt den getctag (Aenderungsindikator) eines Kalenders via PROPFIND.
+     * Rueckgabe: ctag-String oder null.
+     */
+    public function getCtag(string $calendarUrl): ?string
+    {
+        $body = '<?xml version="1.0" encoding="utf-8" ?>
+<d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">
+  <d:prop><cs:getctag/></d:prop>
+</d:propfind>';
+        try {
+            $response = $this->client->request('PROPFIND', $calendarUrl, $body, [
+                'Content-Type' => 'application/xml; charset=utf-8',
+                'Depth' => '0',
+            ]);
+            if (($response['statusCode'] ?? 0) !== 207) {
+                return null;
+            }
+            // ctag aus der multistatus-Antwort extrahieren
+            if (preg_match('~<[^>]*getctag[^>]*>([^<]+)</~i', $response['body'] ?? '', $m)) {
+                return trim($m[1], '"');
+            }
+        } catch (\Throwable $e) {
+            // ignorieren
+        }
+        return null;
+    }
+
+    /**
+     * RFC 6578 sync-collection-REPORT. Fordert calendar-data MIT an, damit bei
+     * Voll- und Delta-Sync die ical direkt in der Antwort steckt (keine Einzel-GETs).
+     * Liefert:
+     *   ['token' => string, 'changed' => [href => ical], 'removed' => [href, ...]]
+     * Bei Token-Reset / abgelaufen wird der Token zurueckgesetzt (Vollsync).
+     */
+    public function syncCollection(string $calendarUrl, string $token): array
+    {
+        $body = '<?xml version="1.0" encoding="utf-8" ?>
+<d:sync-collection xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:sync-token>' . htmlspecialchars($token, ENT_XML1) . '</d:sync-token>
+  <d:sync-level>1</d:sync-level>
+  <d:prop><d:getetag/><c:calendar-data/></d:prop>
+</d:sync-collection>';
+        $changed = [];
+        $removed = [];
+        $newToken = '';
+        try {
+            $response = $this->client->request('REPORT', $calendarUrl, $body, [
+                'Content-Type' => 'application/xml; charset=utf-8',
+                'Depth' => '1',
+            ]);
+            $status = $response['statusCode'] ?? 0;
+            $respBody = $response['body'] ?? '';
+            if ($status === 207) {
+                // Token aus der Antwort
+                if (preg_match('~<[^>]*sync-token[^>]*>([^<]+)</~i', $respBody, $m)) {
+                    $newToken = trim($m[1]);
+                }
+                $parsed = $this->client->parseMultiStatus($respBody);
+                foreach ($parsed as $href => $propSet) {
+                    if (isset($propSet[404])) {
+                        $removed[] = $href;
+                    } else {
+                        $calData = $propSet[200]['{urn:ietf:params:xml:ns:caldav}calendar-data'] ?? null;
+                        if ($calData !== null) {
+                            $changed[$href] = $calData;
+                        } else {
+                            // nur etag (kein data) -> als Aenderung ohne Inhalt markieren
+                            $changed[$href] = null;
+                        }
+                    }
+                }
+            } elseif ($status === 400 || $status === 403) {
+                // Token abgelaufen/ungueltig -> Vollsync, neuer leerer Token
+                $newToken = '';
+            }
+        } catch (\Throwable $e) {
+            // bei Fehler Vollsync erzwingen
+            $newToken = '';
+        }
+        return [
+            'token'   => $newToken,
+            'changed' => $changed,
+            'removed' => $removed,
+        ];
+    }
+
+    /** Laedt die vollstaendige ICS eines einzelnen Objekts (fuer Cache-Befuellung). */
+    public function getObjectByUrl(string $url): ?string
+    {
+        try {
+            $response = $this->client->request('GET', $url);
+            if (($response['statusCode'] ?? 0) === 200) {
+                return $response['body'] ?? null;
+            }
+        } catch (\Throwable $e) {
+            // ignorieren
+        }
+        return null;
+    }
+
+    /**
+     * Filtert + expandiert VEVENT-Objekte aus einer Map [href => ical] fuer einen Zeitraum.
+     * Wiederverwendet dieselbe Recurrence-Expansion wie queryEvents().
+     *
+     * @param array<string,string> $icalMap
+     * @return CalendarObject[]
+     */
+    public function eventsFromIcalMap(array $icalMap, \DateTimeInterface $start, \DateTimeInterface $end): array
+    {
+        $objects = [];
+        foreach ($icalMap as $href => $calData) {
+            if ($calData === null || $calData === '') {
+                continue;
+            }
+            try {
+                $vcalendar = VObject\Reader::read($calData);
+                $fullUrl = $this->resolveUrl($this->baseUrl, $href);
+                $vevent = $vcalendar->VEVENT ?? null;
+                if (!$vevent) {
+                    continue;
+                }
+                if (isset($vevent->RRULE)) {
+                    $uid = (string)($vevent->UID ?? '');
+                    if (!$uid) {
+                        continue;
+                    }
+                    $it = new VObject\Recur\EventIterator($vcalendar, $uid);
+                    $it->fastForward($start);
+                    $limit = 200;
+                    while ($it->valid() && $it->getDTStart() < $end && $limit-- > 0) {
+                        $instance = $it->getEventObject();
+                        $objects[] = new CalendarObject(
+                            url: $fullUrl,
+                            etag: null,
+                            component: $instance,
+                            vcalendar: $vcalendar,
+                            rawData: $calData,
+                        );
+                        $it->next();
+                    }
+                } else {
+                    $objects[] = new CalendarObject(
+                        url: $fullUrl,
+                        etag: null,
+                        component: $vevent,
+                        vcalendar: $vcalendar,
+                        rawData: $calData,
+                    );
+                }
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
+        return $objects;
+    }
+
     private function resolveUrl(string $base, string $relative): string
     {
         if (str_starts_with($relative, 'http://') || str_starts_with($relative, 'https://')) {
