@@ -53,6 +53,24 @@ Go to **Settings → CalDAV Suite** in Roundcube and enter:
 The plugin discovers all calendars, task lists and address books automatically.
 (These settings are stored per Roundcube user, not in `config.inc.php`.)
 
+## Performance
+
+To keep calendar loads fast, especially against single-threaded servers like Radicale:
+
+- **Parallel event queries** — the plugin queries all calendars of a client
+  concurrently with `curl_multi` instead of sequentially, so loading 2-4 calendars
+  takes roughly the time of one request.
+- **Parallel discovery** — when a server reports both `VEVENT` and `VTODO` for a
+  calendar (e.g. Radicale reports `VEVENT,VTODO,VJOURNAL` for every calendar), the
+  per-calendar content checks run in parallel instead of sequentially.
+- **Session-cached discovery** — the calendar/task-list discovery runs once per
+  session and is reused for later AJAX calls, so navigating between views does not
+  re-scan the server every time.
+
+This is transparent and requires no configuration. For very large calendars, a
+multi-worker WSGI setup on the CalDAV server (e.g. gunicorn/uvicorn behind Radicale)
+helps further with concurrent requests.
+
 ## Supported fields
 
 **Events (VEVENT):** summary, start/end, all-day, time zone (DST-aware), location,
