@@ -15,17 +15,19 @@
 <div id="layout-content" class="selected" role="main">
   <div class="header">
     <span class="toolbar caldav-nav" role="toolbar" aria-label="Calendar toolbar">
-      <button type="button" class="btn btn-sm" id="btn-today"><roundcube:label name="caldav_suite.today" /></button>
-      <button type="button" class="btn btn-sm" id="btn-prev" aria-label="<roundcube:label name='caldav_suite.previous' />">&#9664;</button>
-      <button type="button" class="btn btn-sm" id="btn-next" aria-label="<roundcube:label name='caldav_suite.next' />">&#9654;</button>
+      <span class="caldav-nav-left">
+        <button type="button" class="btn btn-sm" id="btn-today"><roundcube:label name="caldav_suite.today" /></button>
+        <button type="button" class="btn btn-sm" id="btn-prev" aria-label="<roundcube:label name='caldav_suite.previous' />">&#9664;</button>
+        <button type="button" class="btn btn-sm" id="btn-next" aria-label="<roundcube:label name='caldav_suite.next' />">&#9654;</button>
+      </span>
       <button type="button" class="btn btn-sm caldav-range-btn" id="btn-range" aria-haspopup="dialog" aria-label="<roundcube:label name='caldav_suite.pick_period' />"></button>
-      <span class="spacer"></span>
-      <button type="button" class="btn btn-sm view-btn" data-view="month"><roundcube:label name="caldav_suite.view_month" /></button>
-      <button type="button" class="btn btn-sm view-btn" data-view="week"><roundcube:label name="caldav_suite.view_week" /></button>
-      <button type="button" class="btn btn-sm view-btn" data-view="day"><roundcube:label name="caldav_suite.view_day" /></button>
-      <button type="button" class="btn btn-sm view-btn" data-view="list"><roundcube:label name="caldav_suite.view_list" /></button>
-      <span class="spacer"></span>
-      <button type="button" class="btn btn-primary btn-sm" id="btn-new-event"><roundcube:label name="caldav_suite.new_event" /></button>
+      <span class="caldav-nav-right">
+        <button type="button" class="btn btn-sm view-btn" data-view="month"><roundcube:label name="caldav_suite.view_month" /></button>
+        <button type="button" class="btn btn-sm view-btn" data-view="week"><roundcube:label name="caldav_suite.view_week" /></button>
+        <button type="button" class="btn btn-sm view-btn" data-view="day"><roundcube:label name="caldav_suite.view_day" /></button>
+        <button type="button" class="btn btn-sm view-btn" data-view="list"><roundcube:label name="caldav_suite.view_list" /></button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-new-event"><roundcube:label name="caldav_suite.new_event" /></button>
+      </span>
     </span>
   </div>
   <div class="scroller">
