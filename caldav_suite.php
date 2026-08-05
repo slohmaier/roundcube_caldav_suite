@@ -87,7 +87,10 @@ class caldav_suite extends rcube_plugin
         ], 'taskbar');
 
         // CSS and base JS on all tasks (needed for taskbar icons + settings)
-        $this->include_stylesheet($this->local_skin_path() . '/styles/caldav_suite.css');
+        // Achtung: NICHT $this->local_skin_path() verwenden. Das gibt den aktiven Skin
+        // (hier 'elastic-de') zurueck, in dem KEIN caldav_suite.css liegt -> CSS wuerde
+        // nie geladen. Die Styles liegen unter 'elastic', daher dort explizit laden.
+        $this->include_stylesheet('skins/elastic/styles/caldav_suite.css');
         $this->include_script('js/caldav_suite.js');
         $this->include_script('js/a11y.js');
 
