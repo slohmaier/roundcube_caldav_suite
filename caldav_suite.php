@@ -30,9 +30,6 @@ class caldav_suite extends rcube_plugin
     {
         $this->rc = rcmail::get_instance();
 
-        // Cache-Tabelle fuer den Kalender-Spiegel (RFC 6578 sync-collection).
-        $this->ensure_cache_table();
-
         // Register AJAX actions BEFORE register_task (which clobbers $this->mytask)
         $this->register_action('plugin.caldav-calendars', [$this, 'action_get_calendars']);
         $this->register_action('plugin.caldav-events', [$this, 'action_get_events']);
@@ -244,10 +241,6 @@ class caldav_suite extends rcube_plugin
 
     public function action_get_events()
     {
-        // Sync-collection liefert ggf. viele Kalender-Objekte (calendar-data) auf einmal.
-        @ini_set('memory_limit', '512M');
-        @set_time_limit(120);
-
         $clients = $this->get_all_caldav_clients();
         if (empty($clients)) {
             $this->rc->output->command('plugin.caldav-events-response', ['error' => $this->gettext('no_caldav_configured')]);
@@ -265,7 +258,7 @@ class caldav_suite extends rcube_plugin
                 if (!empty($calendarIds) && !in_array($cal->getId(), $calendarIds)) {
                     continue;
                 }
-                foreach ($this->getEventsCached($client, $cal, $start, $end) as $event) {
+                foreach ($client->getEvents($cal->url, $start, $end) as $event) {
                     $data = $event->toArray();
                     $data['calendarId'] = $cal->getId();
                     $events[] = $data;
@@ -275,57 +268,6 @@ class caldav_suite extends rcube_plugin
 
         $this->rc->output->command('plugin.caldav-events-response', ['events' => $events]);
         $this->rc->output->send();
-    }
-
-    /**
-     * Liefert Termine eines Kalenders fuer einen Zeitraum, ueber einen lokalen
-     * Spiegel (RFC 6578 sync-collection). Bei unveraendertem Kalender (getctag gleich)
-     * werden die Events direkt aus dem Cache gefiltert/expandiert -> kein Radicale-Report.
-     */
-    private function getEventsCached(\Slohmaier\CalDAVSuite\CalDAVClient $client, $cal, \DateTimeInterface $start, \DateTimeInterface $end): array
-    {
-        $calId = $cal->getId();
-        $cache = $this->read_calendar_cache($calId);
-
-        // getctag abfragen (billiger PROPFIND)
-        $ctag = $client->getCtag($cal->url);
-
-        if ($cache && $ctag !== null && $cache['getctag'] === $ctag) {
-            // Kalender unveraendert -> aus Cache filtern
-            return $client->eventsFromIcalMap($cache['objects'] ?: [], $start, $end);
-        }
-
-        // Kalender veraendert oder kein Cache -> sync-collection
-        $token = $cache['sync_token'] ?? '';
-        $sync = $client->syncCollection($cal->url, $token);
-
-        // Neuer Vollsync (Token-Reset/leer): alle Objekte neu laden
-        if ($sync['token'] === '') {
-            $sync = $client->syncCollection($cal->url, '');
-        }
-
-        // Cache-Spiegel aktualisieren: [href => ical]
-        $objects = $cache ? ($cache['objects'] ?: []) : [];
-
-        // geaenderte Objekte: ical direkt aus der Antwort uebernehmen
-        foreach ($sync['changed'] as $href => $ical) {
-            if ($ical === null) {
-                unset($objects[$href]); // nur etag ohne data -> verwerfen
-            } else {
-                $objects[$href] = $ical;
-            }
-        }
-        // geloeschte Objekte entfernen
-        foreach ($sync['removed'] as $href) {
-            unset($objects[$href]);
-        }
-
-        // Cache schreiben (nur wenn wir einen Token und getctag haben)
-        if ($sync['token'] !== '') {
-            $this->write_calendar_cache($calId, $sync['token'], $ctag ?? '', $objects);
-        }
-
-        return $client->eventsFromIcalMap($objects, $start, $end);
     }
 
     public function action_save_event()
@@ -356,7 +298,6 @@ class caldav_suite extends rcube_plugin
         $success = $client->putObject($url, $ical, $etag ?: null);
 
         if ($success) {
-            $this->invalidate_user_cache();
             $this->rc->output->show_message($this->gettext('event_saved'), 'confirmation');
             $this->rc->output->command('plugin.caldav-event-saved', ['success' => true]);
         } else {
@@ -396,7 +337,6 @@ class caldav_suite extends rcube_plugin
         }
 
         if ($ok > 0) {
-            $this->invalidate_user_cache();
             $this->rc->output->show_message(
                 $ok === count($urls) ? $this->gettext('event_deleted') : $this->gettext('error_deleting'),
                 $ok === count($urls) ? 'confirmation' : 'error'
@@ -967,87 +907,6 @@ class caldav_suite extends rcube_plugin
         }
         $_SESSION['caldav_suite_calendars'] = $out;
         return $out;
-    }
-
-    // ===== Kalender-Spiegel-Cache (RFC 6578 sync-collection) =====
-
-    /** Erstellt (falls noetig) die Cache-Tabelle fuer den Kalender-Spiegel. */
-    private function ensure_cache_table(): void
-    {
-        $db = $this->rc->get_dbh();
-        $tables = $db->list_tables();
-        if (in_array('caldav_suite_cache', $tables, true)) {
-            return;
-        }
-        $db->query(
-            'CREATE TABLE caldav_suite_cache ('
-            . ' user_id int NOT NULL,'
-            . ' calendar varchar(255) NOT NULL,'
-            . ' sync_token varchar(255) NOT NULL DEFAULT \'\','
-            . ' getctag varchar(255) NOT NULL DEFAULT \'\','
-            . ' objects text,'
-            . ' updated timestamp NOT NULL,'
-            . ' PRIMARY KEY (user_id, calendar))'
-        );
-    }
-
-    /** Cache-Eintrag fuer einen Kalender lesen (oder null). */
-    private function read_calendar_cache(string $calId): ?array
-    {
-        $db = $this->rc->get_dbh();
-        $db->query(
-            'SELECT sync_token, getctag, objects FROM caldav_suite_cache WHERE user_id = ? AND calendar = ?',
-            (int)$this->rc->user->ID,
-            $calId
-        );
-        $row = $db->fetch_assoc();
-        if (!$row) {
-            return null;
-        }
-        return [
-            'sync_token' => $row['sync_token'],
-            'getctag'    => $row['getctag'],
-            'objects'    => json_decode($row['objects'] ?? '{}', true) ?: [],
-        ];
-    }
-
-    /** Cache-Eintrag fuer einen Kalender schreiben. */
-    private function write_calendar_cache(string $calId, string $token, string $ctag, array $objects): void
-    {
-        $db = $this->rc->get_dbh();
-        $db->query(
-            'DELETE FROM caldav_suite_cache WHERE user_id = ? AND calendar = ?',
-            (int)$this->rc->user->ID,
-            $calId
-        );
-        $db->query(
-            'INSERT INTO caldav_suite_cache (user_id, calendar, sync_token, getctag, objects, updated)'
-            . ' VALUES (?, ?, ?, ?, ?, ?)',
-            (int)$this->rc->user->ID,
-            $calId,
-            $token,
-            $ctag,
-            json_encode($objects),
-            date('Y-m-d H:i:s')
-        );
-    }
-
-    /** Cache eines Kalenders invalidieren (nach Edit/Loeschen), damit er resynct. */
-    private function invalidate_calendar_cache(string $calId): void
-    {
-        $db = $this->rc->get_dbh();
-        $db->query(
-            'DELETE FROM caldav_suite_cache WHERE user_id = ? AND calendar = ?',
-            (int)$this->rc->user->ID,
-            $calId
-        );
-    }
-
-    /** Alle Cache-Eintraege des Users invalidieren (nach Save/Delete von Terminen). */
-    private function invalidate_user_cache(): void
-    {
-        $db = $this->rc->get_dbh();
-        $db->query('DELETE FROM caldav_suite_cache WHERE user_id = ?', (int)$this->rc->user->ID);
     }
 
     private function get_my_emails(): array
