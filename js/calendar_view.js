@@ -265,6 +265,7 @@
             html += '<li class="calendar-item' + (on ? ' checked' : '') + '" data-cal-id="' + cal.id + '"'
                 + ' style="border-left:4px solid ' + cal.color + '"'
                 + ' aria-label="' + rcmail.quote_html(calAria(cal, on)) + '">'
+                + '<button type="button" class="calendar-check" aria-hidden="true" tabindex="-1"></button>'
                 + '<span class="cal-name" aria-hidden="true">' + rcmail.quote_html(cal.name) + '</span>'
                 + '</li>';
         });
@@ -275,10 +276,10 @@
             var ids = Object.keys(state.visibleCalendars).filter(function(id) { return state.visibleCalendars[id]; });
             rcmail.http_post('plugin.caldav-set-visible', { _visible: ids });
         };
-        var toggleCal = function(item) {
+        var setCal = function(item, on) {
             if (!item) return;
             var id = item.getAttribute('data-cal-id');
-            var on = !item.classList.contains('checked');
+            if (state.visibleCalendars[id] === on) return;
             state.visibleCalendars[id] = on;
             item.classList.toggle('checked', on);
             var cal = state.calendars.find(function(c) { return String(c.id) === String(id); });
@@ -286,8 +287,19 @@
             saveVisible();
             renderCurrentView();
         };
+        var toggleCal = function(item) {
+            if (!item) return;
+            setCal(item, !item.classList.contains('checked'));
+        };
 
-        $('#calendar-list .calendar-item').click(function() { toggleCal(this); });
+        // Nur Klick auf die Checkbox togglet; Klick auf Zeile/Name aendert nichts.
+        $('#calendar-list .calendar-check').click(function(e) {
+            e.stopPropagation();
+            toggleCal($(this).closest('.calendar-item')[0]);
+        });
+        $('#calendar-list .calendar-item').click(function() {
+            // bewusst nichts (kein Toggle mehr), nur Navigation/Auswahl via a11y
+        });
 
         caldav_a11y.makeListNavigable(document.getElementById('calendar-ul'), {
             itemSelector: '.calendar-item',
