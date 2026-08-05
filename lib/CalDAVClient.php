@@ -413,6 +413,7 @@ class CalDAVClient
         }
 
         $collections = [];
+        $pendingRefine = []; // [fullUrl => ['displayName','checks'=>[key=>[url,comp]]]]
         foreach ($responses as $href => $propSet) {
             if ($href === $url || $href === $url . '/') {
                 continue; // Skip the parent
@@ -450,26 +451,24 @@ class CalDAVClient
             // Default, weil der Server kein supported-calendar-component-set
             // deklariert — z.B. Apple-Reminders/Kalender auf Radicale), per
             // Inhalt verfeinern: VTODO-Listen sollen nicht als Kalender und
-            // Kalender nicht als Aufgabenliste erscheinen.
+            // Kalender nicht als Aufgabenliste erscheinen. Die Checks werden
+            // gesammelt und NACH der Schleife parallel ausgefuehrt.
             if (in_array('VEVENT', $components, true) && in_array('VTODO', $components, true)) {
-                $detected = [];
-                if ($this->collectionHasComponent($fullUrl, 'VEVENT')) {
-                    $detected[] = 'VEVENT';
-                }
-                if ($this->collectionHasComponent($fullUrl, 'VTODO')) {
-                    $detected[] = 'VTODO';
-                }
-                if (count($detected) === 1) {
-                    // Inhalt eindeutig -> auf diesen Typ verengen.
-                    $components = $detected;
-                } elseif (count($detected) === 0) {
-                    // Leere Collection: kein Inhaltssignal -> Namens-Heuristik
-                    // (z.B. "Langzeiterinnerungen" -> Aufgabenliste).
-                    $components = $this->guessComponentsByName(
-                        is_string($displayName) ? $displayName : ''
-                    );
-                }
-                // count === 2: echt gemischt -> Deklaration (beides) behalten.
+                $pendingRefine[$fullUrl] = [
+                    'displayName' => is_string($displayName) ? $displayName : '',
+                    'baseComponents' => $components,
+                    'checks' => [
+                        'VEVENT' . " " . $fullUrl => [$fullUrl, 'VEVENT'],
+                        'VTODO' . " " . $fullUrl => [$fullUrl, 'VTODO'],
+                    ],
+                ];
+                $collections[$fullUrl] = new Collection(
+                    url: $fullUrl,
+                    displayName: is_string($displayName) ? $displayName : basename(rtrim($href, '/')),
+                    components: $components,
+                    color: is_string($color) ? $color : null,
+                );
+                continue;
             }
 
             $collections[$fullUrl] = new Collection(
@@ -478,6 +477,42 @@ class CalDAVClient
                 components: $components,
                 color: is_string($color) ? $color : null,
             );
+        }
+
+        // Verfeinerungs-Checks (VEVENT/VTODO pro mehrdeutiger Collection) parallel
+        // ausfuehren statt sequenziell (spart viele ~1.4s-REPORTs).
+        if (!empty($pendingRefine)) {
+            $allChecks = [];
+            foreach ($pendingRefine as $fullUrl => $ref) {
+                foreach ($ref['checks'] as $key => $check) {
+                    $allChecks[$key] = $check;
+                }
+            }
+            $result = $this->collectionHasComponentsParallel($allChecks);
+
+            foreach ($pendingRefine as $fullUrl => $ref) {
+                $detected = [];
+                if (!empty($result['VEVENT' . "\0" . $fullUrl])) {
+                    $detected[] = 'VEVENT';
+                }
+                if (!empty($result['VTODO' . "\0" . $fullUrl])) {
+                    $detected[] = 'VTODO';
+                }
+                $components = $ref['baseComponents'];
+                if (count($detected) === 1) {
+                    $components = $detected;
+                } elseif (count($detected) === 0) {
+                    $components = $this->guessComponentsByName($ref['displayName']);
+                }
+                if (isset($collections[$fullUrl])) {
+                    $collections[$fullUrl] = new Collection(
+                        url: $fullUrl,
+                        displayName: $collections[$fullUrl]->displayName,
+                        components: $components,
+                        color: $collections[$fullUrl]->color,
+                    );
+                }
+            }
         }
 
         return $collections;
@@ -518,6 +553,66 @@ class CalDAVClient
 
         // Mindestens eine <response> mit einem .ics-Objekt?
         return (bool) preg_match('#<[^>]*:?response[^>]*>.*?\.ics#is', $response['body'] ?? '');
+    }
+
+    /**
+     * Prueft mehrere (url, comp)-Kombinationen PARALLEL (curl_multi), ob die
+     * Collection ein Objekt des Typs enthaelt. Liefert [url|comp => bool].
+     *
+     * Radicale deklariert fuer jeden Kalender pauschal [VEVENT,VTODO,VJOURNAL],
+     * wodurch sonst sequenziell pro Kalender x Typ ein REPORT laufen wuerde (~1.4s).
+     */
+    private function collectionHasComponentsParallel(array $checks): array
+    {
+        if (empty($checks)) {
+            return [];
+        }
+        $mh = curl_multi_init();
+        $handles = [];
+        foreach ($checks as $key => [$url, $comp]) {
+            $body = '<?xml version="1.0" encoding="utf-8" ?>
+<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop><D:getetag/></D:prop>
+  <C:filter>
+    <C:comp-filter name="VCALENDAR">
+      <C:comp-filter name="' . $comp . '"/>
+    </C:comp-filter>
+  </C:filter>
+</C:calendar-query>';
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CUSTOMREQUEST => 'REPORT',
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/xml; charset=utf-8',
+                    'Depth: 1',
+                    'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password),
+                ],
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_TIMEOUT => 60,
+                CURLOPT_SSL_VERIFYPEER => true,
+            ]);
+            $handles[$key] = $ch;
+            curl_multi_add_handle($mh, $ch);
+        }
+        do {
+            $status = curl_multi_exec($mh, $running);
+            if ($running) {
+                curl_multi_select($mh, 1.0);
+            }
+        } while ($running && $status === CURLM_OK);
+
+        $result = [];
+        foreach ($handles as $key => $ch) {
+            $body = curl_multi_getcontent($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+            // Mindestens eine <response> mit einem .ics-Objekt?
+            $result[$key] = ($code === 207 && preg_match('#<[^>]*:?response[^>]*>.*?\.ics#is', $body ?? ''));
+        }
+        curl_multi_close($mh);
+        return $result;
     }
 
     /**
