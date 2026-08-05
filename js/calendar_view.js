@@ -633,18 +633,23 @@
                         (calName ? 'Kalender ' + calName : ''), travelLbl]
                 .filter(function(s) { return s; }).join(', ');
             // role/tabindex setzt makeListNavigable; Inhalt aria-hidden -> NVDA liest nur das aria-label
+            // <a> im Item: Theme uebernimmt Hover/selected-Optik der .listing li a natuerlich.
             html += '<li class="list-event" data-url="' + ev.url + '" aria-label="' + rcmail.quote_html(aria) + '">'
+                + '<a href="#" onclick="return false" class="list-event-link">'
                 + '<span class="event-color-dot" style="background:' + color + '" aria-hidden="true"></span>'
                 + '<span class="event-time" aria-hidden="true">' + time + '</span>'
                 + '<span class="event-summary" aria-hidden="true">' + rcmail.quote_html(ev.summary) + '</span>'
                 + (ev.location ? '<span class="event-location" aria-hidden="true">' + rcmail.quote_html(ev.location) + '</span>' : '')
                 + travelHtml
+                + '</a>'
                 + '</li>';
         });
         html += '</ul>';
 
         container.html(html);
         container.find('.list-event').click(function() { openEv($(this).data('url')); });
+        // <a> innerhalb des Items nicht als Link behandeln (Navigation via makeListNavigable)
+        container.find('.list-event-link').click(function(e) { e.preventDefault(); });
         caldav_a11y.makeListNavigable(container.find('.listing')[0], {
             itemSelector: '.list-event',
             label: 'Terminliste',
