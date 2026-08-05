@@ -258,7 +258,7 @@
         };
         // Navigierbare Liste wie Aufgabenlisten-Sidebar: role=option-Items, KEINE
         // fokussierbaren Kinder (kein <input>). Status via .checked-Klasse + aria-label.
-        var html = '<ul id="calendar-ul" class="calendar-list">';
+        var html = '<ul id="calendar-ul" class="listing navlist">';
         state.calendars.forEach(function(cal) {
             var on = !!state.visibleCalendars[cal.id];
             html += '<li class="calendar-item' + (on ? ' checked' : '') + '" data-cal-id="' + cal.id + '"'
@@ -592,7 +592,7 @@
             if (ev) caldav_event_dialog.open(ev, state.calendars);
         };
 
-        var html = header + '<div class="list-view">';
+        var html = header + '<ul class="listing">';
         var lastDate = '';
 
         events.forEach(function(ev) {
@@ -616,19 +616,19 @@
                         (calName ? 'Kalender ' + calName : ''), travelLbl]
                 .filter(function(s) { return s; }).join(', ');
             // role/tabindex setzt makeListNavigable; Inhalt aria-hidden -> NVDA liest nur das aria-label
-            html += '<div class="list-event" data-url="' + ev.url + '" aria-label="' + rcmail.quote_html(aria) + '">'
+            html += '<li class="list-event" data-url="' + ev.url + '" aria-label="' + rcmail.quote_html(aria) + '">'
                 + '<span class="event-color-dot" style="background:' + color + '" aria-hidden="true"></span>'
                 + '<span class="event-time" aria-hidden="true">' + time + '</span>'
                 + '<span class="event-summary" aria-hidden="true">' + rcmail.quote_html(ev.summary) + '</span>'
                 + (ev.location ? '<span class="event-location" aria-hidden="true">' + rcmail.quote_html(ev.location) + '</span>' : '')
                 + travelHtml
-                + '</div>';
+                + '</li>';
         });
-        html += '</div>';
+        html += '</ul>';
 
         container.html(html);
         container.find('.list-event').click(function() { openEv($(this).data('url')); });
-        caldav_a11y.makeListNavigable(container.find('.list-view')[0], {
+        caldav_a11y.makeListNavigable(container.find('.listing')[0], {
             itemSelector: '.list-event',
             label: 'Terminliste',
             onActivate: function(item) { openEv(item.getAttribute('data-url')); }

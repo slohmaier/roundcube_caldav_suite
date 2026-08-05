@@ -19,14 +19,13 @@
 .view-btn.active { font-weight: 700; background: rgba(55, 190, 255, 0.15); }
 
 /* ---- Calendar Sidebar ---- */
-.calendar-list { list-style: none; padding: 0; margin: 0; }
-.calendar-item { display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.8em; cursor: pointer; border-radius: 4px; }
-.calendar-item:hover { background: rgba(0,0,0,0.05); }
+/* Kalenderliste nutzt die native .listing-Klasse -> Theme uebernimmt selected/Hover.
+   Nur Layout (flex) und Checkbox bleiben hier. */
+.calendar-item { display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.8em; cursor: pointer; }
 .cal-color { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
 .calendar-check { flex-shrink: 0; width: 1.1em; height: 1.1em; box-sizing: border-box; border: 2px solid #888; border-radius: 3px; position: relative; }
 .calendar-item.checked .calendar-check { background: #37beff; border-color: #37beff; }
 .calendar-item.checked .calendar-check::after { content: '\2713'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
-[role="listbox"]:focus .calendar-item[aria-selected="true"] { outline: 2px solid #37beff; outline-offset: -2px; background: rgba(55,190,255,0.12); }
 .cal-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- Month View ---- */
@@ -77,13 +76,8 @@
 
 /* ---- List/Agenda View ---- */
 .list-range { padding: 0.6em 1em; margin: 0; font-size: 1em; font-weight: 600; border-bottom: 2px solid #ddd; }
-.list-view { padding: 0 1em; }
 .list-date { font-size: 0.9em; font-weight: 600; margin: 1.5em 0 0.3em; padding-bottom: 0.3em; border-bottom: 1px solid #ddd; }
-.list-events { list-style: none; padding: 0; margin: 0; }
-.list-event { display: flex; align-items: center; gap: 0.6em; padding: 0.5em 0.4em; border-bottom: 1px solid #eee; cursor: pointer; }
-.list-event:hover { background: rgba(0,0,0,0.03); }
-[role="listbox"]:focus { outline: none; }
-[role="listbox"]:focus .list-event[aria-selected="true"] { outline: 2px solid #37beff; outline-offset: -2px; background: rgba(55,190,255,0.12); }
+.list-event { display: flex; align-items: center; gap: 0.6em; padding: 0.5em 0.4em; cursor: pointer; }
 #directorylist:focus li[aria-selected="true"] { outline: 2px solid #37beff; outline-offset: -2px; background: rgba(55,190,255,0.12); border-radius: 4px; }
 #directorylist:focus li[aria-selected="true"] > a { background: transparent; }
 .event-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
@@ -92,13 +86,11 @@
 .list-event .event-location { font-size: 0.85em; color: #888; }
 
 /* ---- Tasks ---- */
-.tasklist-list { list-style: none; padding: 0; margin: 0; }
-.tasklist-item { display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.8em; cursor: pointer; border-radius: 4px; }
+.tasklist-item { display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.8em; cursor: pointer; }
 .tasklist-name { flex: 1; }
 .tasklist-check { flex-shrink: 0; width: 1.1em; height: 1.1em; box-sizing: border-box; border: 2px solid #888; border-radius: 3px; position: relative; }
 .tasklist-item.checked .tasklist-check { background: #37beff; border-color: #37beff; }
 .tasklist-item.checked .tasklist-check::after { content: '\2713'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
-[role="listbox"]:focus .tasklist-item[aria-selected="true"] { outline: 2px solid #37beff; outline-offset: -2px; background: rgba(55,190,255,0.12); }
 .task-list { list-style: none; padding: 0; margin: 0; }
 .task-item { display: flex; align-items: center; gap: 0.5em; padding: 0.6em 1em; border-bottom: 1px solid #eee; }
 .task-item.completed .task-summary { text-decoration: line-through; opacity: 0.5; }
@@ -107,7 +99,6 @@
 .task-item.completed .task-check::after { content: '\2713'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
 .task-edit { cursor: pointer; }
 .task-summary { flex: 1; cursor: pointer; }
-[role="listbox"]:focus .task-item[aria-selected="true"] { outline: 2px solid #37beff; outline-offset: -2px; background: rgba(55,190,255,0.12); }
 .task-due { font-size: 0.8em; color: #888; padding: 2px 6px; border-radius: 3px; background: rgba(0,0,0,0.05); }
 .task-due.overdue { color: #ff5552; background: rgba(255,85,82,0.1); font-weight: 600; }
 .task-priority { font-size: 0.8em; padding: 2px 4px; border-radius: 2px; }

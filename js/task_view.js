@@ -65,7 +65,7 @@
         var listAria = function(list, on) {
             return list.name + ', ' + (on ? 'eingeblendet' : 'ausgeblendet');
         };
-        var html = '<ul id="tasklist-ul" class="tasklist-list">';
+        var html = '<ul id="tasklist-ul" class="listing navlist">';
         state.taskLists.forEach(function(list) {
             var on = state.visibleLists[list.id] !== false;
             html += '<li class="tasklist-item' + (on ? ' checked' : '') + '" data-list-id="' + list.id + '"'
@@ -138,7 +138,7 @@
 
         var prioWord = { 'priority-high': 'hoch', 'priority-medium': 'mittel', 'priority-low': 'niedrig' };
 
-        var html = '<ul id="task-list" class="task-list">';
+        var html = '<ul id="task-list" class="listing">';
         tasks.forEach(function(task) {
             var priorityClass = '';
             var priorityLabel = '';

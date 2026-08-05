@@ -83,7 +83,11 @@ window.caldav_a11y = {
         };
         var setActive = function(el, scroll) {
             if (!el) return;
-            getItems().forEach(function(it) { it.setAttribute('aria-selected', it === el ? 'true' : 'false'); });
+            getItems().forEach(function(it) {
+                var sel = it === el;
+                it.setAttribute('aria-selected', sel ? 'true' : 'false');
+                it.classList.toggle('selected', sel);
+            });
             container.setAttribute('aria-activedescendant', el.id);
             if (scroll !== false && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
         };
@@ -92,6 +96,7 @@ window.caldav_a11y = {
             it.setAttribute('role', 'option');
             if (!it.id) it.id = (container.id || 'lb') + '-opt-' + i;
             it.setAttribute('aria-selected', 'false');
+            it.classList.remove('selected');
             it.removeAttribute('tabindex');
         });
 
