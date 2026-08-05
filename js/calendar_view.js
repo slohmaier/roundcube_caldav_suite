@@ -66,40 +66,17 @@
 
         rcmail.addEventListener('plugin.caldav-events-response', function(data) {
             state.loading = false;
-            if (!data.events) return;
-            // Cache schreiben (immer, auch wenn leer).
-            var range = getViewRange();
-            var visibleIds = Object.keys(state.visibleCalendars).filter(function(id) { return state.visibleCalendars[id]; });
-            writeEventsCache(eventsCacheKey(range, visibleIds), data.events);
-            // Re-Render nur wenn (a) kein Cache-Render stattfand, oder (b) Daten sich geaendert haben.
-            if (!state.loadingFromCache) {
+            if (data.events) {
                 state.events = data.events;
                 renderCurrentView();
-            } else {
-                // Cache-Hit: nur rendern wenn sich events geaendert haben (Anzahl oder Hash).
-                var prev = state.events;
-                var changed = !prev || prev.length !== data.events.length;
-                if (!changed) {
-                    // schneller Hash ueber summary+start
-                    for (var i = 0; i < data.events.length; i++) {
-                        var e = data.events[i];
-                        var p = prev[i];
-                        if (!p || e.summary !== p.summary || String(e.start) !== String(p.start) || e.id !== p.id) {
-                            changed = true; break;
-                        }
-                    }
-                }
-                state.loadingFromCache = false;
-                state.events = data.events;
-                if (changed) renderCurrentView();
             }
         });
 
         rcmail.addEventListener('plugin.caldav-event-saved', function(data) {
-            if (data.success) { invalidateEventsCache(); loadEvents(); }
+            if (data.success) loadEvents();
         });
         rcmail.addEventListener('plugin.caldav-event-deleted', function(data) {
-            if (data.success) { invalidateEventsCache(); loadEvents(); }
+            if (data.success) loadEvents();
         });
 
         // Initial load
@@ -171,56 +148,10 @@
         setTimeout(function() { $('#weekpick-date').focus(); }, 50);
     }
 
-    // Cache-Key fuer events-response (Zeitraum + sichtbare Kalender).
-    function eventsCacheKey(range, visibleIds) {
-        return 'caldav:evt:' + range.start.toISOString() + ':' + range.end.toISOString() + ':' +
-            visibleIds.slice().sort().join(',');
-    }
-
-    // Cache lesen: { ts, events } oder null. TTL 60s.
-    function readEventsCache(key) {
-        try {
-            var raw = sessionStorage.getItem(key);
-            if (!raw) return null;
-            var obj = JSON.parse(raw);
-            if (!obj || typeof obj.ts !== 'number' || !Array.isArray(obj.events)) return null;
-            if (Date.now() - obj.ts > 60000) return null;
-            return obj;
-        } catch (e) { return null; }
-    }
-
-    function writeEventsCache(key, events) {
-        try {
-            sessionStorage.setItem(key, JSON.stringify({ ts: Date.now(), events: events }));
-        } catch (e) { /* quota etc. */ }
-    }
-
-    function invalidateEventsCache() {
-        try {
-            for (var i = sessionStorage.length - 1; i >= 0; i--) {
-                var k = sessionStorage.key(i);
-                if (k && k.indexOf('caldav:evt:') === 0) sessionStorage.removeItem(k);
-            }
-        } catch (e) {}
-    }
-
     function loadEvents() {
         var range = getViewRange();
+        state.loading = true;
         var visibleIds = Object.keys(state.visibleCalendars).filter(function(id) { return state.visibleCalendars[id]; });
-        var key = eventsCacheKey(range, visibleIds);
-        var cached = readEventsCache(key);
-        if (cached) {
-            // Sofort aus Cache rendern (kein Warten auf Radicale).
-            state.loading = false;
-            state.events = cached.events;
-            state.loadingFromCache = true;
-            renderCurrentView();
-            // Im Hintergrund frische Daten holen; state.loadingFromCache verhindert
-            // ein Flackern, wenn sich nichts geaendert hat.
-            state.loading = true;
-        } else {
-            state.loading = true;
-        }
         rcmail.http_post('plugin.caldav-events', {
             _start: range.start.toISOString(),
             _end: range.end.toISOString(),
