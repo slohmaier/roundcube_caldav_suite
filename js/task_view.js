@@ -267,6 +267,27 @@
             $('#task-list-container .btn-task-delete').prop('disabled', n === 0);
             $('#task-list-container .btn-task-edit').prop('disabled', n !== 1);
         };
+        var prioWord = { 'priority-high': 'hoch', 'priority-medium': 'mittel', 'priority-low': 'niedrig' };
+
+        // Screenreader: bei Auswahl einer Aufgabe die vollstaendigen Details vorlesen.
+        var announceTaskDetails = function(url) {
+            var task = state.tasks.find(function(t) { return t.url === url; });
+            if (!task) return;
+            var parts = [task.summary];
+            var due = task.due ? new Date(task.due) : null;
+            if (due) {
+                var over = due < new Date() && !task.completed;
+                parts.push('Fällig ' + caldav_suite.formatDate(task.due) + (over ? ', überfällig' : ''));
+            }
+            if (task.priority >= 1 && task.priority <= 3) parts.push('Priorität hoch');
+            else if (task.priority >= 4 && task.priority <= 6) parts.push('Priorität mittel');
+            else if (task.priority >= 7) parts.push('Priorität niedrig');
+            if (task.completed) parts.push('erledigt');
+            if (task.description) parts.push('Notiz: ' + task.description);
+            if (task.location) parts.push('Ort: ' + task.location);
+            caldav_suite.announce(parts.join('. '));
+        };
+
         var setTaskSelection = function(item) {
             if (!item) return;
             selectedTaskUrls = {};
@@ -275,6 +296,7 @@
             $('#task-list .task-item').removeClass('selected');
             item.addClass('selected');
             updateTaskActions();
+            announceTaskDetails(url);
         };
         var toggleTaskSelection = function(item) {
             if (!item) return;
