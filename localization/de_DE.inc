@@ -51,6 +51,7 @@ $labels['next'] = 'Weiter';
 $labels['pick_week'] = 'Woche wählen';
 $labels['pick_week_hint'] = 'Datum wählen – die Liste springt zur Woche dieses Datums.';
 $labels['pick_period'] = 'Zeitraum wählen';
+$labels['skip_to_calendar'] = 'Zum Kalender springen';
 $labels['jump'] = 'Springen';
 $labels['no_events'] = 'Keine Termine';
 $labels['no_tasks'] = 'Keine Aufgaben';
