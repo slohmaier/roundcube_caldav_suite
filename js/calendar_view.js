@@ -723,6 +723,11 @@
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
         };
+        // Neuer Termin an einem bestimmten Tag (data-date, YYYY-MM-DD).
+        var newEvOn = function(dateStr) {
+            if (!dateStr) return;
+            caldav_event_dialog.open({ start: dateStr + 'T09:00', end: dateStr + 'T10:00' }, state.calendars);
+        };
         // einzelnes Item togglen (Multi: Strg+Klick / Leertaste); add==true erzwingt Anwaehlen
         var toggleOne = function(item, add) {
             var url = item.getAttribute('data-url');
@@ -799,6 +804,10 @@
         container.find('.list-event').on('dblclick', function(e) {
             openEv($(this).attr('data-url'));
         });
+        // Doppelklick auf einen Tag -> Neuer Termin an diesem Tag.
+        container.find('.list-day').on('dblclick', function(e) {
+            newEvOn($(this).attr('data-date'));
+        });
 
         caldav_a11y.makeListNavigable(container.find('.listing')[0], {
             itemSelector: '.list-event, .list-day',
@@ -823,9 +832,10 @@
                 var lbl = item.getAttribute('aria-label') || item.textContent || '';
                 caldav_suite.announce(lbl);
             },
-            onActivate: function(item) { // Enter -> Bearbeiten (nur bei Termin, nicht Tag)
+            onActivate: function(item) { // Enter -> Termin bearbeiten bzw. bei Tag: Neuer Termin
                 var u = item.getAttribute('data-url');
                 if (u) openEv(u);
+                else newEvOn(item.getAttribute('data-date'));
             },
             onToggle: function(item) { // Leertaste -> Multiselect togglen (nur bei Termin)
                 if (item.getAttribute('data-url') !== null) toggleSelection($(item));
