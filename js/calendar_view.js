@@ -743,38 +743,42 @@
         };
 
         var html = header + '<ul class="listing">';
-        var lastDate = '';
-
+        // Nach Datum gruppieren: pro Tag ein eigenes navigierbares Tag-Item, darunter die Termine.
+        var byDate = {};
         events.forEach(function(ev) {
-            var dateStr = ev.start ? ev.start.substr(0, 10) : '';
-            if (dateStr !== lastDate) {
-                // Datum-Trenner nur visuell -- das Datum steckt im aria-label jedes Items.
-                html += '<div class="list-date" role="presentation">' + caldav_suite.formatDateLong(ev.start) + '</div>';
-                lastDate = dateStr;
-            }
+            var d = ev.start ? ev.start.substr(0, 10) : '';
+            if (!byDate[d]) byDate[d] = [];
+            byDate[d].push(ev);
+        });
+        var dates = Object.keys(byDate).sort();
 
-            var color = getCalendarColor(ev.calendarId);
-            var calName = getCalendarName(ev.calendarId);
-            var time = ev.allDay ? 'Ganztägig' : caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end);
-            var travelHtml = '', travelLbl = '';
-            if (ev.travel_mode) {
-                travelLbl = ev.travel_mode === 'auto' ? 'Fahrzeit automatisch' : 'Fahrzeit ' + ev.travel_mode + ' Minuten';
-                travelHtml = '<span class="event-travel" aria-hidden="true">🚗 ' + (ev.travel_mode === 'auto' ? 'Auto' : ev.travel_mode + ' min') + '</span>';
-            }
-            // aria-label: Datum, Zeit, Titel, Ort, KALENDER, Fahrzeit -> NVDA liest alles am Item.
-            var aria = [caldav_suite.formatDateLong(ev.start), time, ev.summary, ev.location || '',
-                        (calName ? 'Kalender ' + calName : ''), travelLbl]
-                .filter(function(s) { return s; }).join(', ');
-            // Klick auf das Item waehlt nur aus (kein sofortiges Edit). Bearbeiten via Button/Enter.
-            var evDate = ev.start ? ev.start.substr(0, 10) : '';
-            html += '<li class="list-event" data-url="' + ev.url + '" data-date="' + evDate + '" aria-label="' + rcmail.quote_html(aria) + '">'
-                + '<span class="event-color-dot" style="background:' + color + '" aria-hidden="true"></span>'
-                + '<span class="event-time" aria-hidden="true">' + time + '</span>'
-                + '<span class="event-summary" aria-hidden="true">' + rcmail.quote_html(ev.summary) + '</span>'
-                + (ev.location ? '<span class="event-location" aria-hidden="true">' + rcmail.quote_html(ev.location) + '</span>' : '')
-                + travelHtml
-                + '<span class="event-edit" aria-hidden="true">&#9998;</span>'
+        dates.forEach(function(dateStr) {
+            // Tag-Header als eigenes navigierbares Item (fokusierbar, sagt das Datum).
+            html += '<li class="list-day" role="option" data-date="' + dateStr + '" aria-label="' + caldav_suite.formatDateLong(dateStr) + '">'
+                + '<span class="list-day-label" aria-hidden="true">' + caldav_suite.formatDateLong(dateStr) + '</span>'
                 + '</li>';
+
+            byDate[dateStr].forEach(function(ev) {
+                var color = getCalendarColor(ev.calendarId);
+                var calName = getCalendarName(ev.calendarId);
+                var time = ev.allDay ? 'Ganztägig' : caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end);
+                var travelHtml = '', travelLbl = '';
+                if (ev.travel_mode) {
+                    travelLbl = ev.travel_mode === 'auto' ? 'Fahrzeit automatisch' : 'Fahrzeit ' + ev.travel_mode + ' Minuten';
+                    travelHtml = '<span class="event-travel" aria-hidden="true">🚗 ' + (ev.travel_mode === 'auto' ? 'Auto' : ev.travel_mode + ' min') + '</span>';
+                }
+                var aria = [time, ev.summary, ev.location || '', (calName ? 'Kalender ' + calName : ''), travelLbl]
+                    .filter(function(s) { return s; }).join(', ');
+                var evDate = ev.start ? ev.start.substr(0, 10) : '';
+                html += '<li class="list-event" data-url="' + ev.url + '" data-date="' + evDate + '" aria-label="' + rcmail.quote_html(aria) + '">'
+                    + '<span class="event-color-dot" style="background:' + color + '" aria-hidden="true"></span>'
+                    + '<span class="event-time" aria-hidden="true">' + time + '</span>'
+                    + '<span class="event-summary" aria-hidden="true">' + rcmail.quote_html(ev.summary) + '</span>'
+                    + (ev.location ? '<span class="event-location" aria-hidden="true">' + rcmail.quote_html(ev.location) + '</span>' : '')
+                    + travelHtml
+                    + '<span class="event-edit" aria-hidden="true">&#9998;</span>'
+                    + '</li>';
+            });
         });
         html += '</ul>';
 
@@ -797,17 +801,21 @@
         });
 
         caldav_a11y.makeListNavigable(container.find('.listing')[0], {
-            itemSelector: '.list-event',
+            itemSelector: '.list-event, .list-day',
             label: 'Terminliste',
             // Beim Reintabben zum aktuellen Datum springen statt zum aeltesten Termin.
             initialIndex: function(items) {
                 var target = state.currentDate;
                 var ts = target.getFullYear() + '-' + ('0'+(target.getMonth()+1)).slice(-2) + '-' + ('0'+target.getDate()).slice(-2);
+                // Bevorzugt das Tages-Item des aktuellen Datums, sonst das erste >= heute.
+                var first = -1;
                 for (var i = 0; i < items.length; i++) {
                     var d = items[i].getAttribute('data-date');
-                    if (d && d >= ts) return i;
+                    if (!d) continue;
+                    if (first < 0 && d >= ts) first = i;
+                    if (d === ts && items[i].classList.contains('list-day')) return i;
                 }
-                return 0;
+                return first < 0 ? 0 : first;
             },
             // Explizite Ansage beim Pfeilen (aria-activedescendant wird von NVDA
             // beim Pfeilen nicht immer zuverlaessig angekündigt).
@@ -815,11 +823,12 @@
                 var lbl = item.getAttribute('aria-label') || item.textContent || '';
                 caldav_suite.announce(lbl);
             },
-            onActivate: function(item) { // Enter -> Bearbeiten
-                openEv(item.getAttribute('data-url'));
+            onActivate: function(item) { // Enter -> Bearbeiten (nur bei Termin, nicht Tag)
+                var u = item.getAttribute('data-url');
+                if (u) openEv(u);
             },
-            onToggle: function(item) { // Leertaste -> Multiselect togglen
-                toggleSelection($(item));
+            onToggle: function(item) { // Leertaste -> Multiselect togglen (nur bei Termin)
+                if (item.getAttribute('data-url') !== null) toggleSelection($(item));
             }
         });
 
