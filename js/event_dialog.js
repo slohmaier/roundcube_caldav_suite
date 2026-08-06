@@ -212,6 +212,8 @@ window.caldav_geocode = {
             url = (baseUrl || 'https://photon.komoot.io') + '/api';
             url += '?limit=5&q=' + encodeURIComponent(query);
             if (rcmail.env.caldav_geocode_lang) url += '&lang=' + rcmail.env.caldav_geocode_lang;
+            // Auf Deutschland einschraenken, damit nicht weltweit (England/Irland) zuerst kommt.
+            url += '&countrycode=DE';
         }
 
         // cache:true -> jQuery haengt KEINEN _= Cache-Buster an, den Photon mit 400 ablehnt.
