@@ -51,6 +51,7 @@ $labels['next'] = 'Next';
 $labels['pick_week'] = 'Choose week';
 $labels['pick_week_hint'] = 'Pick a date – the list jumps to that date\'s week.';
 $labels['pick_period'] = 'Choose period';
+$labels['skip_to_calendar'] = 'Skip to calendar';
 $labels['jump'] = 'Go';
 $labels['no_events'] = 'No events';
 $labels['no_tasks'] = 'No tasks';
