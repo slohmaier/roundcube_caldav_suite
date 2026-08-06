@@ -16,27 +16,34 @@ Roundcube-Plugin für Kalender, Aufgaben (CalDAV), Kontakte (CardDAV) und Meetin
 
 - CalDAV Discovery: PROPFIND auf Base-URL findet automatisch alle Kalender
 - Mehrere Kalender gleichzeitig anzeigen (verschiedene Farben)
-- Kalender ein/ausblenden per Checkbox
+- Kalender ein/ausblenden per Checkbox; **Sichtbarkeit wird pro User gespeichert**
 - Termine erstellen, bearbeiten, löschen
 - Ganztägige Events und zeitgebundene Events
 - Wiederkehrende Termine (RRULE) anzeigen
 - Drag & Drop zum Verschieben (nur in Rasteransicht)
 - Quick-Add: Klick auf Zeitslot erstellt neuen Termin
+- **Bedienung:** Klick waehlt aus, Enter / Doppelklick / Edit-Icon oeffnet Bearbeiten,
+  Leertaste togglet Multi-Selection (Strg+Klick)
 
 ### Aufgaben
 
 - VTODO-Support: Aufgaben erstellen, bearbeiten, abhaken, löschen
-- Mehrere Aufgabenlisten (aus CalDAV entdeckt)
+- Mehrere Aufgabenlisten (aus CalDAV entdeckt); **Sichtbarkeit pro User gespeichert**
 - Fälligkeitsdatum, Priorität, Notizen
+- **Fälligkeits-Indikator** (Kalender-Icon, rot bei Ueberfaelligkeit) in der Liste
+- **Details (Notiz/Ort) klappen bei Auswahl auf**, Screenreader liest sie vor
 - Sortierung: nach Fälligkeit, Priorität, Erstelldatum
 - Erledigte Aufgaben ein/ausblenden
+- **Bedienung:** Klick waehlt aus, Enter / Edit-Icon oeffnet Bearbeiten, Leertaste haakt ab
 
 ### Ansichten (wie iOS Kalender)
 
 - **Monatsansicht** (Default): Raster mit Tagen, Events als farbige Punkte/Balken
 - **Wochenansicht**: 7-Tage-Raster mit Zeitachse
 - **Tagesansicht**: Einzelner Tag mit Zeitachse
-- **Listenansicht / Agenda**: Chronologische Liste aller Termine (barrierefrei)
+- **Listenansicht / Agenda**: Chronologische Liste, **Infinite Scrolling** (grosses
+  Startfenster 1 Monat vor/zurueck, laedt beim Scrollen nach), **Tage als eigene
+  navigierbare Items** (Enter/Doppelklick = Neuer Termin an dem Tag)
 - Schnelles Umschalten zwischen Ansichten (Toolbar-Buttons, Keyboard Shortcuts)
 - Ansichts-Präferenz wird pro User gespeichert
 
@@ -48,6 +55,7 @@ Roundcube-Plugin für Kalender, Aufgaben (CalDAV), Kontakte (CardDAV) und Meetin
 - Standard-Kalender für neue Termine
 - Erster Wochentag (Montag/Sonntag)
 - Zeitformat (24h/12h)
+- Ortssuche-Provider (Photon / Nominatim / Google Places) + Google-API-Key
 
 ### Barrierefreiheit
 
@@ -60,6 +68,9 @@ Roundcube-Plugin für Kalender, Aufgaben (CalDAV), Kontakte (CardDAV) und Meetin
 - Screen Reader Announcements bei Ansichtswechsel
 - Fokus-Management bei Dialogen
 - Hoher Kontrast: Farben nie als einziges Unterscheidungsmerkmal
+- **Skip-Link** "Zum Kalender springen" beim Tabben
+- **Loading-Spinner** ueber dem Content + periodische "Laedt..."-Ansage per aria-live
+- Listen nutzen Roundcubes native `.listing`-Semantik (role=listbox/option)
 
 ### Roundcube-Integration
 
@@ -312,6 +323,20 @@ npx playwright test
 # Alles
 composer test:all
 ```
+
+### Beispiel-Screenshots neu erzeugen
+
+`test-stack/screenshots/generate.sh` erzeugt automatisch Screenshots (Monat/Woche/Tag/
+Liste, Aufgaben, Kontakte) aus einem Demo-Stack mit Playwright:
+
+```bash
+cd test-stack/screenshots
+DOCKER="sudo docker" ./generate.sh
+```
+
+Die PNGs landen in `test-stack/screenshots/out/`. **Fuer das Repo** nach der
+Generierung `out/*.png` nach `docs/` kopieren und committen (`.gitignore` deckt
+`out/` ab; die Repo-Screenshots liegen unter `docs/`).
 
 ## Unterstützte Felder (Stand 2026-06-18)
 
