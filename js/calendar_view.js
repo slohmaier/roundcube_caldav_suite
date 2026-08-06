@@ -75,6 +75,7 @@
 
         rcmail.addEventListener('plugin.caldav-events-response', function(data) {
             state.loading = false;
+            caldav_suite.hideLoading('calendar');
             if (!data.events) { state.listLoadingMore = false; return; }
 
             if (state.currentView === 'list' && state.listPendingAppend) {
@@ -106,6 +107,7 @@
         // Initial load
         highlightActiveView();
         rcmail.http_post('plugin.caldav-calendars');
+        caldav_suite.showLoading('calendar', '#calendar-grid');
     });
 
     function switchView(view) {
@@ -182,6 +184,8 @@
     function loadEvents() {
         var range = getViewRange();
         state.loading = true;
+        // Overlay nur bei regulärem Laden anzeigen (nicht beim Infinite-Scroll-Nachladen).
+        if (!state.listLoadingMore) caldav_suite.showLoading('calendar', '#calendar-grid');
         // Listenansicht: Fenster merken (fuer Infinite Scrolling)
         if (state.currentView === 'list') {
             state.listStart = range.start;

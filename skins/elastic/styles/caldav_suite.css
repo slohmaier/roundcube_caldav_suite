@@ -175,7 +175,9 @@
 .location-results li.hint { color: #888; cursor: default; }
 
 /* ---- Layout content scroller ---- */
-#layout-content .scroller { overflow-y: auto; height: calc(100vh - 110px); }
+#layout-content .scroller { overflow-y: auto; height: calc(100vh - 110px); position: relative; }
+#calendar-grid { position: relative; min-height: 200px; }
+#task-list-container { position: relative; min-height: 200px; }
 #layout-sidebar .scroller { overflow-y: auto; }
 .hint { color: #888; text-align: center; padding: 2em; }
 .toggle { display: flex; align-items: center; gap: 0.5em; padding: 0.5em 0.8em; cursor: pointer; }
@@ -232,3 +234,29 @@ html.dark-mode .task-priority.priority-low { color: #7fd985; }
     .week-view { font-size: 0.85em; }
     .day-view { font-size: 0.9em; }
 }
+
+/* ---- Loading Overlay ---- */
+.caldav-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6em;
+    background: rgba(255,255,255,0.7);
+    border-radius: 4px;
+}
+.caldav-spinner {
+    width: 2em;
+    height: 2em;
+    border: 3px solid rgba(55,190,255,0.3);
+    border-top-color: #37beff;
+    border-radius: 50%;
+    animation: caldav-spin 0.8s linear infinite;
+}
+.caldav-loading-text { font-weight: 600; color: #22292c; }
+@keyframes caldav-spin { to { transform: rotate(360deg); } }
+html.dark-mode .caldav-loading { background: rgba(33,41,44,0.7); }
+html.dark-mode .caldav-loading-text { color: #c5d1d3; }
