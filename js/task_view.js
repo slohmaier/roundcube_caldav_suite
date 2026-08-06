@@ -178,11 +178,17 @@
             else if (task.priority >= 7) { priorityClass = 'priority-low'; priorityLabel = '!'; }
 
             var isOverdue = false;
-            var dueHtml = '';
+            var dueIndicator = '';
+            var dueDetailHtml = '';
             if (task.due) {
                 isOverdue = new Date(task.due) < new Date() && !task.completed;
-                dueHtml = '<span class="task-due' + (isOverdue ? ' overdue' : '') + '" aria-hidden="true">'
-                    + caldav_suite.formatDate(task.due) + '</span>';
+                // Indikator-Punkt in der Liste (rot bei Ueberfaelligkeit, sonst neutral).
+                dueIndicator = '<span class="task-due-indicator' + (isOverdue ? ' overdue' : '') + '"'
+                    + ' aria-hidden="true" title="Fällig: ' + caldav_suite.formatDate(task.due) + '"></span>';
+                // Datum als Text nur in der Detailansicht (bei Auswahl).
+                dueDetailHtml = '<div class="task-due-detail' + (isOverdue ? ' overdue' : '') + '">'
+                    + caldav_suite.label('due_date') + ': ' + caldav_suite.formatDate(task.due)
+                    + (isOverdue ? ' (überfällig)' : '') + '</div>';
             }
 
             // Volles aria-label -> NVDA liest beim Pfeilen genau eine klare Ansage.
@@ -209,9 +215,9 @@
                 + '<span class="task-check" aria-hidden="true"></span>'
                 + '<span class="task-body">'
                 + '<span class="task-summary" aria-hidden="true">' + rcmail.quote_html(task.summary) + '</span>'
-                + dueHtml
+                + dueIndicator
                 + (priorityLabel ? '<span class="task-priority ' + priorityClass + '" aria-hidden="true">' + priorityLabel + '</span>' : '')
-                + (detailHtml ? '<span class="task-details">' + detailHtml + '</span>' : '')
+                + ((detailHtml || dueDetailHtml) ? '<span class="task-details">' + dueDetailHtml + detailHtml + '</span>' : '')
                 + '</span>'
                 + '<span class="task-edit" aria-hidden="true">&#9998;</span>'
                 + '</li>';
