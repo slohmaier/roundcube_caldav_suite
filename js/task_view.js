@@ -218,10 +218,10 @@
                 + '<span class="task-summary" aria-hidden="true">' + rcmail.quote_html(task.summary) + '</span>'
                 + dueIndicator
                 + (priorityLabel ? '<span class="task-priority ' + priorityClass + '" aria-hidden="true">' + priorityLabel + '</span>' : '')
+                + '<span class="task-edit" aria-hidden="true">&#9998;</span>'
                 + '</span>'
                 + ((detailHtml || dueDetailHtml) ? '<span class="task-details">' + dueDetailHtml + detailHtml + '</span>' : '')
                 + '</span>'
-                + '<span class="task-edit" aria-hidden="true">&#9998;</span>'
                 + '</li>';
         });
         html += '</ul>';
@@ -314,6 +314,12 @@
         $('#task-list .task-item').click(function(e) {
             if (e.ctrlKey || e.metaKey) { toggleTaskSelection($(this)); }
             else { setTaskSelection($(this)); }
+        });
+
+        // Edit-Icon in der Zeile oeffnet direkt das Bearbeiten (ohne Auswahl noetig).
+        $('#task-list .task-edit').click(function(e) {
+            e.stopPropagation();
+            openEdit($(this).closest('.task-item').attr('data-url'));
         });
 
         // Aktionsleiste
