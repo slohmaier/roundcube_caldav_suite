@@ -137,14 +137,17 @@ window.caldav_event_dialog = {
 
         var dlg = caldav_suite.dialog(title, html, buttons);
 
-        // Start aendern -> Ende automatisch um die bisherige Dauer mitziehen.
+        // Beim Oeffnen die feste Dauer merken. Start aendern -> Ende um genau diese
+        // Dauer nachziehen, damit Beginn nie vor Ende liegt.
+        var initialStart = dlg.find('#ev-start').val();
+        var initialEnd = dlg.find('#ev-end').val();
+        var fixedMs = (initialStart && initialEnd) ? (new Date(initialEnd).getTime() - new Date(initialStart).getTime()) : 3600000;
+        if (isNaN(fixedMs) || fixedMs <= 0) fixedMs = 3600000; // Default 1h
+
         var syncEndFromStart = function() {
             var start = dlg.find('#ev-start').val();
-            var end = dlg.find('#ev-end').val();
-            if (!start || !end) return;
-            var ms = new Date(end).getTime() - new Date(start).getTime();
-            if (isNaN(ms) || ms <= 0) return; // nur wenn Ende hinter Start liegt
-            dlg.find('#ev-end').val(new Date(new Date(start).getTime() + ms).toISOString().substr(0, 16));
+            if (!start) return;
+            dlg.find('#ev-end').val(new Date(new Date(start).getTime() + fixedMs).toISOString().substr(0, 16));
         };
         dlg.find('#ev-start').on('change', syncEndFromStart);
 
