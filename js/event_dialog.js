@@ -199,6 +199,19 @@ window.caldav_event_dialog = {
  * Geocoding module - supports Photon and Nominatim backends.
  */
 window.caldav_geocode = {
+    // Browser-Standort (einmalig abfragen, fuer Location-Bias der Suche).
+    _geo: null,
+    _geoAsked: false,
+    getLocation: function(cb) {
+        if (this._geo) { cb(this._geo); return; }
+        if (this._geoAsked || !navigator.geolocation) { cb(null); return; }
+        this._geoAsked = true;
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            caldav_geocode._geo = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            cb(caldav_geocode._geo);
+        }, function() { cb(null); }, { timeout: 5000, maximumAge: 600000 });
+    },
+
     search: function(query, dlg) {
         var provider = rcmail.env.caldav_geocode_provider || 'photon';
         var baseUrl = rcmail.env.caldav_geocode_url || '';
@@ -212,23 +225,26 @@ window.caldav_geocode = {
             url = (baseUrl || 'https://photon.komoot.io') + '/api';
             url += '?limit=5&q=' + encodeURIComponent(query);
             if (rcmail.env.caldav_geocode_lang) url += '&lang=' + rcmail.env.caldav_geocode_lang;
-            // Auf Deutschland einschraenken, damit nicht weltweit (England/Irland) zuerst kommt.
-            url += '&countrycode=DE';
         }
 
         // cache:true -> jQuery haengt KEINEN _= Cache-Buster an, den Photon mit 400 ablehnt.
-        $.ajax({
-            url: url,
-            dataType: 'json',
-            cache: true,
-            success: function(data) {
-                var results = caldav_geocode.parse(data, provider);
-                caldav_geocode.renderResults(results, dlg);
-            },
-            error: function() {
-                dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
-            }
-        });
+        var doSearch = function(geo) {
+            var u = url;
+            if (geo) u += '&lat=' + geo.lat + '&lon=' + geo.lon; // Location-Bias: nahe Orte zuerst
+            $.ajax({
+                url: u,
+                dataType: 'json',
+                cache: true,
+                success: function(data) {
+                    var results = caldav_geocode.parse(data, provider);
+                    caldav_geocode.renderResults(results, dlg);
+                },
+                error: function() {
+                    dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
+                }
+            });
+        };
+        caldav_geocode.getLocation(doSearch);
     },
 
     parse: function(data, provider) {
