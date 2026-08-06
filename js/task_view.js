@@ -69,6 +69,7 @@
         state.taskLists.forEach(function(list) {
             var on = state.visibleLists[list.id] !== false;
             html += '<li class="tasklist-item' + (on ? ' checked' : '') + '" data-list-id="' + list.id + '"'
+                + ' style="border-left:4px solid ' + (list.color || '#4fc3f7') + '"'
                 + ' aria-label="' + rcmail.quote_html(listAria(list, on)) + '">'
                 + '<span class="tasklist-check" aria-hidden="true"></span>'
                 + '<span class="tasklist-name" aria-hidden="true">' + rcmail.quote_html(list.name) + '</span>'

@@ -375,9 +375,10 @@ class caldav_suite extends rcube_plugin
         $lists = [];
         foreach ($client->getTaskLists() as $list) {
             $lists[] = [
-                'id'   => $list->getId(),
-                'name' => $list->displayName,
-                'url'  => $list->url,
+                'id'    => $list->getId(),
+                'name'  => $list->displayName,
+                'url'   => $list->url,
+                'color' => $list->color ?? '#4fc3f7',
             ];
         }
 
