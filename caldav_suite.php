@@ -526,7 +526,7 @@ class caldav_suite extends rcube_plugin
         $ical = $backend->toggleCompleted($url, $completed, $client);
 
         if ($ical && $client->putObject($url, $ical, $etag ?: null)) {
-            $this->rc->output->command('plugin.caldav-task-toggled', ['success' => true, 'completed' => $completed]);
+            $this->rc->output->command('plugin.caldav-task-toggled', ['success' => true, 'completed' => $completed, 'url' => $url]);
         } else {
             $this->rc->output->show_message($this->gettext('error_saving'), 'error');
         }

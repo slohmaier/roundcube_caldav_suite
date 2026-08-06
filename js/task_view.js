@@ -49,7 +49,19 @@
 
         rcmail.addEventListener('plugin.caldav-task-saved', function(data) { if (data.success) loadTasks(); });
         rcmail.addEventListener('plugin.caldav-task-deleted', function(data) { if (data.success) loadTasks(); });
-        rcmail.addEventListener('plugin.caldav-task-toggled', function(data) { if (data.success) loadTasks(); });
+        rcmail.addEventListener('plugin.caldav-task-toggled', function(data) {
+            // Toggle clientseitig anwenden statt die ganze Liste neu zu laden (spart ~1.5s).
+            if (!data.success || !data.url) return;
+            var task = state.tasks.find(function(t) { return t.url === data.url; });
+            if (!task) { loadTasks(); return; }
+            task.completed = !!data.completed;
+            if (task.completed) { task.status = 'COMPLETED'; task.percent_complete = 100; }
+            else { task.status = 'NEEDS-ACTION'; }
+            // Fokus auf die getoggte Aufgabe behalten
+            pendingFocusUrl = data.url;
+            pendingFocusFallback = [];
+            renderTasks();
+        });
 
         rcmail.http_post('plugin.caldav-tasklists');
     });
