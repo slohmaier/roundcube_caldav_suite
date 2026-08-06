@@ -145,7 +145,10 @@ class caldav_suite extends rcube_plugin
         $this->rc->output->set_env('caldav_time_format', $prefs['caldav_suite_time_format'] ?? '24');
         $this->rc->output->set_env('caldav_geocode_provider', $prefs['caldav_suite_geocode_provider'] ?? 'photon');
         $this->rc->output->set_env('caldav_geocode_url', $prefs['caldav_suite_geocode_url'] ?? '');
-        $this->rc->output->set_env('caldav_geocode_lang', 'de');
+        // Sprache fuer die Ortssuche aus der Roundcube-User-Sprache ableiten (z.B. 'de_DE' -> 'de').
+        $lang = $this->rc->user->language ?: $this->rc->config->get('language', 'en');
+        $lang = strtolower(substr($lang, 0, 2));
+        $this->rc->output->set_env('caldav_geocode_lang', $lang);
 
         $this->rc->output->send('caldav_suite.calendar');
     }
