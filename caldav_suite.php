@@ -30,6 +30,15 @@ class caldav_suite extends rcube_plugin
     {
         $this->rc = rcmail::get_instance();
 
+        // Geocoding-Key immer im Browser-env bereitstellen (nicht nur in calendar_view),
+        // damit der Event-Dialog in jedem Kontext darauf zugreifen kann.
+        $gprefs = $this->rc->user->get_prefs();
+        $this->rc->output->set_env('caldav_geocode_provider', $gprefs['caldav_suite_geocode_provider'] ?? 'photon');
+        $this->rc->output->set_env('caldav_geocode_url', $gprefs['caldav_suite_geocode_url'] ?? '');
+        $this->rc->output->set_env('caldav_geocode_key', $gprefs['caldav_suite_geocode_key'] ?? '');
+        $glang = $this->rc->user->language ?: $this->rc->config->get('language', 'en');
+        $this->rc->output->set_env('caldav_geocode_lang', strtolower(substr($glang, 0, 2)));
+
         // Register AJAX actions BEFORE register_task (which clobbers $this->mytask)
         $this->register_action('plugin.caldav-calendars', [$this, 'action_get_calendars']);
         $this->register_action('plugin.caldav-events', [$this, 'action_get_events']);
