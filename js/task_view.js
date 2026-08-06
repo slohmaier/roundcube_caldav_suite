@@ -71,7 +71,7 @@
             html += '<li class="tasklist-item' + (on ? ' checked' : '') + '" data-list-id="' + list.id + '"'
                 + ' style="border-left:4px solid ' + (list.color || '#4fc3f7') + '"'
                 + ' aria-label="' + rcmail.quote_html(listAria(list, on)) + '">'
-                + '<span class="tasklist-check" aria-hidden="true"></span>'
+                + '<button type="button" class="tasklist-check" aria-hidden="true" tabindex="-1"></button>'
                 + '<span class="tasklist-name" aria-hidden="true">' + rcmail.quote_html(list.name) + '</span>'
                 + '</li>';
         });
@@ -89,7 +89,14 @@
             renderTasks();
         };
 
-        $('#tasklist-list .tasklist-item').click(function() { toggleList(this); });
+        // Nur Klick auf die Checkbox togglet; Klick auf Zeile/Name aendert nichts.
+        $('#tasklist-list .tasklist-check').click(function(e) {
+            e.stopPropagation();
+            toggleList($(this).closest('.tasklist-item')[0]);
+        });
+        $('#tasklist-list .tasklist-item').click(function() {
+            // bewusst nichts (kein Toggle mehr)
+        });
 
         // Gleiche Pfeil-Navigation wie die Hauptliste: hoch/runter zwischen den Listen,
         // Leertaste/Enter blendet die Liste ein/aus. KEINE fokussierbaren Kind-Elemente
