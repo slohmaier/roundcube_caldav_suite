@@ -110,6 +110,7 @@
 .task-item.selected { background: rgba(55,190,255,0.12); }
 .task-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: 0.15em; }
 .task-summary { flex: 0 0 auto; font-weight: 500; }
+.task-title-row { display: flex; align-items: center; gap: 0.4em; min-width: 0; }
 .task-details { display: none; margin-top: 0.2em; }
 .task-item.selected .task-details { display: block; }
 .task-desc { font-size: 0.85em; color: #666; white-space: pre-wrap; word-break: break-word; }
@@ -120,9 +121,10 @@
 .task-item.completed .task-check::after { content: '\2713'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
 .task-edit { cursor: pointer; }
 .task-summary { flex: 1; cursor: pointer; }
-/* Fälligkeits-Indikator: kleiner Punkt in der Liste, rot bei Ueberfaelligkeit. */
-.task-due-indicator { flex: 0 0 auto; width: 0.7em; height: 0.7em; border-radius: 50%; background: #41b849; margin-left: 0.3em; }
-.task-due-indicator.overdue { background: #ff5552; }
+/* Fälligkeits-Indikator: Kalender-Icon in der Liste, gruen (normal) / rot (ueberfaellig). */
+.task-due-indicator { flex: 0 0 auto; color: #41b849; margin-left: 0.4em; font-family: Icons; font-size: 0.85em; }
+.task-due-indicator::before { content: "\f133"; }
+.task-due-indicator.overdue { color: #ff5552; }
 .task-due-detail { font-size: 0.8em; color: #888; }
 .task-due-detail.overdue { color: #ff5552; font-weight: 600; }
 .task-priority { font-size: 0.8em; padding: 2px 4px; border-radius: 2px; }

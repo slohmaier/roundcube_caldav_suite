@@ -214,9 +214,11 @@
                 + ' aria-label="' + rcmail.quote_html(aria) + '">'
                 + '<span class="task-check" aria-hidden="true"></span>'
                 + '<span class="task-body">'
+                + '<span class="task-title-row">'
                 + '<span class="task-summary" aria-hidden="true">' + rcmail.quote_html(task.summary) + '</span>'
                 + dueIndicator
                 + (priorityLabel ? '<span class="task-priority ' + priorityClass + '" aria-hidden="true">' + priorityLabel + '</span>' : '')
+                + '</span>'
                 + ((detailHtml || dueDetailHtml) ? '<span class="task-details">' + dueDetailHtml + detailHtml + '</span>' : '')
                 + '</span>'
                 + '<span class="task-edit" aria-hidden="true">&#9998;</span>'
