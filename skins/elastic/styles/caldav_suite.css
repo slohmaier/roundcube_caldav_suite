@@ -85,6 +85,8 @@
 /* Auswahl + Aktionen statt sofortigem Edit. */
 .list-actions { display: flex; gap: 0.4em; padding: 0.5em 1em; border-bottom: 1px solid #ddd; }
 .list-actions .btn { margin: 0; }
+.list-actions .btn:disabled { opacity: 0.4; }
+.list-actions .btn:not(:disabled) { opacity: 1; }
 .list-range { padding: 0.6em 1em; margin: 0; font-size: 1em; font-weight: 600; border-bottom: 2px solid #ddd; }
 .list-date { font-size: 0.9em; font-weight: 600; margin: 1.5em 0 0.3em; padding-bottom: 0.3em; border-bottom: 1px solid #ddd; }
 .list-event { display: flex; align-items: center; gap: 0.6em; padding: 0.5em 0.6em; cursor: pointer; }
@@ -103,8 +105,15 @@
 .tasklist-item.checked .tasklist-check { background: #37beff; border-color: #37beff; }
 .tasklist-item.checked .tasklist-check::after { content: '\2713'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
 .task-list { list-style: none; padding: 0; margin: 0; }
+/* Aufgabe: Kachel-artig, Summary-Zeile + ausklappbare Details bei Auswahl. */
 .task-item { display: flex; align-items: center; gap: 0.5em; padding: 0.6em 1em; border-bottom: 1px solid #eee; cursor: pointer; }
 .task-item.selected { background: rgba(55,190,255,0.12); }
+.task-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: 0.15em; }
+.task-summary { flex: 0 0 auto; font-weight: 500; }
+.task-details { display: none; margin-top: 0.2em; }
+.task-item.selected .task-details { display: block; }
+.task-desc { font-size: 0.85em; color: #666; white-space: pre-wrap; word-break: break-word; }
+.task-loc { font-size: 0.8em; color: #888; }
 .task-item.completed .task-summary { text-decoration: line-through; opacity: 0.5; }
 .task-check { flex-shrink: 0; width: 1.1em; height: 1.1em; box-sizing: border-box; cursor: pointer; border: 2px solid #888; border-radius: 3px; position: relative; }
 .task-item.completed .task-check { background: #37beff; border-color: #37beff; }
@@ -170,6 +179,8 @@ html.dark-mode .list-date { border-color: #4d6066; }
 html.dark-mode .list-event { border-color: #2c373a; }
 html.dark-mode .list-event:hover { background: rgba(255,255,255,0.03); }
 html.dark-mode .task-item { border-color: #2c373a; }
+html.dark-mode .task-desc { color: #c5d1d3; }
+html.dark-mode .task-loc { color: #8ba3a7; }
 html.dark-mode .task-due { background: rgba(255,255,255,0.05); }
 html.dark-mode .view-btn.active { background: rgba(28,137,194,0.2); }
 html.dark-mode .calendar-item:hover { background: rgba(255,255,255,0.05); }
