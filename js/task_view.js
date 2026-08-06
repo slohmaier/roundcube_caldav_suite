@@ -164,12 +164,7 @@
 
         var prioWord = { 'priority-high': 'hoch', 'priority-medium': 'mittel', 'priority-low': 'niedrig' };
 
-        var html = '<div class="list-actions" role="toolbar" aria-label="Aufgaben-Aktionen">'
-            + '<button type="button" class="btn btn-sm btn-task-new">' + rcmail.quote_html(caldav_suite.label('new_task')) + '</button>'
-            + '<button type="button" class="btn btn-sm btn-task-edit" disabled>' + rcmail.quote_html(caldav_suite.label('edit_task')) + '</button>'
-            + '<button type="button" class="btn btn-sm btn-task-delete" disabled>' + rcmail.quote_html(caldav_suite.label('delete')) + '</button>'
-            + '</div>'
-            + '<ul id="task-list" class="listing">';
+        var html = '<ul id="task-list" class="listing">';
         tasks.forEach(function(task) {
             var priorityClass = '';
             var priorityLabel = '';
@@ -232,18 +227,6 @@
             var task = state.tasks.find(function(t) { return t.url === url; });
             if (task) caldav_task_dialog.open(task, state.taskLists);
         };
-        var newTask = function() {
-            caldav_task_dialog.open(null, state.taskLists);
-        };
-        var deleteSelected = function() {
-            var urls = Object.keys(selectedTaskUrls);
-            if (!urls.length) return;
-            var n = urls.length;
-            var msg = n === 1 ? caldav_suite.label('confirm_delete_task') : n + ' Aufgaben wirklich löschen?';
-            if (confirm(msg)) {
-                rcmail.http_post('plugin.caldav-task-delete', { _urls: urls });
-            }
-        };
         // Ab-/anhaken ueber Item-Attribute (kein <input> mehr). Status = .completed-Klasse.
         var toggleDone = function(item) {
             if (!item) return;
@@ -262,13 +245,6 @@
         };
 
         // ---- Auswahl (wie Termin-Liste): Klick waehlt aus, Aktionen via Leiste ----
-        var selectedTaskUrls = {};
-        var taskSelectedCount = function() { return Object.keys(selectedTaskUrls).length; };
-        var updateTaskActions = function() {
-            var n = taskSelectedCount();
-            $('#task-list-container .btn-task-delete').prop('disabled', n === 0);
-            $('#task-list-container .btn-task-edit').prop('disabled', n !== 1);
-        };
         var prioWord = { 'priority-high': 'hoch', 'priority-medium': 'mittel', 'priority-low': 'niedrig' };
 
         // Screenreader: bei Auswahl einer Aufgabe die vollstaendigen Details vorlesen.
@@ -297,7 +273,6 @@
             if (url !== null) selectedTaskUrls[url] = true;
             $('#task-list .task-item').removeClass('selected');
             item.addClass('selected');
-            updateTaskActions();
             announceTaskDetails(url);
         };
         var toggleTaskSelection = function(item) {
@@ -306,7 +281,6 @@
             if (url === null) return;
             if (selectedTaskUrls[url]) { delete selectedTaskUrls[url]; item.removeClass('selected'); }
             else { selectedTaskUrls[url] = true; item.addClass('selected'); }
-            updateTaskActions();
         };
 
         // Maus: Klick auf Check hakt ab, Klick auf Zeile/Summary waehlt nur aus (kein Auto-Edit).
@@ -322,19 +296,14 @@
             openEdit($(this).closest('.task-item').attr('data-url'));
         });
 
-        // Aktionsleiste
-        $('#task-list-container .btn-task-new').click(newTask);
-        $('#task-list-container .btn-task-edit').click(function() {
-            if (taskSelectedCount() === 1) openEdit(Object.keys(selectedTaskUrls)[0]);
-        });
-        $('#task-list-container .btn-task-delete').click(deleteSelected);
-
         // Einheitliche, screenreader-navigierbare Liste: Pfeil hoch/runter, Enter = auswaehlen,
         // Leertaste = ab-/anhaken.
         caldav_a11y.makeListNavigable(document.getElementById('task-list'), {
             itemSelector: '.task-item',
             label: caldav_suite.label('tasks'),
-            onActivate: function(item) { setTaskSelection(item); },
+            onActivate: function(item) { // Enter -> Bearbeiten
+                openEdit(item.getAttribute('data-url'));
+            },
             onToggle: toggleDone
         });
 
