@@ -92,6 +92,9 @@
 .list-actions .btn:not(:disabled) { opacity: 1; }
 .list-range { padding: 0.6em 1em; margin: 0; font-size: 1em; font-weight: 600; border-bottom: 2px solid #ddd; }
 .list-date { font-size: 0.9em; font-weight: 600; margin: 1.5em 0 0.3em; padding-bottom: 0.3em; border-bottom: 1px solid #ddd; }
+/* Tages-Header in der Listenansicht: navigierbares Item, optisch als Datumstrenner. */
+.list-day { display: flex; align-items: center; padding: 0.45em 0.6em; font-weight: 600; background: rgba(0,0,0,0.03); border-bottom: 1px solid #ddd; cursor: default; }
+.list-day.selected { outline: 2px solid #37beff; outline-offset: -1px; }
 .list-event { display: flex; align-items: center; gap: 0.6em; padding: 0.5em 0.6em; cursor: pointer; }
 .list-event.selected { background: rgba(55,190,255,0.12); }
 .event-edit { flex: 0 0 auto; margin-left: 0.4em; opacity: 0.4; cursor: pointer; }
