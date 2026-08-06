@@ -214,11 +214,18 @@ window.caldav_geocode = {
             if (rcmail.env.caldav_geocode_lang) url += '&lang=' + rcmail.env.caldav_geocode_lang;
         }
 
-        $.getJSON(url, function(data) {
-            var results = caldav_geocode.parse(data, provider);
-            caldav_geocode.renderResults(results, dlg);
-        }).fail(function() {
-            dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
+        // cache:true -> jQuery haengt KEINEN _= Cache-Buster an, den Photon mit 400 ablehnt.
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            cache: true,
+            success: function(data) {
+                var results = caldav_geocode.parse(data, provider);
+                caldav_geocode.renderResults(results, dlg);
+            },
+            error: function() {
+                dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
+            }
         });
     },
 
