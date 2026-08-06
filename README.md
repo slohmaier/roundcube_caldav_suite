@@ -10,8 +10,16 @@ as a client. No Kolab, no heavyweight dependencies — just `sabre/dav` + `sabre
 - **Calendar** — Month/Week/Day/List views, multiple calendars with colors,
   create/edit/delete events, **recurrence (RRULE)**, reminders (VALARM), categories,
   all-day events, time zones (DST-correct), and Apple travel-time / structured location.
+  The list view loads a large window and **loads more on scroll** (infinite scrolling),
+  with day headers as navigable items.
 - **Tasks** — VTODO lists with create/edit/complete/delete, priority, due & start dates,
-  percent-complete, categories, recurrence.
+  percent-complete, categories, recurrence. Per-task **due-date indicator** and
+  **expandable details** (notes, location) on selection.
+- **Contacts (CardDAV)** — integrates as a Roundcube address book: name parts, nickname,
+  job title, organization & department, multiple emails/phones/addresses/URLs/IM with
+  subtypes (home/work/cell/…), birthday, anniversary and notes.
+  Contacts also appear in the **recipient autocomplete** when composing mail (the plugin
+  registers its CardDAV sources into `autocomplete_addressbooks` at runtime).
 - **Contacts (CardDAV)** — integrates as a Roundcube address book: name parts, nickname,
   job title, organization & department, multiple emails/phones/addresses/URLs/IM with
   subtypes (home/work/cell/…), birthday, anniversary and notes.
@@ -25,7 +33,15 @@ as a client. No Kolab, no heavyweight dependencies — just `sabre/dav` + `sabre
   anything the form doesn't know (RRULE, ATTENDEE/ORGANIZER, EXDATE, custom `X-` props)
   is preserved instead of being dropped.
 - **Accessible** — full keyboard navigation, screen-reader support, ARIA labels,
-  semantic HTML; a fully accessible list/agenda view.
+  semantic HTML; a fully accessible list/agenda view, **skip-to-calendar link**,
+  **loading spinner with periodic screen-reader announcement**, and calendar/task
+  lists that use Roundcube's native list semantics (select via click, edit via
+  Enter / double-click / edit icon).
+- **Location search** — geocoding via **Photon**, **Nominatim** or **Google Places**
+  (new API) with optional browser-geolocation bias. Google runs through a server-side
+  proxy so the API key never reaches the browser.
+- **Persisted visibility** — which calendars and task lists are shown is remembered
+  per user across sessions.
 - **Lightweight** — only `sabre/dav` + `sabre/vobject`.
 
 ## Requirements
@@ -52,6 +68,13 @@ Go to **Settings → CalDAV Suite** in Roundcube and enter:
 
 The plugin discovers all calendars, task lists and address books automatically.
 (These settings are stored per Roundcube user, not in `config.inc.php`.)
+
+**Location search** is configured under the same settings block:
+
+- **Provider** — Photon (default, no key), Nominatim, or Google Places (New).
+- **API key** — only required for Google Places. The key is stored per user and used
+  server-side (a proxy endpoint calls the API), so it is never exposed to the browser.
+  Restrict the key to your Roundcube domain in the Google Cloud console.
 
 ## Performance
 
