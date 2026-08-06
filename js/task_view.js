@@ -33,7 +33,8 @@
         rcmail.addEventListener('plugin.caldav-tasklists-response', function(data) {
             if (data.lists) {
                 state.taskLists = data.lists;
-                data.lists.forEach(function(l) { state.visibleLists[l.id] = true; });
+                state.visibleLists = {};
+                data.lists.forEach(function(l) { state.visibleLists[l.id] = l.visible !== false; });
                 renderTaskListSidebar();
                 loadTasks();
             }
@@ -78,6 +79,10 @@
         html += '</ul>';
         $('#tasklist-list').html(html);
 
+        var saveVisible = function() {
+            var ids = Object.keys(state.visibleLists).filter(function(id) { return state.visibleLists[id]; });
+            rcmail.http_post('plugin.caldav-set-visible-tasklists', { _visible: ids });
+        };
         var toggleList = function(item) {
             if (!item) return;
             var id = item.getAttribute('data-list-id');
@@ -86,6 +91,7 @@
             item.classList.toggle('checked', on);
             var list = state.taskLists.find(function(l) { return String(l.id) === String(id); });
             if (list) item.setAttribute('aria-label', listAria(list, on));
+            saveVisible();
             renderTasks();
         };
 
