@@ -45,6 +45,7 @@
 .calendar-month .other-month { opacity: 0.4; }
 .day-num { display: block; font-size: 0.85em; padding: 2px 4px; }
 .month-event { font-size: 0.75em; padding: 1px 4px; margin: 1px 0; border-radius: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+.month-event.selected { outline: 2px solid #37beff; outline-offset: -1px; }
 .month-event:hover { opacity: 0.8; }
 .month-event:focus { outline: 2px solid #37beff; outline-offset: 1px; }
 .event-time { color: #666; }
@@ -66,6 +67,7 @@
 .week-allday-event:focus { outline: 2px solid #37beff; }
 .week-cell { flex: 1; min-width: 0; border-left: 1px solid #eee; position: relative; }
 .week-event-inline { position: absolute; left: 0; right: 0; z-index: 2; font-size: 0.75em; padding: 2px 4px; overflow: hidden; border-radius: 2px; cursor: pointer; }
+.week-event-inline.selected, .week-allday-event.selected { outline: 2px solid #37beff; outline-offset: -1px; }
 .week-event-inline:focus { outline: 2px solid #37beff; z-index: 10; }
 .week-travel-block { position: absolute; left: 0; right: 0; z-index: 1; font-size: 0.7em; padding: 2px 4px; overflow: hidden; border-radius: 2px; background: rgba(128,128,128,0.2); border-left: 3px solid rgba(128,128,128,0.5); color: #666; font-style: italic; }
 
@@ -79,6 +81,7 @@
 .day-row .time-gutter { width: 3em; flex-shrink: 0; font-size: 0.75em; text-align: right; padding-right: 4px; color: #888; }
 .day-cell { flex: 1; position: relative; }
 .day-event-inline { position: absolute; left: 0; right: 0; z-index: 2; font-size: 0.85em; padding: 4px 8px; border-radius: 3px; cursor: pointer; overflow: hidden; }
+.day-event-inline.selected, .day-allday-event.selected { outline: 2px solid #37beff; outline-offset: -1px; }
 .day-event-inline:focus { outline: 2px solid #37beff; z-index: 10; }
 
 /* ---- List/Agenda View ---- */
@@ -90,6 +93,9 @@
 .list-range { padding: 0.6em 1em; margin: 0; font-size: 1em; font-weight: 600; border-bottom: 2px solid #ddd; }
 .list-date { font-size: 0.9em; font-weight: 600; margin: 1.5em 0 0.3em; padding-bottom: 0.3em; border-bottom: 1px solid #ddd; }
 .list-event { display: flex; align-items: center; gap: 0.6em; padding: 0.5em 0.6em; cursor: pointer; }
+.list-event.selected { background: rgba(55,190,255,0.12); }
+.event-edit { flex: 0 0 auto; margin-left: 0.4em; opacity: 0.4; cursor: pointer; }
+.list-event.selected .event-edit { opacity: 1; }
 .list-event.selected { background: rgba(55,190,255,0.12); }
 #directorylist:focus li[aria-selected="true"] { outline: 2px solid #37beff; outline-offset: -2px; background: rgba(55,190,255,0.12); border-radius: 4px; }
 #directorylist:focus li[aria-selected="true"] > a { background: transparent; }

@@ -450,10 +450,24 @@
             var date = $(this).data('date');
             caldav_event_dialog.open({ start: date + 'T09:00', end: date + 'T10:00' }, state.calendars);
         });
+        // Einfacher Klick waehlt aus, Doppelklick oeffnet Bearbeiten, Enter oeffnet Bearbeiten.
         container.find('.month-event').click(function() {
+            var url = $(this).data('url');
+            container.find('.month-event').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedEventUrl = url;
+        });
+        container.find('.month-event').on('dblclick', function() {
             var url = $(this).data('url');
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
+        });
+        container.find('.month-event').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                var url = $(this).data('url');
+                var ev = state.events.find(function(e) { return e.url === url; });
+                if (ev) caldav_event_dialog.open(ev, state.calendars);
+            }
         });
     }
 
@@ -565,10 +579,24 @@
         html += '</div></div>';
 
         container.html(html);
+        // Einfacher Klick waehlt aus, Doppelklick oeffnet Bearbeiten, Enter oeffnet Bearbeiten.
         container.find('.week-event-inline, .week-allday-event').click(function() {
+            var url = $(this).data('url');
+            container.find('.week-event-inline, .week-allday-event').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedEventUrl = url;
+        });
+        container.find('.week-event-inline, .week-allday-event').on('dblclick', function() {
             var url = $(this).data('url');
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
+        });
+        container.find('.week-event-inline, .week-allday-event').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                var url = $(this).data('url');
+                var ev = state.events.find(function(e) { return e.url === url; });
+                if (ev) caldav_event_dialog.open(ev, state.calendars);
+            }
         });
     }
 
@@ -646,10 +674,24 @@
 
         container.html(html);
 
+        // Einfacher Klick waehlt aus, Doppelklick oeffnet Bearbeiten, Enter oeffnet Bearbeiten.
         container.find('.day-event-inline, .day-allday-event').click(function() {
+            var url = $(this).data('url');
+            container.find('.day-event-inline, .day-allday-event').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedEventUrl = url;
+        });
+        container.find('.day-event-inline, .day-allday-event').on('dblclick', function() {
             var url = $(this).data('url');
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
+        });
+        container.find('.day-event-inline, .day-allday-event').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                var url = $(this).data('url');
+                var ev = state.events.find(function(e) { return e.url === url; });
+                if (ev) caldav_event_dialog.open(ev, state.calendars);
+            }
         });
     }
 
@@ -675,21 +717,6 @@
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
         };
-        var deleteEv = function() {
-            var urls = Object.keys(selectedUrls);
-            if (!urls.length) return;
-            var n = urls.length;
-            var msg = n === 1 ? caldav_suite.label('confirm_delete_event') : n + ' Termine wirklich löschen?';
-            if (confirm(msg)) {
-                rcmail.http_post('plugin.caldav-event-delete', { _urls: urls });
-            }
-        };
-        var newEv = function() {
-            caldav_event_dialog.open(null, state.calendars);
-        };
-
-        var selectedCount = function() { return Object.keys(selectedUrls).length; };
-
         // einzelnes Item togglen (Multi: Strg+Klick / Leertaste); add==true erzwingt Anwaehlen
         var toggleOne = function(item, add) {
             var url = item.getAttribute('data-url');
@@ -699,7 +726,6 @@
             else if (selectedUrls[url]) { delete selectedUrls[url]; on = false; }
             else { selectedUrls[url] = true; on = true; }
             item.classList.toggle('selected', on);
-            updateActions();
         };
         var toggleSelection = function(item) { toggleOne(item); };
 
@@ -710,19 +736,7 @@
             toggleOne(item, true);
         };
 
-        var updateActions = function() {
-            var n = selectedCount();
-            // Delete bei >=1, Edit nur bei genau 1
-            container.find('.btn-evt-delete').prop('disabled', n === 0);
-            container.find('.btn-evt-edit').prop('disabled', n !== 1);
-        };
-
-        var html = header + '<div class="list-actions" role="toolbar" aria-label="Termin-Aktionen">'
-            + '<button type="button" class="btn btn-sm btn-evt-new" data-action="new">' + rcmail.quote_html(caldav_suite.label('new_event')) + '</button>'
-            + '<button type="button" class="btn btn-sm btn-evt-edit" data-action="edit" disabled>' + rcmail.quote_html(caldav_suite.label('edit_event')) + '</button>'
-            + '<button type="button" class="btn btn-sm btn-evt-delete" data-action="delete" disabled>' + rcmail.quote_html(caldav_suite.label('delete')) + '</button>'
-            + '</div>'
-            + '<ul class="listing">';
+        var html = header + '<ul class="listing">';
         var lastDate = '';
 
         events.forEach(function(ev) {
@@ -752,30 +766,34 @@
                 + '<span class="event-summary" aria-hidden="true">' + rcmail.quote_html(ev.summary) + '</span>'
                 + (ev.location ? '<span class="event-location" aria-hidden="true">' + rcmail.quote_html(ev.location) + '</span>' : '')
                 + travelHtml
+                + '<span class="event-edit" aria-hidden="true">&#9998;</span>'
                 + '</li>';
         });
         html += '</ul>';
 
         container.html(html);
 
-        // Aktionen
-        container.find('.btn-evt-new').click(function() { newEv(); });
-        container.find('.btn-evt-edit').click(function() {
-            if (selectedCount() === 1) openEv(Object.keys(selectedUrls)[0]);
+        // Edit-Icon oeffnet direkt das Bearbeiten
+        container.find('.event-edit').click(function(e) {
+            e.stopPropagation();
+            openEv($(this).closest('.list-event').attr('data-url'));
         });
-        container.find('.btn-evt-delete').click(function() { deleteEv(); });
 
-        // Klick: Strg+Klick togglet (Multi), normaler Klick selektiert einzeln
-        container.find('.list-event').click(function(e) {
+        // Klick: Strg+Klick togglet (Multi), normaler Klick selektiert einzeln,
+        // Doppelklick oeffnet Bearbeiten.
+        container.find('.list-event').on('click', function(e) {
             if (e.ctrlKey || e.metaKey) { toggleSelection($(this)); }
             else { setSelection($(this)); }
+        });
+        container.find('.list-event').on('dblclick', function(e) {
+            openEv($(this).attr('data-url'));
         });
 
         caldav_a11y.makeListNavigable(container.find('.listing')[0], {
             itemSelector: '.list-event',
             label: 'Terminliste',
-            onActivate: function(item) { // Enter -> einzelne Auswahl setzen
-                setSelection($(item));
+            onActivate: function(item) { // Enter -> Bearbeiten
+                openEv(item.getAttribute('data-url'));
             },
             onToggle: function(item) { // Leertaste -> Multiselect togglen
                 toggleSelection($(item));
