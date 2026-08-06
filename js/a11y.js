@@ -89,6 +89,11 @@ window.caldav_a11y = {
                 it.classList.toggle('selected', sel);
             });
             container.setAttribute('aria-activedescendant', el.id);
+            // Optionale Ansage bei Auswahlwechsel (zusaetzlich zu aria-activedescendant,
+            // da NVDA letzteres beim Pfeilen nicht immer zuverlaessig ankündigt).
+            if (typeof opts.onChange === 'function') {
+                opts.onChange(el);
+            }
             // Nur den lokalen Scroller (naechster .scroller-Container) scrollen, NICHT das
             // gesamte Seitenlayout. Sonst wird bei der Listenansicht das Layout verschoben
             // (Sidebar verschwindet, Liste wird 100% breit).

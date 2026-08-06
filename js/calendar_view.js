@@ -809,6 +809,12 @@
                 }
                 return 0;
             },
+            // Explizite Ansage beim Pfeilen (aria-activedescendant wird von NVDA
+            // beim Pfeilen nicht immer zuverlaessig angekündigt).
+            onChange: function(item) {
+                var lbl = item.getAttribute('aria-label') || item.textContent || '';
+                caldav_suite.announce(lbl);
+            },
             onActivate: function(item) { // Enter -> Bearbeiten
                 openEv(item.getAttribute('data-url'));
             },
