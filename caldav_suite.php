@@ -44,6 +44,7 @@ class caldav_suite extends rcube_plugin
         $this->register_action('plugin.caldav-itip-reply', [$this, 'action_itip_reply']);
         $this->register_action('plugin.caldav-itip-counter', [$this, 'action_itip_counter']);
         $this->register_action('plugin.caldav-set-visible', [$this, 'action_set_visible_calendars']);
+        $this->register_action('plugin.caldav-set-visible-tasklists', [$this, 'action_set_visible_tasklists']);
 
         $this->register_task('calendar');
         $this->register_task('tasks');
@@ -239,6 +240,22 @@ class caldav_suite extends rcube_plugin
         $this->rc->output->send();
     }
 
+    public function action_set_visible_tasklists()
+    {
+        $ids = rcube_utils::get_input_value('_visible', rcube_utils::INPUT_POST);
+        $visible = [];
+        if (is_array($ids)) {
+            foreach ($ids as $id) {
+                $visible[(string)$id] = true;
+            }
+        }
+        $prefs = $this->rc->user->get_prefs();
+        $prefs['caldav_suite_visible_tasklists'] = json_encode($visible);
+        $this->rc->user->save_prefs($prefs);
+        $this->rc->output->command('plugin.caldav-tasklists-visible-saved', ['ok' => true]);
+        $this->rc->output->send();
+    }
+
     public function action_get_events()
     {
         // Zeit- und Memory-Limit fuer grosse Abfragen anheben.
@@ -373,12 +390,16 @@ class caldav_suite extends rcube_plugin
         }
 
         $lists = [];
+        $prefs = $this->rc->user->get_prefs();
+        $visible = json_decode($prefs['caldav_suite_visible_tasklists'] ?? '{}', true) ?: [];
         foreach ($client->getTaskLists() as $list) {
+            $id = $list->getId();
             $lists[] = [
-                'id'    => $list->getId(),
+                'id'    => $id,
                 'name'  => $list->displayName,
                 'url'   => $list->url,
                 'color' => $list->color ?? '#4fc3f7',
+                'visible' => array_key_exists($id, $visible) ? (bool)$visible[$id] : true,
             ];
         }
 
