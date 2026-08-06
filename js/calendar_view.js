@@ -19,7 +19,8 @@
         listLoadingMore: false,
         listPendingAppend: false,   // beim naechsten response: Events ANHAENGEN
         listPendingPrepend: false,   // beim naechsten response: Events VORANSTELLEN
-        listScrollBound: false
+        listScrollBound: false,
+        listScrolledToToday: false
     };
 
     var DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -112,6 +113,7 @@
         state.listScrollBound = false;
         state.listPendingAppend = false;
         state.listPendingPrepend = false;
+        state.listScrolledToToday = false;
         highlightActiveView();
         loadAndRender();
         caldav_suite.announce(caldav_suite.label('view_' + view));
@@ -136,6 +138,9 @@
 
     function loadAndRender() {
         state.pendingAnnounce = true;   // nach dem Laden Range + Anzahl ansagen
+        // Bei jedem Datumswechsel (Heute/Picker/Pfeile) in der Listenansicht wieder
+        // zum aktuellen Datum springen.
+        state.listScrolledToToday = false;
         updateTitle();
         loadEvents();
     }
@@ -761,7 +766,8 @@
                         (calName ? 'Kalender ' + calName : ''), travelLbl]
                 .filter(function(s) { return s; }).join(', ');
             // Klick auf das Item waehlt nur aus (kein sofortiges Edit). Bearbeiten via Button/Enter.
-            html += '<li class="list-event" data-url="' + ev.url + '" aria-label="' + rcmail.quote_html(aria) + '">'
+            var evDate = ev.start ? ev.start.substr(0, 10) : '';
+            html += '<li class="list-event" data-url="' + ev.url + '" data-date="' + evDate + '" aria-label="' + rcmail.quote_html(aria) + '">'
                 + '<span class="event-color-dot" style="background:' + color + '" aria-hidden="true"></span>'
                 + '<span class="event-time" aria-hidden="true">' + time + '</span>'
                 + '<span class="event-summary" aria-hidden="true">' + rcmail.quote_html(ev.summary) + '</span>'
@@ -812,6 +818,27 @@
                 if (nearBottom) loadListMore(1);
                 else if (nearTop) loadListMore(-1);
             });
+        }
+
+        // Nach dem ersten Laden (nicht bei Infinite-Scroll-Nachladen) zum aktuellen
+        // Datum (heute bzw. per Picker gewaehlt) springen, statt oben bei den aeltesten
+        // Terminen zu starten.
+        if (scroller && !state.listScrolledToToday) {
+            state.listScrolledToToday = true;
+            var target = state.currentDate;
+            var targetStr = target.getFullYear() + '-' + ('0'+(target.getMonth()+1)).slice(-2) + '-' + ('0'+target.getDate()).slice(-2);
+            var targetEl = null;
+            // Finde den ersten Termin ab/an diesem Datum
+            var items = container.find('.list-event').toArray();
+            for (var i = 0; i < items.length; i++) {
+                var dstr = items[i].getAttribute('data-date');
+                if (dstr && dstr >= targetStr) { targetEl = items[i]; break; }
+            }
+            if (!targetEl && items.length) targetEl = items[0];
+            if (targetEl) {
+                var top = targetEl.offsetTop - scroller.offsetTop - 20;
+                scroller.scrollTop = Math.max(0, top);
+            }
         }
     }
 
