@@ -408,6 +408,13 @@ class caldav_suite extends rcube_plugin
         }
 
         $data = rcube_utils::get_input_value('_event', rcube_utils::INPUT_POST);
+        // _event wird als JSON-String vom Dialog gesendet -> in Array parsen.
+        if (is_string($data)) {
+            $decoded = json_decode($data, true);
+            if (is_array($decoded)) {
+                $data = $decoded;
+            }
+        }
         $calendarUrl = rcube_utils::get_input_value('_calendar_url', rcube_utils::INPUT_POST);
         $existingUrl = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
         $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
@@ -542,6 +549,13 @@ class caldav_suite extends rcube_plugin
         }
 
         $data = rcube_utils::get_input_value('_task', rcube_utils::INPUT_POST);
+        // _task wird als JSON-String gesendet -> in Array parsen.
+        if (is_string($data)) {
+            $decoded = json_decode($data, true);
+            if (is_array($decoded)) {
+                $data = $decoded;
+            }
+        }
         $listUrl = rcube_utils::get_input_value('_list_url', rcube_utils::INPUT_POST);
         $existingUrl = rcube_utils::get_input_value('_url', rcube_utils::INPUT_POST);
         $etag = rcube_utils::get_input_value('_etag', rcube_utils::INPUT_POST);
