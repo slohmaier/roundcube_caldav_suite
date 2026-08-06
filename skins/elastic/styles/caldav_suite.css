@@ -131,7 +131,8 @@
 .task-priority.priority-high { color: #ff5552; }
 .task-priority.priority-medium { color: #fb8c00; }
 .task-priority.priority-low { color: #41b849; }
-.task-edit { opacity: 0.4; background: none; border: none; cursor: pointer; font-size: 1.1em; }
+.task-edit { flex: 0 0 auto; opacity: 0.4; background: none; border: none; cursor: pointer; font-size: 1.1em; }
+.task-item.selected .task-edit { opacity: 1; }
 .task-item:hover .task-edit { opacity: 1; }
 
 /* ---- Dialogs ---- */
