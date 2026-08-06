@@ -11,6 +11,7 @@ require '/var/www/html/plugins/caldav_suite/vendor/autoload.php';
 
 use Sabre\DAV\Client;
 use Slohmaier\CalDAVSuite\CalendarBackend;
+use Slohmaier\CalDAVSuite\TaskBackend;
 
 $base = 'http://rc-test-radicale:5232/test';
 $client = new Client(['baseUri' => $base, 'userName' => 'test', 'password' => 'test']);
@@ -95,4 +96,36 @@ $put('familie', ['title' => 'Brunch bei den Eltern', 'start' => $day(6, '11:00')
     'travel_mode' => '45', 'location' => 'Augsburg']);
 $put('privat', ['title' => 'Kino', 'start' => $day(6, '20:00'), 'end' => $day(6, '22:30')]);
 
-echo "Seed fertig: $count Termine in " . count($calendars) . " Kalendern (Woche ab " . $monday->format('d.m.Y') . ").\n";
+// ===== Aufgaben (VTODO) in der Aufgabenliste =====
+$tb = new TaskBackend();
+$putTask = function (array $args) use ($client, $tb, $base) {
+    $ical = $tb->buildICalTodo($args);
+    $url = "$base/aufgaben/demo-" . bin2hex(random_bytes(6)) . '.ics';
+    $client->request('PUT', $url, $ical, ['Content-Type' => 'text/calendar; charset=utf-8']);
+};
+
+// Fälligkeit relativ zum Montag setzen (due => YYYY-MM-DD)
+$due = fn(int $offset) => $monday->modify("+$offset days")->format('Y-m-d');
+$putTask(['title' => 'Steuererklärung einreichen', 'due' => $due(1), 'priority' => 'high', 'description' => 'Unterlagen zusammenlegen und abgeben.']);
+$putTask(['title' => 'Wochenplan erstellen', 'due' => $due(2), 'priority' => 'medium']);
+$putTask(['title' => 'Geschenk für Oma besorgen', 'due' => $due(4), 'priority' => 'medium']);
+$putTask(['title' => 'Zahnarzttermin vereinbaren', 'due' => $due(-1), 'priority' => 'high', 'description' => 'Kontrolle + professionelle Reinigung.']);
+$putTask(['title' => 'Einkaufsliste schreiben', 'due' => $due(3), 'priority' => 'low', 'location' => 'Supermarkt']);
+
+// ===== Kontakte (vCard) im Adressbuch =====
+$contacts = [
+    ['Anna', 'Becker', 'anna.becker@example.com', 'Firma GmbH'],
+    ['Max', 'Mustermann', 'max@mustermann.de', ''],
+    ['Julia', 'Schmidt', 'julia.schmidt@example.org', 'Agentur XY'],
+    ['Thomas', 'Müller', 't.mueller@example.net', ''],
+];
+foreach ($contacts as [$first, $last, $email, $org]) {
+    $uid = \Sabre\VObject\UUIDUtil::getUUID();
+    $fn = "$first $last";
+    $vcard = "BEGIN:VCARD\r\nVERSION:3.0\r\nUID:$uid\r\nFN:$fn\r\nN:$last;$first;;;\r\nEMAIL:$email\r\n";
+    if ($org) $vcard .= "ORG:$org\r\n";
+    $vcard .= "END:VCARD\r\n";
+    $client->request('PUT', "$base/contacts/$uid.vcf", $vcard, ['Content-Type' => 'text/vcard; charset=utf-8']);
+}
+
+echo "Seed fertig: $count Termine in " . count($calendars) . " Kalendern (Woche ab " . $monday->format('d.m.Y') . "), Aufgaben und Kontakte ergaenzt.\n";
