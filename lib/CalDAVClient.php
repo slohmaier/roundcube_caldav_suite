@@ -298,17 +298,29 @@ class CalDAVClient
     /**
      * Create or update a calendar object (event or task).
      */
-    public function putObject(string $url, string $icalData, ?string $etag = null): bool
+    public function putObject(string $url, string $icalData, ?string $etag = null, bool $force = false): bool
     {
-        $headers = ['Content-Type' => 'text/calendar; charset=utf-8'];
-        if ($etag) {
-            $headers['If-Match'] = '"' . trim($etag, '"') . '"';  // ETag gequotet (Radicale verlangt Quotes)
-        } else {
-            $headers['If-None-Match'] = '*';
+        // Schreibzugriff: bei veraltetem ETag (412) einmalig ohne If-Match wiederholen
+        // (z.B. wenn der Browser nach Infinite-Scroll ein altes ETag haelt).
+        $attempts = $force ? 1 : 2;
+        for ($i = 0; $i < $attempts; $i++) {
+            $headers = ['Content-Type' => 'text/calendar; charset=utf-8'];
+            if ($i === 0 && $etag) {
+                $headers['If-Match'] = '"' . trim($etag, '"') . '"';  // ETag gequotet (Radicale verlangt Quotes)
+            } elseif ($i === 0 && !$force) {
+                $headers['If-None-Match'] = '*';
+            }
+            // kein Header beim force-Retry
+            $response = $this->client->request('PUT', $url, $icalData, $headers);
+            if (in_array($response['statusCode'], [201, 204])) {
+                return true;
+            }
+            // nur bei 412 (ETag-Konflikt) und noch einem Versuch weiter
+            if ($response['statusCode'] !== 412 || $i >= $attempts - 1) {
+                break;
+            }
         }
-
-        $response = $this->client->request('PUT', $url, $icalData, $headers);
-        return in_array($response['statusCode'], [201, 204]);
+        return false;
     }
 
     /**
