@@ -5,6 +5,20 @@ CalDAV **Calendar, Tasks & Contacts** plugin for Roundcube Webmail.
 Connects to **any CalDAV/CardDAV server** (Radicale, Baïkal, Nextcloud, iCloud, Google)
 as a client. No Kolab, no heavyweight dependencies — just `sabre/dav` + `sabre/vobject`.
 
+## Screenshots
+
+![Calendar week](docs/screenshots/calendar-week.png)
+
+![Calendar month](docs/screenshots/calendar-month.png)
+
+![Calendar day](docs/screenshots/calendar-day.png)
+
+![Calendar list](docs/screenshots/calendar-list.png)
+
+![Tasks](docs/screenshots/tasks.png)
+
+![Contacts](docs/screenshots/contacts.png)
+
 ## Features
 
 - **Calendar** — Month/Week/Day/List views, multiple calendars with colors,
