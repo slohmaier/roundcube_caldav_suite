@@ -217,6 +217,32 @@ window.caldav_geocode = {
         var baseUrl = rcmail.env.caldav_geocode_url || '';
         var url;
 
+        if (provider === 'google') {
+            // Google Places (New) Text Search
+            var key = rcmail.env.caldav_geocode_key || '';
+            if (!key) {
+                dlg.find('#ev-location-results').html('<li class="hint">Google API Key fehlt</li>').show();
+                return;
+            }
+            url = 'https://places.googleapis.com/v1/places:searchText';
+            var body = { textQuery: query, languageCode: rcmail.env.caldav_geocode_lang || 'de' };
+            $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location' },
+                data: JSON.stringify(body),
+                success: function(data) {
+                    var results = caldav_geocode.parse(data, provider);
+                    caldav_geocode.renderResults(results, dlg);
+                },
+                error: function() {
+                    dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
+                }
+            });
+            return;
+        }
+
         if (provider === 'nominatim') {
             url = (baseUrl || 'https://nominatim.openstreetmap.org') + '/search';
             url += '?format=json&addressdetails=1&limit=5&q=' + encodeURIComponent(query);
@@ -249,6 +275,18 @@ window.caldav_geocode = {
 
     parse: function(data, provider) {
         var results = [];
+        if (provider === 'google') {
+            ((data && data.places) || []).forEach(function(p) {
+                var name = (p.displayName && p.displayName.text) || p.formattedAddress || 'Unbekannt';
+                var loc = p.location || {};
+                results.push({
+                    name: name,
+                    lat: loc.latitude != null ? loc.latitude : null,
+                    lng: loc.longitude != null ? loc.longitude : null
+                });
+            });
+            return results;
+        }
         if (provider === 'nominatim') {
             (data || []).forEach(function(item) {
                 results.push({

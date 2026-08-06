@@ -145,6 +145,7 @@ class caldav_suite extends rcube_plugin
         $this->rc->output->set_env('caldav_time_format', $prefs['caldav_suite_time_format'] ?? '24');
         $this->rc->output->set_env('caldav_geocode_provider', $prefs['caldav_suite_geocode_provider'] ?? 'photon');
         $this->rc->output->set_env('caldav_geocode_url', $prefs['caldav_suite_geocode_url'] ?? '');
+        $this->rc->output->set_env('caldav_geocode_key', $prefs['caldav_suite_geocode_key'] ?? '');
         // Sprache fuer die Ortssuche aus der Roundcube-User-Sprache ableiten (z.B. 'de_DE' -> 'de').
         $lang = $this->rc->user->language ?: $this->rc->config->get('language', 'en');
         $lang = strtolower(substr($lang, 0, 2));
@@ -668,6 +669,7 @@ class caldav_suite extends rcube_plugin
         $geoSelect = new html_select(['name' => '_caldav_geocode_provider', 'id' => 'caldav-geocode-provider']);
         $geoSelect->add('Photon (komoot.io)', 'photon');
         $geoSelect->add('Nominatim (OpenStreetMap)', 'nominatim');
+        $geoSelect->add('Google Places', 'google');
 
         $args['blocks']['geocoding'] = [
             'name'    => $this->gettext('geocoding_settings'),
@@ -682,6 +684,13 @@ class caldav_suite extends rcube_plugin
                         'name' => '_caldav_geocode_url', 'id' => 'caldav-geocode-url',
                         'size' => 60, 'value' => $prefs['caldav_suite_geocode_url'] ?? '',
                     ]))->show() . ' <small>' . $this->gettext('geocode_url_hint') . '</small>',
+                ],
+                'geocode_key' => [
+                    'title'   => $this->gettext('geocode_key'),
+                    'content' => (new html_inputfield([
+                        'name' => '_caldav_geocode_key', 'id' => 'caldav-geocode-key',
+                        'size' => 60, 'value' => $prefs['caldav_suite_geocode_key'] ?? '',
+                    ]))->show() . ' <small>' . $this->gettext('geocode_key_hint') . '</small>',
                 ],
             ],
         ];
@@ -703,6 +712,7 @@ class caldav_suite extends rcube_plugin
         $args['prefs']['caldav_suite_extra_urls'] = rcube_utils::get_input_value('_caldav_extra_urls', rcube_utils::INPUT_POST);
         $args['prefs']['caldav_suite_geocode_provider'] = rcube_utils::get_input_value('_caldav_geocode_provider', rcube_utils::INPUT_POST);
         $args['prefs']['caldav_suite_geocode_url'] = rcube_utils::get_input_value('_caldav_geocode_url', rcube_utils::INPUT_POST);
+        $args['prefs']['caldav_suite_geocode_key'] = rcube_utils::get_input_value('_caldav_geocode_key', rcube_utils::INPUT_POST);
 
         $password = rcube_utils::get_input_value('_caldav_password', rcube_utils::INPUT_POST);
         if (!empty($password)) {
