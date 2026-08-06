@@ -25,6 +25,7 @@ window.caldav_suite = {
             title: title,
             modal: true,
             width: 500,
+            maxHeight: Math.max(400, Math.round(window.innerHeight * 0.9)),
             close: function() { $(this).dialog('destroy').remove(); },
             buttons: {}
         };

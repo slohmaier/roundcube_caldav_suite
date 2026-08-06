@@ -137,6 +137,17 @@ window.caldav_event_dialog = {
 
         var dlg = caldav_suite.dialog(title, html, buttons);
 
+        // Start aendern -> Ende automatisch um die bisherige Dauer mitziehen.
+        var syncEndFromStart = function() {
+            var start = dlg.find('#ev-start').val();
+            var end = dlg.find('#ev-end').val();
+            if (!start || !end) return;
+            var ms = new Date(end).getTime() - new Date(start).getTime();
+            if (isNaN(ms) || ms <= 0) return; // nur wenn Ende hinter Start liegt
+            dlg.find('#ev-end').val(new Date(new Date(start).getTime() + ms).toISOString().substr(0, 16));
+        };
+        dlg.find('#ev-start').on('change', syncEndFromStart);
+
         // Toggle time inputs for all-day events
         dlg.find('#ev-allday').change(function() {
             var isAllDay = this.checked;

@@ -260,3 +260,6 @@ html.dark-mode .task-priority.priority-low { color: #7fd985; }
 @keyframes caldav-spin { to { transform: rotate(360deg); } }
 html.dark-mode .caldav-loading { background: rgba(33,41,44,0.7); }
 html.dark-mode .caldav-loading-text { color: #c5d1d3; }
+
+/* Dialog: Inhalt scrollen statt abgeschnitten (bei schmalen Fenstern) */
+.ui-dialog .ui-dialog-content { overflow-y: auto !important; }
