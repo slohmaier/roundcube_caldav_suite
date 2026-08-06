@@ -50,6 +50,7 @@ class caldav_suite extends rcube_plugin
         $this->register_action('plugin.caldav-task-delete', [$this, 'action_delete_task']);
         $this->register_action('plugin.caldav-task-toggle', [$this, 'action_toggle_task']);
         $this->register_action('plugin.caldav-test-connection', [$this, 'action_test_connection']);
+        $this->register_action('plugin.caldav-geocode', [$this, 'action_geocode']);
         $this->register_action('plugin.caldav-itip-reply', [$this, 'action_itip_reply']);
         $this->register_action('plugin.caldav-itip-counter', [$this, 'action_itip_counter']);
         $this->register_action('plugin.caldav-set-visible', [$this, 'action_set_visible_calendars']);
@@ -266,6 +267,88 @@ class caldav_suite extends rcube_plugin
         $prefs['caldav_suite_visible_tasklists'] = json_encode($visible);
         $this->rc->user->save_prefs($prefs);
         $this->rc->output->command('plugin.caldav-tasklists-visible-saved', ['ok' => true]);
+        $this->rc->output->send();
+    }
+
+    /** Ortssuche (Geocoding) ueber Server-Proxy: umgeht CORS und haelt den API-Key serverseitig. */
+    public function action_geocode()
+    {
+        $prefs = $this->rc->user->get_prefs();
+        $provider = $prefs['caldav_suite_geocode_provider'] ?? 'photon';
+        $query = rcube_utils::get_input_value('_q', rcube_utils::INPUT_POST);
+
+        if (empty($query)) {
+            $this->rc->output->command('plugin.caldav-geocode-response', ['error' => 'empty']);
+            $this->rc->output->send();
+            return;
+        }
+
+        $results = [];
+
+        if ($provider === 'google') {
+            $key = $prefs['caldav_suite_geocode_key'] ?? '';
+            if (empty($key)) {
+                $this->rc->output->command('plugin.caldav-geocode-response', ['error' => 'no_key']);
+                $this->rc->output->send();
+                return;
+            }
+            $lang = $prefs['language'] ?? 'de';
+            $lang = strtolower(substr($lang, 0, 2));
+            $body = json_encode(['textQuery' => $query, 'languageCode' => $lang]);
+
+            $ch = curl_init('https://places.googleapis.com/v1/places:searchText');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'X-Goog-Api-Key: ' . $key,
+                    'X-Goog-FieldMask: places.displayName,places.formattedAddress,places.location',
+                ],
+                CURLOPT_TIMEOUT => 10,
+            ]);
+            $resp = curl_exec($ch);
+            curl_close($ch);
+            $data = json_decode($resp, true);
+            foreach (($data['places'] ?? []) as $p) {
+                $results[] = [
+                    'name' => ($p['displayName']['text'] ?? $p['formattedAddress'] ?? 'Unbekannt'),
+                    'lat'  => $p['location']['latitude'] ?? null,
+                    'lng'  => $p['location']['longitude'] ?? null,
+                ];
+            }
+        } elseif ($provider === 'nominatim') {
+            $url = 'https://nominatim.openstreetmap.org/search?format=json&limit=5&q=' . rawurlencode($query);
+            $resp = @file_get_contents($url);
+            $data = json_decode($resp, true) ?: [];
+            foreach ($data as $item) {
+                $results[] = [
+                    'name' => $item['display_name'] ?? 'Unbekannt',
+                    'lat'  => isset($item['lat']) ? (float)$item['lat'] : null,
+                    'lng'  => isset($item['lon']) ? (float)$item['lon'] : null,
+                ];
+            }
+        } else {
+            // Photon
+            $url = 'https://photon.komoot.io/api?limit=5&q=' . rawurlencode($query)
+                . '&lang=' . (strtolower(substr($prefs['language'] ?? 'de', 0, 2)));
+            $resp = @file_get_contents($url);
+            $data = json_decode($resp, true) ?: [];
+            foreach (($data['features'] ?? []) as $f) {
+                $p = $f['properties'] ?? [];
+                $coords = $f['geometry']['coordinates'] ?? [];
+                $name = $p['name'] ?? 'Unbekannt';
+                if (!empty($p['city'])) $name .= ', ' . $p['city'];
+                $results[] = [
+                    'name' => $name,
+                    'lat'  => isset($coords[1]) ? (float)$coords[1] : null,
+                    'lng'  => isset($coords[0]) ? (float)$coords[0] : null,
+                ];
+            }
+        }
+
+        $this->rc->output->command('plugin.caldav-geocode-response', ['results' => $results]);
         $this->rc->output->send();
     }
 

@@ -212,65 +212,10 @@ window.caldav_geocode = {
         }, function() { cb(null); }, { timeout: 5000, maximumAge: 600000 });
     },
 
+    // Ortssuche ueber den Roundcube-Server-Proxy (versteckt den Google-Key, umgeht CORS).
     search: function(query, dlg) {
-        var provider = rcmail.env.caldav_geocode_provider || 'photon';
-        var baseUrl = rcmail.env.caldav_geocode_url || '';
-        var url;
-
-        if (provider === 'google') {
-            // Google Places (New) Text Search
-            var key = rcmail.env.caldav_geocode_key || '';
-            if (!key) {
-                dlg.find('#ev-location-results').html('<li class="hint">Google API Key fehlt</li>').show();
-                return;
-            }
-            url = 'https://places.googleapis.com/v1/places:searchText';
-            var body = { textQuery: query, languageCode: rcmail.env.caldav_geocode_lang || 'de' };
-            $.ajax({
-                url: url,
-                type: 'POST',
-                contentType: 'application/json',
-                headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location' },
-                data: JSON.stringify(body),
-                success: function(data) {
-                    var results = caldav_geocode.parse(data, provider);
-                    caldav_geocode.renderResults(results, dlg);
-                },
-                error: function() {
-                    dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
-                }
-            });
-            return;
-        }
-
-        if (provider === 'nominatim') {
-            url = (baseUrl || 'https://nominatim.openstreetmap.org') + '/search';
-            url += '?format=json&addressdetails=1&limit=5&q=' + encodeURIComponent(query);
-            if (rcmail.env.caldav_geocode_lang) url += '&accept-language=' + rcmail.env.caldav_geocode_lang;
-        } else {
-            url = (baseUrl || 'https://photon.komoot.io') + '/api';
-            url += '?limit=5&q=' + encodeURIComponent(query);
-            if (rcmail.env.caldav_geocode_lang) url += '&lang=' + rcmail.env.caldav_geocode_lang;
-        }
-
-        // cache:true -> jQuery haengt KEINEN _= Cache-Buster an, den Photon mit 400 ablehnt.
-        var doSearch = function(geo) {
-            var u = url;
-            if (geo) u += '&lat=' + geo.lat + '&lon=' + geo.lon; // Location-Bias: nahe Orte zuerst
-            $.ajax({
-                url: u,
-                dataType: 'json',
-                cache: true,
-                success: function(data) {
-                    var results = caldav_geocode.parse(data, provider);
-                    caldav_geocode.renderResults(results, dlg);
-                },
-                error: function() {
-                    dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
-                }
-            });
-        };
-        caldav_geocode.getLocation(doSearch);
+        window.caldav_geocode._activeDlg = dlg;
+        rcmail.http_post('plugin.caldav-geocode', { _q: query });
     },
 
     parse: function(data, provider) {
@@ -324,6 +269,9 @@ window.caldav_geocode = {
         return results;
     },
 
+    // Merkt sich den aktuellen Dialog, um die geocode-Response zu rendern.
+    _activeDlg: null,
+
     renderResults: function(results, dlg) {
         var list = dlg.find('#ev-location-results');
         list.empty();
@@ -350,3 +298,18 @@ window.caldav_geocode = {
         list.show();
     }
 };
+
+// Antwort des Server-Geocode-Proxys entgegennehmen und im aktiven Dialog rendern.
+if (window.rcmail) {
+    rcmail.addEventListener('init', function() {
+        rcmail.addEventListener('plugin.caldav-geocode-response', function(data) {
+            var dlg = window.caldav_geocode._activeDlg;
+            if (!dlg) return;
+            if (data && data.results) {
+                window.caldav_geocode.renderResults(data.results, dlg);
+            } else if (dlg.length) {
+                dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
+            }
+        });
+    });
+}
