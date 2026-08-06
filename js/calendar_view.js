@@ -250,11 +250,11 @@
                 end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
                 break;
             case 'list':
-                // Listenansicht: grosses Startfenster (1 Monat zurueck, 8 Monate vor).
+                // Listenansicht: Startfenster um "heute" (1 Monat zurueck, 1 Monat vor).
                 // Weitere Bloecke werden per Infinite-Scrolling nachgeladen.
                 start = new Date(d.getFullYear(), d.getMonth() - 1, 1);
                 start.setHours(0, 0, 0, 0);
-                end = new Date(d.getFullYear(), d.getMonth() + 8, 1);
+                end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
                 end.setHours(23, 59, 59);
                 break;
         }
