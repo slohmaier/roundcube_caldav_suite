@@ -120,8 +120,11 @@
 .task-item.completed .task-check::after { content: '\2713'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
 .task-edit { cursor: pointer; }
 .task-summary { flex: 1; cursor: pointer; }
-.task-due { font-size: 0.8em; color: #888; padding: 2px 6px; border-radius: 3px; background: rgba(0,0,0,0.05); }
-.task-due.overdue { color: #ff5552; background: rgba(255,85,82,0.1); font-weight: 600; }
+/* Fälligkeits-Indikator: kleiner Punkt in der Liste, rot bei Ueberfaelligkeit. */
+.task-due-indicator { flex: 0 0 auto; width: 0.7em; height: 0.7em; border-radius: 50%; background: #41b849; margin-left: 0.3em; }
+.task-due-indicator.overdue { background: #ff5552; }
+.task-due-detail { font-size: 0.8em; color: #888; }
+.task-due-detail.overdue { color: #ff5552; font-weight: 600; }
 .task-priority { font-size: 0.8em; padding: 2px 4px; border-radius: 2px; }
 .task-priority.priority-high { color: #ff5552; }
 .task-priority.priority-medium { color: #fb8c00; }
@@ -181,10 +184,10 @@ html.dark-mode .list-event:hover { background: rgba(255,255,255,0.03); }
 html.dark-mode .task-item { border-color: #2c373a; }
 html.dark-mode .task-desc { color: #c5d1d3; }
 html.dark-mode .task-loc { color: #8ba3a7; }
-html.dark-mode .task-due { background: rgba(255,255,255,0.05); }
+html.dark-mode .task-due-detail { color: #c5d1d3; }
 html.dark-mode .view-btn.active { background: rgba(28,137,194,0.2); }
 html.dark-mode .calendar-item:hover { background: rgba(255,255,255,0.05); }
-html.dark-mode .event-time, html.dark-mode .list-event .event-time, html.dark-mode .list-event .event-location, html.dark-mode .task-due { color: #c5d1d3; }
+html.dark-mode .event-time, html.dark-mode .list-event .event-time, html.dark-mode .list-event .event-location { color: #c5d1d3; }
 html.dark-mode .month-event .event-time { color: #c5d1d3; }
 html.dark-mode .location-results { background: #21292c; border-color: #4d6066; }
 html.dark-mode .caldav-itip { background: #21292c; border-color: #4d6066; }
