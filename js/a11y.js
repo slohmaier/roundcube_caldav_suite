@@ -112,9 +112,16 @@ window.caldav_a11y = {
             it.removeAttribute('tabindex');
         });
 
-        // Beim Fokussieren der Liste die erste Option aktiv markieren (falls keine aktiv).
+        // Beim Fokussieren der Liste die (erste bzw. per opts.initialIndex gewaehlte)
+        // Option aktiv markieren (falls keine aktiv).
         container.addEventListener('focus', function() {
-            if (!activeItem()) { var items = getItems(); if (items.length) setActive(items[0], false); }
+            if (!activeItem()) {
+                var items = getItems();
+                if (!items.length) return;
+                var idx = (typeof opts.initialIndex === 'function') ? opts.initialIndex(items) : 0;
+                if (idx < 0) idx = 0;
+                setActive(items[idx], false);
+            }
         });
 
         container.addEventListener('keydown', function(e) {

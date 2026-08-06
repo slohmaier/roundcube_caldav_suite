@@ -799,6 +799,16 @@
         caldav_a11y.makeListNavigable(container.find('.listing')[0], {
             itemSelector: '.list-event',
             label: 'Terminliste',
+            // Beim Reintabben zum aktuellen Datum springen statt zum aeltesten Termin.
+            initialIndex: function(items) {
+                var target = state.currentDate;
+                var ts = target.getFullYear() + '-' + ('0'+(target.getMonth()+1)).slice(-2) + '-' + ('0'+target.getDate()).slice(-2);
+                for (var i = 0; i < items.length; i++) {
+                    var d = items[i].getAttribute('data-date');
+                    if (d && d >= ts) return i;
+                }
+                return 0;
+            },
             onActivate: function(item) { // Enter -> Bearbeiten
                 openEv(item.getAttribute('data-url'));
             },
