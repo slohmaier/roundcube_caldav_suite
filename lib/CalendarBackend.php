@@ -15,8 +15,10 @@ class CalendarBackend
         $vcalendar = new VCalendar();
         $vcalendar->PRODID = '-//CalDAV Suite//EN';
 
+        // Leeren uid (neuer Termin) durch frischen UUID ersetzen, sonst antwortet Radicale 400.
+        $uid = (isset($data['uid']) && !empty($data['uid'])) ? $data['uid'] : \Sabre\VObject\UUIDUtil::getUUID();
         $vevent = $vcalendar->add('VEVENT', [
-            'UID' => $data['uid'] ?? \Sabre\VObject\UUIDUtil::getUUID(),
+            'UID' => $uid,
         ]);
         if (!array_key_exists('title', $data)) {
             $vevent->SUMMARY = '';
