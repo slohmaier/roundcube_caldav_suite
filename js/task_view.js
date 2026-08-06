@@ -179,13 +179,22 @@
             // NVDA/Browser wuerde sonst Aktivierung/Klick auf das fokussierbare Kind statt
             // auf die Option routen ("nur Checkbox fokussiert"). Status steckt im aria-label
             // + .completed-Klasse; Check/Edit sind rein visuelle, per CSS gestylte <span>s.
+            // Detail-Zeile (Notiz/Ort) nur bei Auswahl anzeigen.
+            var detailHtml = '';
+            var extras = [];
+            if (task.description) { detailHtml += '<div class="task-desc" aria-hidden="true">' + rcmail.quote_html(task.description) + '</div>'; }
+            if (task.location) { detailHtml += '<div class="task-loc" aria-hidden="true">' + rcmail.quote_html(task.location) + '</div>'; }
+
             html += '<li class="task-item' + (task.completed ? ' completed' : '') + '" data-url="' + task.url + '"'
                 + ' data-etag="' + (task.etag || '') + '"'
                 + ' aria-label="' + rcmail.quote_html(aria) + '">'
                 + '<span class="task-check" aria-hidden="true"></span>'
+                + '<span class="task-body">'
                 + '<span class="task-summary" aria-hidden="true">' + rcmail.quote_html(task.summary) + '</span>'
                 + dueHtml
                 + (priorityLabel ? '<span class="task-priority ' + priorityClass + '" aria-hidden="true">' + priorityLabel + '</span>' : '')
+                + (detailHtml ? '<span class="task-details">' + detailHtml + '</span>' : '')
+                + '</span>'
                 + '<span class="task-edit" aria-hidden="true">&#9998;</span>'
                 + '</li>';
         });
