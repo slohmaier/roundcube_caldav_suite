@@ -41,6 +41,7 @@
         });
 
         rcmail.addEventListener('plugin.caldav-tasks-response', function(data) {
+            caldav_suite.hideLoading('tasks');
             if (data.tasks) {
                 state.tasks = data.tasks;
                 renderTasks();
@@ -67,6 +68,7 @@
     });
 
     function loadTasks() {
+        caldav_suite.showLoading('tasks', '#task-list-container');
         // Nur bei "Offen" duerfen erledigte serverseitig wegfallen; sonst alle holen
         // und clientseitig filtern (siehe renderTasks).
         rcmail.http_post('plugin.caldav-tasks', {

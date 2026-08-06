@@ -50,6 +50,35 @@ window.caldav_suite = {
         }
     },
 
+    // ---- Loading-Overlay + Screenreader-Ansage ----
+    _loading: {},
+
+    // Legt einen Spinner-Overlay ueber den Container und sagt periodisch "Laedt..." an.
+    // key: eindeutiger Bezeichner (z.B. 'calendar', 'tasks'). containerSel: z.B. '#calendar-grid'.
+    showLoading: function(key, containerSel) {
+        if (this._loading[key]) return; // schon aktiv
+        var container = $(containerSel);
+        if (!container.length) return;
+        var overlay = $('<div class="caldav-loading" role="status" aria-live="polite"></div>')
+            .append('<span class="caldav-spinner"></span>')
+            .append('<span class="caldav-loading-text">Lädt…</span>');
+        container.append(overlay);
+        var t0 = Date.now();
+        // Alle ~2.5s die Lade-Ansage wiederholen (aria-live), bis fertig.
+        var timer = setInterval(function() {
+            caldav_suite.announce('Lädt…');
+        }, 2500);
+        this._loading[key] = { overlay: overlay, timer: timer, t0: t0 };
+    },
+
+    hideLoading: function(key) {
+        var l = this._loading[key];
+        if (!l) return;
+        clearInterval(l.timer);
+        l.overlay.remove();
+        delete this._loading[key];
+    },
+
     formatTime: function(dateStr) {
         if (!dateStr) return '';
         var d = new Date(dateStr);
