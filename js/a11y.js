@@ -89,7 +89,19 @@ window.caldav_a11y = {
                 it.classList.toggle('selected', sel);
             });
             container.setAttribute('aria-activedescendant', el.id);
-            if (scroll !== false && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+            // Nur den lokalen Scroller (naechster .scroller-Container) scrollen, NICHT das
+            // gesamte Seitenlayout. Sonst wird bei der Listenansicht das Layout verschoben
+            // (Sidebar verschwindet, Liste wird 100% breit).
+            if (scroll !== false) {
+                var sc = el.closest && el.closest('.scroller');
+                if (sc) {
+                    var top = el.offsetTop - sc.offsetTop;
+                    if (top < sc.scrollTop) sc.scrollTop = top;
+                    else if (top + el.offsetHeight > sc.scrollTop + sc.clientHeight) {
+                        sc.scrollTop = top + el.offsetHeight - sc.clientHeight;
+                    }
+                }
+            }
         };
 
         getItems().forEach(function(it, i) {
