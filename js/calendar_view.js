@@ -36,6 +36,7 @@
         state.currentView = rcmail.env.caldav_default_view || 'month';
 
         // Button handlers
+        $('#btn-new-event').click(function() { caldav_event_dialog.open(null, state.calendars); });
         $('#btn-prev').click(function() { navigate(-1); });
         $('#btn-next').click(function() { navigate(1); });
         $('#btn-today').click(function() { state.currentDate = new Date(); loadAndRender(); });
