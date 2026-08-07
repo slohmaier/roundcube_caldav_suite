@@ -846,9 +846,11 @@ class caldav_suite extends rcube_plugin
             return;
         }
 
-        // Discovery 1x pro Session cachen; leere Ergebnisse NICHT cachen, damit sich ein
-        // transienter Discovery-Fehler nicht festsetzt (sonst bleibt Autocomplete leer).
-        $ids = $_SESSION['caldav_suite_abook_ids'] ?? [];
+        // Discovery 1x pro Session cachen, aber NUR solange die caldav_suite_url gleich
+        // bleibt. Sonst bleibt nach einem URL-Wechsel (z.B. extern -> intern) eine veraltete
+        // Adressbuch-ID stehen und der Autocomplete meldet "Addressbook source not found".
+        $cacheKey = 'caldav_suite_abook_ids_' . md5($prefs['caldav_suite_url']);
+        $ids = $_SESSION[$cacheKey] ?? [];
         if (empty($ids)) {
             try {
                 $username = $prefs['caldav_suite_username'] ?? '';
@@ -863,7 +865,7 @@ class caldav_suite extends rcube_plugin
                 rcube::raise_error($e->getMessage(), true, false);
             }
             if (!empty($ids)) {
-                $_SESSION['caldav_suite_abook_ids'] = $ids;
+                $_SESSION[$cacheKey] = $ids;
             }
         }
 
