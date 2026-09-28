@@ -416,5 +416,17 @@ sendet als iMIP-Mail via Roundcube-SMTP (`rcube::deliver_message` + `Mail_mime`)
   eigene pear-Kopie und prependet sie per `vendor/composer/include_paths.php` in den include_path.
   Beim Laden von `Mail_mime` knallt sonst `Cannot redeclare _PEAR_call_destructors`. `ITip::send`
   nimmt die Plugin-pear-Pfade waehrend des Sendens kurz aus dem include_path.
+- **STOLPERSTEIN (composer-Autoload / Klassenshadowing):** `roundcube/plugin-installer`
+  zieht transitiv `roundcube/roundcubemail` in `vendor/`; dessen Classmap-Eintraege
+  werden per prepend VOR Roundcubes Autoloader registriert und shadowen die echten
+  Core-Klassen (konkret: die alte `rcmail_sendmail`-Kopie setzte `html_encoding=8bit`
+  fuer den HTML-Teil -> HTML ging als EINE lange Zeile raus -> strenge Mailserver
+  (IONOS) lehnten mit `501 line too long` ab; ebenso die PEAR-Dubletten). Fix in
+  `composer.json`: `"exclude-from-classmap": ["/vendor/roundcube/roundcubemail/",
+  "/vendor/pear/"]` (Pfade relativ zur Plugin-Wurzel, inkl. `vendor/`) plus
+  `roundcube/plugin-installer` nach `require-dev` (composer fuehrt Plugins nur aus
+  dem Root-Projekt aus). `tests/bootstrap.php` laedt die vendored Core-Klassen fuer
+  die Unit-Tests bedarfsweise nach (`phpunit.xml` -> `bootstrap="tests/bootstrap.php"`).
+  Danach `composer dump-autoload`.
 - **Test:** `test-stack/run-itip-test.sh` (greenmail SMTP/IMAP, Playwright `itip-test.mjs`):
   Box-Render + a11y, Annehmen -> CalDAV-Event + REPLY in greenmail, Counter-Modal -> COUNTER-Mail.

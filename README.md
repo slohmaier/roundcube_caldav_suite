@@ -147,6 +147,43 @@ docker compose up -d
 See [`test-stack/README.md`](test-stack/README.md) for details. After editing PHP code,
 `docker compose restart rc-test-roundcube` (PHP OPcache).
 
+### Autoload / packaging note
+
+`roundcube/plugin-installer` (a runtime `require`) transitively pulls in the
+`roundcube/roundcubemail` package. Without a guard, that package's core classes
+(`rcmail_sendmail`, `rcube_mime`, `rcmail`, ...) end up in this plugin's composer
+classmap. Composer prepends its autoloader, so once the plugin is loaded those
+classes shadow the real Roundcube core classes.
+
+Concrete symptom: the bundled older `rcmail_sendmail::set_message_encoding()`
+set `html_encoding = 8bit` for HTML mail, so the HTML body was sent as one long
+line and strict mail servers rejected it with `501 Syntax error - line too long`.
+
+`composer.json` therefore excludes those paths from the classmap and keeps the
+installer out of the runtime dependencies:
+
+    "require":     { "php": ">=8.1", "sabre/dav": "^4.6", "sabre/vobject": "^4.5" },
+    "require-dev": { ..., "roundcube/plugin-installer": ">=0.1.3" },
+    "autoload": {
+        "psr-4": { "Slohmaier\\CalDAVSuite\\": "lib/" },
+        "exclude-from-classmap": [ "/vendor/roundcube/roundcubemail/", "/vendor/pear/" ]
+    }
+
+`roundcube/plugin-installer` is a dev/root-only concern: Composer executes
+plugins required by the root Roundcube project, not by dependencies, so it is
+not a runtime need here. Keeping it out of `require` means a `--no-dev` build
+ships neither `roundcubemail` nor its PEAR duplicates at all; the
+`exclude-from-classmap` entries additionally neutralise them for dev builds and
+for existing vendor directories.
+
+The patterns are resolved relative to the plugin root (they must include the
+`vendor/` prefix). Regenerate the autoloader (`composer dump-autoload`) whenever
+the vendor directory is (re)built.
+
+Because the exclusion also applies to the dev classmap, `tests/bootstrap.php`
+re-registers the bundled roundcubemail classes on demand so the unit tests keep
+their Roundcube core stubs. `phpunit.xml` points its `bootstrap` at it.
+
 ## License
 
 AGPL-3.0-or-later
