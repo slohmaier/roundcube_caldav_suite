@@ -31,6 +31,11 @@ class CalDAVClient
             'userName' => $username,
             'password' => $password,
         ]);
+        // Preemptives Basic-Auth erzwingen: sonst macht sabre pro Request den
+        // 401->Retry-Tanz, was die keep-alive-Wiederverwendung zerstoert. Bei
+        // vielen Collections ueber die Radicale-WAN-Hairpin-URL fuehrt das zu
+        // hunderten neuer Verbindungen -> Speedport-Hairpin haengt -> 504.
+        $this->client->addCurlSetting(CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     }
 
     /**
@@ -378,9 +383,13 @@ class CalDAVClient
 
     private function findCurrentUserPrincipal(string $url): ?string
     {
-        $response = $this->client->propFind($url, [
-            '{DAV:}current-user-principal',
-        ], 0);
+        try {
+            $response = $this->client->propFind($url, [
+                '{DAV:}current-user-principal',
+            ], 0);
+        } catch (\Throwable $e) {
+            return null;
+        }
 
         $principal = $response['{DAV:}current-user-principal'] ?? null;
         if (is_array($principal) && isset($principal[0]['value'])) {
@@ -395,9 +404,13 @@ class CalDAVClient
 
     private function findCalendarHome(string $principalUrl): ?string
     {
-        $response = $this->client->propFind($principalUrl, [
-            '{urn:ietf:params:xml:ns:caldav}calendar-home-set',
-        ], 0);
+        try {
+            $response = $this->client->propFind($principalUrl, [
+                '{urn:ietf:params:xml:ns:caldav}calendar-home-set',
+            ], 0);
+        } catch (\Throwable $e) {
+            return null;
+        }
 
         $home = $response['{urn:ietf:params:xml:ns:caldav}calendar-home-set'] ?? null;
         if (is_array($home) && isset($home[0]['value'])) {
