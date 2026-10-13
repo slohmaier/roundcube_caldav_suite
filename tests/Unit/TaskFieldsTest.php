@@ -112,7 +112,7 @@ class TaskFieldsTest extends TestCase
     {
         $ical = $this->backend->updateICalTodo($this->existingTodo(), ['completed' => true]);
         $todo = $this->vtodo($ical);
-        $this->assertSame('1', (string) $todo->PRIORITY, 'Prioritaet darf beim Abhaken nicht verschwinden');
+        $this->assertSame('1', (string) $todo->PRIORITY, 'priority must not disappear when checking off');
         $this->assertSame('COMPLETED', (string) $todo->STATUS);
     }
 

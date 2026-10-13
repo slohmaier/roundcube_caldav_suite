@@ -40,8 +40,8 @@
         "test": "phpunit --testsuite unit",
         "test:integration": "phpunit --testsuite integration",
         "test:all": "phpunit",
-        "analyse": "phpstan analyse lib/ -l 6",
-        "cs-fix": "php-cs-fixer fix lib/ tests/"
+        "analyse": "phpstan analyse --no-progress",
+        "cs-fix": "php-cs-fixer fix"
     },
     "config": {
         "allow-plugins": {

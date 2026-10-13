@@ -159,9 +159,9 @@ class CalendarBackendTest extends TestCase
     {
         $ev = $this->parseEvent($this->backend->buildICalEvent([
             'title' => 'T', 'start' => '2026-07-01T09:00', 'end' => '2026-07-01T10:00',
-            'description' => 'Agenda:\nPunkt 1, Punkt 2; Ende',
+            'description' => 'Agenda:\nItem 1, Item 2; End',
         ]));
-        $this->assertSame('Agenda:\nPunkt 1, Punkt 2; Ende', (string) $ev->DESCRIPTION);
+        $this->assertSame('Agenda:\nItem 1, Item 2; End', (string) $ev->DESCRIPTION);
     }
 
     public function testSpecialCharsInTitleRoundTrip(): void

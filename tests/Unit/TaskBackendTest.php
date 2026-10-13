@@ -83,7 +83,7 @@ class TaskBackendTest extends TestCase
     public function testPriorityNoneOmitsProperty(): void
     {
         $todo = $this->parseTodo($this->backend->buildICalTodo(['title' => 'T', 'priority' => 'none']));
-        $this->assertFalse(isset($todo->PRIORITY), 'PRIORITY=none darf keine PRIORITY-Property erzeugen');
+        $this->assertFalse(isset($todo->PRIORITY), 'PRIORITY=none must not create a PRIORITY property');
     }
 
     public function testPriorityUnknownFallsBackToNone(): void
@@ -252,7 +252,7 @@ class TaskBackendTest extends TestCase
         $sorted = $this->backend->sortTasks($tasks, 'due');
         $this->assertSame('2026-07-01', $sorted[0]['due']);
         $this->assertSame('2026-07-10', $sorted[1]['due']);
-        $this->assertNull($sorted[2]['due'], 'Tasks ohne Faelligkeit ans Ende');
+        $this->assertNull($sorted[2]['due'], 'tasks without a due date go last');
     }
 
     public function testSortByPriority(): void
@@ -263,6 +263,6 @@ class TaskBackendTest extends TestCase
         $sorted = $this->backend->sortTasks($tasks, 'priority');
         $this->assertSame(1, $sorted[0]['priority']);
         $this->assertSame(9, $sorted[1]['priority']);
-        $this->assertSame(0, $sorted[2]['priority'], 'Prio 0 (keine) ans Ende');
+        $this->assertSame(0, $sorted[2]['priority'], 'priority 0 (none) goes last');
     }
 }

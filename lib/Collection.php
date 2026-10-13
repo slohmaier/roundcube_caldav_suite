@@ -10,7 +10,8 @@ class Collection
         /** @var string[] */
         public readonly array $components = ['VEVENT', 'VTODO'],
         public readonly ?string $color = null,
-    ) {}
+    ) {
+    }
 
     public function supportsEvents(): bool
     {

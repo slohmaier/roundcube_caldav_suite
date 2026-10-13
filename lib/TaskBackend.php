@@ -17,6 +17,8 @@ class TaskBackend
 
     /**
      * Build a new task from scratch (create).
+     *
+     * @param array<string, mixed> $data
      */
     public function buildICalTodo(array $data): string
     {
@@ -43,6 +45,8 @@ class TaskBackend
      * Update an existing task WITHOUT losing unhandled fields
      * (RRULE, RELATED-TO, custom X- props are preserved). Only fields present
      * in $data are touched.
+     *
+     * @param array<string, mixed> $data
      */
     public function updateICalTodo(string $existingICal, array $data): ?string
     {
@@ -54,6 +58,10 @@ class TaskBackend
         return $vcalendar->serialize();
     }
 
+    /**
+     * @param \Sabre\VObject\Component $vtodo
+     * @param array<string, mixed>     $data
+     */
     private function applyTodo($vtodo, array $data): void
     {
         if (array_key_exists('uid', $data) && !empty($data['uid'])) {
@@ -129,6 +137,10 @@ class TaskBackend
         $vtodo->DTSTAMP = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
     }
 
+    /**
+     * @param \Sabre\VObject\Component $comp
+     * @param array<string, mixed>     $data
+     */
     private function setOrRemove($comp, string $prop, array $data, string $key): void
     {
         if (!array_key_exists($key, $data)) {
@@ -141,10 +153,14 @@ class TaskBackend
         }
     }
 
+    /**
+     * @param mixed $value
+     * @return array<int, string>
+     */
     private function normalizeList($value): array
     {
         $list = is_array($value) ? $value : explode(',', (string) $value);
-        return array_values(array_filter(array_map('trim', $list), fn($v) => $v !== ''));
+        return array_values(array_filter(array_map('trim', $list), fn ($v) => $v !== ''));
     }
 
     /**
@@ -176,6 +192,8 @@ class TaskBackend
 
     /**
      * Build a toggled version of a task from its existing data.
+     *
+     * @param array<string, mixed> $taskData
      */
     public function buildToggled(array $taskData, bool $completed): string
     {
@@ -186,8 +204,8 @@ class TaskBackend
     /**
      * Sort tasks by given criteria.
      *
-     * @param array $tasks Array of task arrays (from CalendarObject::toArray())
-     * @return array Sorted tasks
+     * @param array<int, array<string, mixed>> $tasks Array of task arrays (from CalendarObject::toArray())
+     * @return array<int, array<string, mixed>> Sorted tasks
      */
     public function sortTasks(array $tasks, string $sortBy = 'due'): array
     {
@@ -196,8 +214,12 @@ class TaskBackend
                 case 'priority':
                     $pa = $a['priority'] ?? 0;
                     $pb = $b['priority'] ?? 0;
-                    if ($pa === 0) $pa = 99;
-                    if ($pb === 0) $pb = 99;
+                    if ($pa === 0) {
+                        $pa = 99;
+                    }
+                    if ($pb === 0) {
+                        $pb = 99;
+                    }
                     return $pa <=> $pb;
 
                 case 'created':

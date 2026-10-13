@@ -66,8 +66,8 @@ class CalendarRecurrenceTest extends TestCase
         $ev = $this->vevent($ical);
         $this->assertSame('Umbenannt', (string) $ev->SUMMARY);          // geaendert
         $this->assertSame('FREQ=WEEKLY;BYDAY=MO', (string) $ev->RRULE);  // erhalten
-        $this->assertTrue(isset($ev->ATTENDEE), 'ATTENDEE muss erhalten bleiben');
-        $this->assertTrue(isset($ev->ORGANIZER), 'ORGANIZER muss erhalten bleiben');
+        $this->assertTrue(isset($ev->ATTENDEE), 'ATTENDEE must be preserved');
+        $this->assertTrue(isset($ev->ORGANIZER), 'ORGANIZER must be preserved');
         $this->assertSame('behalte-mich', (string) $ev->{'X-CUSTOM-FOO'});
         $this->assertSame('SERIE-1', (string) $ev->UID);
     }

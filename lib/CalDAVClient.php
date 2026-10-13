@@ -79,7 +79,7 @@ class CalDAVClient
         }
         return array_values(array_filter(
             $this->collections,
-            fn(Collection $c) => $c->supportsEvents()
+            fn (Collection $c) => $c->supportsEvents()
         ));
     }
 
@@ -95,7 +95,7 @@ class CalDAVClient
         }
         return array_values(array_filter(
             $this->collections,
-            fn(Collection $c) => $c->supportsTodos()
+            fn (Collection $c) => $c->supportsTodos()
         ));
     }
 
@@ -145,6 +145,8 @@ class CalDAVClient
 
     /**
      * Parses a calendar-query/sync Multistatus response into CalendarObjects.
+     *
+     * @return array<int, CalendarObject>
      */
     private function parseQueryResponse(string $body, string $url, \DateTimeInterface $start, \DateTimeInterface $end): array
     {
@@ -165,11 +167,15 @@ class CalDAVClient
                 $etagClean = is_string($etag) ? trim($etag, '"') : null;
 
                 $vevent = $vcalendar->VEVENT ?? null;
-                if (!$vevent) continue;
+                if (!$vevent) {
+                    continue;
+                }
 
                 if (isset($vevent->RRULE)) {
                     $uid = (string)($vevent->UID ?? '');
-                    if (!$uid) continue;
+                    if (!$uid) {
+                        continue;
+                    }
 
                     $it = new VObject\Recur\EventIterator($vcalendar, $uid);
                     $it->fastForward($start);
@@ -552,45 +558,14 @@ class CalDAVClient
      * @return string[]
      */
     /**
-     * Check whether a collection contains at least one object of a certain
-     * component type (VEVENT/VTODO). Lightweight calendar-query
-     * REPORT (getetag only, no calendar-data).
-     */
-    private function collectionHasComponent(string $url, string $comp): bool
-    {
-        $body = '<?xml version="1.0" encoding="utf-8" ?>
-<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:prop><D:getetag/></D:prop>
-  <C:filter>
-    <C:comp-filter name="VCALENDAR">
-      <C:comp-filter name="' . $comp . '"/>
-    </C:comp-filter>
-  </C:filter>
-</C:calendar-query>';
-
-        try {
-            $response = $this->client->request('REPORT', $url, $body, [
-                'Depth'        => '1',
-                'Content-Type' => 'application/xml; charset=utf-8',
-            ]);
-        } catch (\Throwable $e) {
-            return false;
-        }
-
-        if (($response['statusCode'] ?? 0) !== 207) {
-            return false;
-        }
-
-        // At least one <response> with a .ics object?
-        return (bool) preg_match('#<[^>]*:?response[^>]*>.*?\.ics#is', $response['body'] ?? '');
-    }
-
-    /**
      * Checks multiple (url, comp) combinations in PARALLEL (curl_multi) for whether
      * the collection contains an object of the type. Returns [url|comp => bool].
      *
      * Radicale declares [VEVENT,VTODO,VJOURNAL] for every calendar, which would
      * otherwise run one REPORT per calendar x type sequentially (~1.4s).
+     *
+     * @param array<string, array{0: string, 1: string}> $checks
+     * @return array<string, bool>
      */
     private function collectionHasComponentsParallel(array $checks): array
     {
@@ -648,6 +623,8 @@ class CalDAVClient
     /**
      * Last resort for empty, ambiguous collections (no content, no
      * component-set declaration): guess the type from the display name.
+     *
+     * @return array<int, string>
      */
     private function guessComponentsByName(string $name): array
     {
@@ -660,6 +637,9 @@ class CalDAVClient
         return ['VEVENT'];
     }
 
+    /**
+     * @return array<int, string>
+     */
     private function parseComponentSet(mixed $componentSet): array
     {
         if ($componentSet === null) {

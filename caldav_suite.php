@@ -371,7 +371,7 @@ class caldav_suite extends rcube_plugin
 
         $events = [];
         foreach ($clients as $client) {
-            // Alle (sichtbaren) Kalender-URLs dieses Clients parallel abfragen.
+            // Query all (visible) calendar URLs of this client in parallel.
             $urls = [];
             $urlToCalId = [];
             foreach ($this->get_calendars_cached($client) as $cal) {
@@ -467,7 +467,7 @@ class caldav_suite extends rcube_plugin
                     $ok++;
                 }
             } catch (\Throwable $e) {
-                // einzelnen Termin ueberspringen
+                // skip a single event
             }
         }
 
@@ -607,7 +607,7 @@ class caldav_suite extends rcube_plugin
                     $ok++;
                 }
             } catch (\Throwable $e) {
-                // einzelne Aufgabe ueberspringen
+                // skip a single task
             }
         }
 

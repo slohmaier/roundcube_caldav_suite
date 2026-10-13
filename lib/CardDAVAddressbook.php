@@ -12,7 +12,9 @@ class CardDAVAddressbook extends \rcube_addressbook
     public $readonly = false;
     public $searchonly = false;
     public $group_id = null;
+    /** @var \rcube_result_set|null */
     public $result = null;
+    /** @var array<int, string> */
     public $coltypes = [
         'name', 'firstname', 'surname', 'middlename', 'prefix', 'suffix',
         'nickname', 'jobtitle', 'organization', 'department',
@@ -24,8 +26,11 @@ class CardDAVAddressbook extends \rcube_addressbook
     private string $name;
     private CardDAVClient $client;
     private string $addressbookUrl;
+    /** @var array<int, ContactCard>|null */
     private ?array $contacts = null;
+    /** @var mixed */
     private $filter = null;
+    /** @var array<string, mixed>|null */
     private ?array $searchFilter = null;
     private int $result_count = 0;
 
@@ -64,6 +69,10 @@ class CardDAVAddressbook extends \rcube_addressbook
         $this->result = null;
     }
 
+    /**
+     * @param array<int, string>|null $cols
+     * @return \rcube_result_set
+     */
     public function list_records($cols = null, $subset = 0, $nocount = false)
     {
         $this->loadContacts();
@@ -78,7 +87,7 @@ class CardDAVAddressbook extends \rcube_addressbook
         }
 
         // Sort by display name
-        usort($records, fn($a, $b) => strcasecmp($a['name'] ?? '', $b['name'] ?? ''));
+        usort($records, fn ($a, $b) => strcasecmp($a['name'] ?? '', $b['name'] ?? ''));
 
         $result = new \rcube_result_set(count($records));
         foreach ($records as $rec) {
@@ -116,7 +125,7 @@ class CardDAVAddressbook extends \rcube_addressbook
             }
         }
 
-        usort($records, fn($a, $b) => strcasecmp($a['name'] ?? '', $b['name'] ?? ''));
+        usort($records, fn ($a, $b) => strcasecmp($a['name'] ?? '', $b['name'] ?? ''));
 
         $result = new \rcube_result_set(count($records));
         if ($select) {
@@ -140,6 +149,9 @@ class CardDAVAddressbook extends \rcube_addressbook
         return $this->result;
     }
 
+    /**
+     * @return array<string, mixed>|\rcube_result_set
+     */
     public function get_record($id, $assoc = false)
     {
         $this->loadContacts();
@@ -156,6 +168,10 @@ class CardDAVAddressbook extends \rcube_addressbook
         return $assoc ? [] : new \rcube_result_set();
     }
 
+    /**
+     * @param array<string, mixed> $save_data
+     * @return string|false
+     */
     public function insert($save_data, $check = false)
     {
         $vcard = new \Sabre\VObject\Component\VCard(['VERSION' => '3.0']);
@@ -173,6 +189,10 @@ class CardDAVAddressbook extends \rcube_addressbook
         return false;
     }
 
+    /**
+     * @param array<string, mixed> $save_data
+     * @return string|false
+     */
     public function update($id, $save_data)
     {
         $this->loadContacts();
@@ -194,11 +214,16 @@ class CardDAVAddressbook extends \rcube_addressbook
         return false;
     }
 
+    /**
+     * @param string|array<int, string> $ids
+     */
     public function delete($ids, $force = true)
     {
         $this->loadContacts();
 
-        if (!is_array($ids)) $ids = [$ids];
+        if (!is_array($ids)) {
+            $ids = [$ids];
+        }
         $deleted = 0;
 
         foreach ($this->contacts as $contact) {
@@ -220,16 +245,22 @@ class CardDAVAddressbook extends \rcube_addressbook
     /**
      * Map Roundcube save_data (incl. subtype keys like "email:home", "phone:cell")
      * onto a vCard. Used by insert() and update().
+     *
+     * @param \Sabre\VObject\Component\VCard $vcard
+     * @param array<string, mixed>           $save_data
      */
     private function applySaveData($vcard, array $save_data): void
     {
-        // --- Name (FN + strukturierter N) ---
+        // --- Name (FN + structured N) ---
         $name = trim((string) ($save_data['name'] ?? ''));
         if ($name === '') {
-            $composed = trim(preg_replace('/\s+/', ' ',
+            $composed = trim(preg_replace(
+                '/\s+/',
+                ' ',
                 ($save_data['prefix'] ?? '') . ' ' . ($save_data['firstname'] ?? '') . ' '
                 . ($save_data['middlename'] ?? '') . ' ' . ($save_data['surname'] ?? '') . ' '
-                . ($save_data['suffix'] ?? '')));
+                . ($save_data['suffix'] ?? '')
+            ));
             $name = $composed !== '' ? $composed : trim((string) ($save_data['organization'] ?? ''));
         }
         $vcard->FN = $name;
@@ -241,19 +272,19 @@ class CardDAVAddressbook extends \rcube_addressbook
             $save_data['suffix'] ?? '',
         ];
 
-        // --- Spitzname ---
+        // --- Nickname ---
         $vcard->remove('NICKNAME');
         if (!empty($save_data['nickname'])) {
             $vcard->add('NICKNAME', $save_data['nickname']);
         }
 
-        // --- Jobtitel ---
+        // --- Job title ---
         $vcard->remove('TITLE');
         if (!empty($save_data['jobtitle'])) {
             $vcard->add('TITLE', $save_data['jobtitle']);
         }
 
-        // --- Organisation;Abteilung (strukturiertes ORG) ---
+        // --- Organization;department (structured ORG) ---
         $vcard->remove('ORG');
         $org  = trim((string) ($save_data['organization'] ?? ''));
         $dept = trim((string) ($save_data['department'] ?? ''));
@@ -279,7 +310,7 @@ class CardDAVAddressbook extends \rcube_addressbook
             }
         }
 
-        // --- ADR (Adresse, strukturiert; address:home / address:work) ---
+        // --- ADR (address, structured; address:home / address:work) ---
         $vcard->remove('ADR');
         foreach ($this->collectSubtyped($save_data, 'address') as [$subtype, $value]) {
             if (!is_array($value)) {
@@ -339,7 +370,11 @@ class CardDAVAddressbook extends \rcube_addressbook
         }
     }
 
-    /** Date input (various formats) -> YYYY-MM-DD, or null. */
+    /**
+     * Date input (various formats) -> YYYY-MM-DD, or null.
+     *
+     * @param mixed $value
+     */
     private function normalizeDate($value): ?string
     {
         if (is_array($value)) {
@@ -359,6 +394,9 @@ class CardDAVAddressbook extends \rcube_addressbook
     /**
      * Gather all values for a column from save_data, honouring Roundcube's
      * "<col>:<subtype>" key convention. Returns list of [subtype, value].
+     *
+     * @param array<string, mixed> $save_data
+     * @return array<int, array{0: string, 1: mixed}>
      */
     private function collectSubtyped(array $save_data, string $col): array
     {
@@ -381,7 +419,9 @@ class CardDAVAddressbook extends \rcube_addressbook
         return $out;
     }
 
-    public function close() {}
+    public function close(): void
+    {
+    }
 
     private function loadContacts(): void
     {
@@ -391,9 +431,14 @@ class CardDAVAddressbook extends \rcube_addressbook
         $this->contacts = $this->client->getContacts($this->addressbookUrl);
     }
 
+    /**
+     * @param array<string, mixed> $record
+     */
     private function matchSearchFilter(array $record): bool
     {
-        if (!$this->searchFilter) return true;
+        if (!$this->searchFilter) {
+            return true;
+        }
 
         $value = $this->searchFilter['value'];
         $fields = $this->searchFilter['fields'];

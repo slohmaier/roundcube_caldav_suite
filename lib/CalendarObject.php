@@ -13,7 +13,8 @@ class CalendarObject
         public readonly Component $component,
         public readonly VCalendar $vcalendar,
         public readonly string $rawData,
-    ) {}
+    ) {
+    }
 
     public function getUid(): ?string
     {
@@ -115,8 +116,12 @@ class CalendarObject
                 if (preg_match('/^-?PT?(\d+)([MHDS])/i', $trigger, $m)) {
                     $val = (int)$m[1];
                     $unit = strtoupper($m[2]);
-                    if ($unit === 'H') $val *= 60;
-                    if ($unit === 'D') $val *= 1440;
+                    if ($unit === 'H') {
+                        $val *= 60;
+                    }
+                    if ($unit === 'D') {
+                        $val *= 1440;
+                    }
                     return (string)$val;
                 }
                 if ($trigger === 'P0D' || $trigger === 'PT0S' || $trigger === '-PT0M') {
@@ -163,6 +168,8 @@ class CalendarObject
 
     /**
      * Serialize to array for JSON API responses.
+     *
+     * @return array<string, mixed>
      */
     public function toArray(): array
     {

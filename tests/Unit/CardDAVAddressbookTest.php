@@ -46,7 +46,7 @@ class CardDAVAddressbookTest extends TestCase
 
     private function savedVcard(): VCard
     {
-        $this->assertNotNull($this->put, 'putContact wurde nicht aufgerufen');
+        $this->assertNotNull($this->put, 'putContact was not called');
         /** @var VCard $v */
         $v = Reader::read($this->put['data']);
         return $v;
@@ -121,7 +121,7 @@ class CardDAVAddressbookTest extends TestCase
         $ab = $this->bookWithContact($this->defaultVcf());
         // no email key -> all EMAIL removed
         $ab->update(md5($this->contactUrl), ['name' => 'X']);
-        $this->assertFalse(isset($this->savedVcard()->EMAIL), 'EMAIL haette entfernt werden muessen');
+        $this->assertFalse(isset($this->savedVcard()->EMAIL), 'EMAIL should have been removed');
     }
 
     public function testUpdateEmptyEmailValueSkipped(): void
@@ -201,7 +201,7 @@ class CardDAVAddressbookTest extends TestCase
         $ab = $this->bookWithContact($this->defaultVcf());
         $res = $ab->update('nonexistent-id', ['name' => 'X']);
         $this->assertFalse($res);
-        $this->assertNull($this->put, 'putContact darf bei unbekanntem Kontakt nicht laufen');
+        $this->assertNull($this->put, 'putContact must not run for an unknown contact');
     }
 
     // ---- insert ----
@@ -230,7 +230,7 @@ class CardDAVAddressbookTest extends TestCase
         $this->assertSame('WORK', (string) $v->EMAIL['TYPE']);
         $this->assertSame('+4915199', (string) $v->TEL);
         $this->assertSame('Startup', (string) $v->ORG);
-        $this->assertTrue(isset($v->UID), 'UID muss generiert werden');
+        $this->assertTrue(isset($v->UID), 'UID must be generated');
         $this->assertStringContainsString('VERSION:3.0', $this->put['data']);
     }
 

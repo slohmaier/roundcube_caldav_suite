@@ -163,8 +163,8 @@ class ContactFieldsTest extends TestCase
         $ab->update(md5($this->url), ['name' => 'Neu', 'email:home' => ['a@x.de']]);
         $v = $this->saved();
         $this->assertSame('Neu', (string) $v->FN);
-        $this->assertTrue(isset($v->PHOTO), 'PHOTO muss erhalten bleiben');
-        $this->assertTrue(isset($v->CATEGORIES), 'CATEGORIES muss erhalten bleiben');
+        $this->assertTrue(isset($v->PHOTO), 'PHOTO must be preserved');
+        $this->assertTrue(isset($v->CATEGORIES), 'CATEGORIES must be preserved');
         $this->assertSame('COMPANY', (string) $v->{'X-ABSHOWAS'});
     }
 

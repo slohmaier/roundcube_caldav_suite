@@ -11,7 +11,8 @@ class ContactCard
         public readonly ?string $etag,
         public readonly VCard $vcard,
         public readonly string $rawData,
-    ) {}
+    ) {
+    }
 
     public function getUid(): ?string
     {
@@ -26,8 +27,12 @@ class ContactCard
         $parts = [];
         if (isset($this->vcard->N)) {
             $n = $this->vcard->N->getParts();
-            if (!empty($n[1])) $parts[] = $n[1]; // given
-            if (!empty($n[0])) $parts[] = $n[0]; // family
+            if (!empty($n[1])) {
+                $parts[] = $n[1];
+            } // given
+            if (!empty($n[0])) {
+                $parts[] = $n[0];
+            } // family
         }
         if ($parts) {
             return implode(' ', $parts);
@@ -63,6 +68,9 @@ class ContactCard
         return isset($this->vcard->EMAIL) ? (string)$this->vcard->EMAIL : null;
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function getEmails(): array
     {
         $emails = [];
@@ -86,6 +94,8 @@ class ContactCard
 
     /**
      * Convert to Roundcube contact record format.
+     *
+     * @return array<string, mixed>
      */
     public function toRcubeRecord(): array
     {
@@ -130,7 +140,9 @@ class ContactCard
         if (isset($this->vcard->EMAIL)) {
             foreach ($this->vcard->EMAIL as $email) {
                 $val = trim((string)$email);
-                if ($val === '') continue;
+                if ($val === '') {
+                    continue;
+                }
                 $record['email:' . $this->subtypeOf($email, 'home')][] = $val;
             }
         }
@@ -139,7 +151,9 @@ class ContactCard
         if (isset($this->vcard->TEL)) {
             foreach ($this->vcard->TEL as $tel) {
                 $val = trim((string)$tel);
-                if ($val === '') continue;
+                if ($val === '') {
+                    continue;
+                }
                 $record['phone:' . $this->subtypeOf($tel, 'home')][] = $val;
             }
         }
@@ -148,7 +162,9 @@ class ContactCard
         if (isset($this->vcard->URL)) {
             foreach ($this->vcard->URL as $url) {
                 $val = trim((string)$url);
-                if ($val === '') continue;
+                if ($val === '') {
+                    continue;
+                }
                 $record['website:' . $this->subtypeOf($url, 'homepage')][] = $val;
             }
         }
@@ -157,7 +173,9 @@ class ContactCard
         if (isset($this->vcard->IMPP)) {
             foreach ($this->vcard->IMPP as $impp) {
                 $val = trim((string)$impp);
-                if ($val === '') continue;
+                if ($val === '') {
+                    continue;
+                }
                 $sub = isset($impp['X-SERVICE-TYPE'])
                     ? strtolower((string)$impp['X-SERVICE-TYPE'])
                     : $this->subtypeOf($impp, 'jabber');
@@ -176,7 +194,9 @@ class ContactCard
                     'zipcode'  => $p[5] ?? '',
                     'country'  => $p[6] ?? '',
                 ];
-                if (trim(implode('', $entry)) === '') continue;
+                if (trim(implode('', $entry)) === '') {
+                    continue;
+                }
                 $record['address:' . $this->subtypeOf($adr, 'home')][] = $entry;
             }
         }
@@ -187,6 +207,8 @@ class ContactCard
     /**
      * Derive the Roundcube subtype from the vCard TYPE parameter (work/home/cell/...).
      * Generic markers (internet/voice/pref) are skipped.
+     *
+     * @param \Sabre\VObject\Node $prop
      */
     private function subtypeOf($prop, string $default): string
     {

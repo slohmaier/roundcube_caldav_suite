@@ -79,7 +79,9 @@ class CardDAVClient
                 ];
             }
 
-            if (!empty($books)) break;
+            if (!empty($books)) {
+                break;
+            }
         }
 
         return $books;

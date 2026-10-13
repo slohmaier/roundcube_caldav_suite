@@ -16,7 +16,11 @@ class ITip
         return strtolower(preg_replace('/^mailto:/i', '', trim($val)));
     }
 
-    /** Parses an iCalendar string from a mail part. Null on error/no VEVENT. */
+    /**
+     * Parses an iCalendar string from a mail part. Null on error/no VEVENT.
+     *
+     * @return array<string, mixed>|null
+     */
     public static function parse(string $ical): ?array
     {
         try {
@@ -24,7 +28,7 @@ class ITip
         } catch (\Throwable $e) {
             return null;
         }
-        if (!$vcal || !isset($vcal->VEVENT)) {
+        if (!isset($vcal->VEVENT)) {
             return null;
         }
 
@@ -88,7 +92,13 @@ class ITip
         ];
     }
 
-    /** Finds the ATTENDEE entry that matches one of my mail addresses. */
+    /**
+     * Finds the ATTENDEE entry that matches one of my mail addresses.
+     *
+     * @param array<string, mixed> $parsed
+     * @param array<int, string>   $myEmails
+     * @return array<string, mixed>|null
+     */
     public static function myAttendee(array $parsed, array $myEmails): ?array
     {
         $mine = array_map('strtolower', $myEmails);
@@ -100,6 +110,10 @@ class ITip
         return null;
     }
 
+    /**
+     * @param \Sabre\VObject\Node $att
+     * @return array<string, mixed>
+     */
     private static function attendeeSnapshot($att): array
     {
         $params = [];
@@ -214,7 +228,7 @@ class ITip
         $origIncludePath = get_include_path();
         $clean = array_filter(
             explode(PATH_SEPARATOR, $origIncludePath),
-            fn($d) => strpos($d, '/caldav_suite/vendor/pear/') === false
+            fn ($d) => strpos($d, '/caldav_suite/vendor/pear/') === false
         );
         set_include_path(implode(PATH_SEPARATOR, $clean));
 

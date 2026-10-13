@@ -50,5 +50,7 @@ and is used in production against a Radicale server.
 - Event dialog: recompute duration so a start change keeps a valid end; generate a UUID
   for new events (Radicale previously returned 400 on an empty UID).
 - Recipient autocomplete: invalidate cached address book IDs when the CalDAV URL changes.
+- CI: PHPStan (level 6) and PHP-CS-Fixer now pass — added `phpstan.neon.dist`
+  and `.php-cs-fixer.dist.php`, annotated array types and fixed the `composer` scripts.
 
 [1.1.0]: https://github.com/slohmaier/roundcube_caldav_suite/releases/tag/v1.1.0

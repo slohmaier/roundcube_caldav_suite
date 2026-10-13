@@ -9,6 +9,8 @@ class CalendarBackend
 {
     /**
      * Build a new event from scratch (create).
+     *
+     * @param array<string, mixed> $data
      */
     public function buildICalEvent(array $data): string
     {
@@ -33,6 +35,8 @@ class CalendarBackend
      * Update an existing event WITHOUT losing unhandled fields
      * (RRULE, ATTENDEE, ORGANIZER, SEQUENCE, EXDATE, custom X- props are preserved).
      * Only the fields present in $data are touched.
+     *
+     * @param array<string, mixed> $data
      */
     public function updateICalEvent(string $existingICal, array $data): ?string
     {
@@ -49,6 +53,9 @@ class CalendarBackend
      * Required fields (title/start/end) are set if present; optional fields ONLY
      * if their key exists in $data (empty value = remove). This way, fields the
      * form does not know about are not lost on edit.
+     *
+     * @param \Sabre\VObject\Component $vevent
+     * @param array<string, mixed>     $data
      */
     private function applyEvent($vevent, array $data): void
     {
@@ -59,7 +66,7 @@ class CalendarBackend
             $vevent->SUMMARY = (string) $data['title'];
         }
 
-        // Start / Ende (+ Ganztags + Zeitzone)
+        // Start / end (+ all-day + timezone)
         if (array_key_exists('start', $data) && array_key_exists('end', $data)) {
             $vevent->remove('DTSTART');
             $vevent->remove('DTEND');
@@ -84,7 +91,7 @@ class CalendarBackend
         $this->setOrRemove($vevent, 'TRANSP', $data, 'transp');
         $this->setOrRemove($vevent, 'CLASS', $data, 'class');
 
-        // Recurrence (RRULE) — als String, z.B. "FREQ=WEEKLY;BYDAY=MO,WE"
+        // Recurrence (RRULE) — as a string, e.g. "FREQ=WEEKLY;BYDAY=MO,WE"
         if (array_key_exists('rrule', $data)) {
             $vevent->remove('RRULE');
             if (!empty($data['rrule'])) {
@@ -92,7 +99,7 @@ class CalendarBackend
             }
         }
 
-        // Kategorien
+        // Categories
         if (array_key_exists('categories', $data)) {
             $vevent->remove('CATEGORIES');
             $cats = $this->normalizeList($data['categories']);
@@ -113,7 +120,7 @@ class CalendarBackend
             }
         }
 
-        // Strukturierte Geo-Location (Apple Maps Fahrtzeit)
+        // Structured geo location (Apple Maps travel time)
         if (array_key_exists('location_geo', $data)) {
             $vevent->remove('GEO');
             $vevent->remove('X-APPLE-STRUCTURED-LOCATION');
@@ -130,13 +137,13 @@ class CalendarBackend
             }
         }
 
-        // Erinnerung (VALARM)
+        // Reminder (VALARM)
         if (array_key_exists('reminder_minutes', $data)) {
             $vevent->remove('VALARM');
             if (!empty($data['reminder_minutes'])) {
                 $alarm = $vevent->add('VALARM');
                 $alarm->add('ACTION', 'DISPLAY');
-                $alarm->add('DESCRIPTION', $data['title'] ?? (string) ($vevent->SUMMARY ?? 'Erinnerung'));
+                $alarm->add('DESCRIPTION', $data['title'] ?? (string) ($vevent->SUMMARY ?? 'Reminder'));
                 $alarm->add('TRIGGER', '-PT' . (int) $data['reminder_minutes'] . 'M');
             }
         }
@@ -144,6 +151,10 @@ class CalendarBackend
         $vevent->DTSTAMP = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
     }
 
+    /**
+     * @param \Sabre\VObject\Component $comp
+     * @param array<string, mixed>     $data
+     */
     private function setOrRemove($comp, string $prop, array $data, string $key): void
     {
         if (!array_key_exists($key, $data)) {
@@ -156,10 +167,15 @@ class CalendarBackend
         }
     }
 
-    /** List from an array or a comma-separated string. */
+    /**
+     * List from an array or a comma-separated string.
+     *
+     * @param mixed $value
+     * @return array<int, string>
+     */
     private function normalizeList($value): array
     {
         $list = is_array($value) ? $value : explode(',', (string) $value);
-        return array_values(array_filter(array_map('trim', $list), fn($v) => $v !== ''));
+        return array_values(array_filter(array_map('trim', $list), fn ($v) => $v !== ''));
     }
 }

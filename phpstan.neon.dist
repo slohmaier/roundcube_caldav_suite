@@ -1,0 +1,14 @@
+parameters:
+    level: 6
+    paths:
+        - lib
+    ignoreErrors:
+        # Sabre\VObject exposes calendar/vCard components and their properties via
+        # magic __get/__set and ArrayAccess, which PHPStan cannot resolve statically.
+        # Reader::read() is also declared to return Document, while iCalendar/vCard
+        # input actually yields the concrete VCalendar/VCard component.
+        - '#Sabre\\VObject\\#'
+        # Consequence of the magic ArrayAccess above (the TYPE offset is typed null).
+        - '#Strict comparison using !== between null and null#'
+        # Properties required by the Roundcube rcube_addressbook interface.
+        - '#Property Slohmaier\\CalDAVSuite\\CardDAVAddressbook::\$(id|result_count) is never read, only written#'
