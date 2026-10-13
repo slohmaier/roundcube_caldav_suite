@@ -61,12 +61,52 @@ as a client. No Kolab, no heavyweight dependencies — just `sabre/dav` + `sabre
 
 ## Installation
 
+The plugin directory must be named `caldav_suite` (the plugin class and the
+`$config['plugins']` entry both use that name).
+
+### Option 1 — release zip (recommended)
+
+Download `roundcube_caldav_suite-<version>.zip` from the
+[releases page](https://github.com/slohmaier/roundcube_caldav_suite/releases),
+then unzip it into your Roundcube `plugins/` directory:
+
+```bash
+cd /path/to/roundcube/plugins
+unzip /path/to/roundcube_caldav_suite-1.1.0.zip   # creates plugins/caldav_suite/
+```
+
+The zip is self-contained (includes a `vendor/` with `sabre/dav` + `sabre/vobject`),
+so no Composer step is needed.
+
+### Option 2 — git clone
+
+```bash
+cd /path/to/roundcube/plugins
+git clone https://github.com/slohmaier/roundcube_caldav_suite.git caldav_suite
+cd caldav_suite
+composer install --no-dev
+```
+
+### Option 3 — Composer
+
 ```bash
 cd /path/to/roundcube
 composer require slohmaier/roundcube_caldav_suite
 ```
 
-Add `caldav_suite` to `$config['plugins']` in your Roundcube config.
+This requires the package to be available on Packagist (or to be added as a VCS
+repository in your `composer.json`).
+
+### Enable the plugin
+
+Add `caldav_suite` to `$config['plugins']` in your Roundcube config
+(`config/config.inc.php`):
+
+```php
+$config['plugins'] = ['caldav_suite'];
+```
+
+Then log in to Roundcube — the "Calendar" and "Tasks" entries appear in the sidebar.
 
 ## Configuration
 
