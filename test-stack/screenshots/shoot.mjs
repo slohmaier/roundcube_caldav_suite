@@ -1,6 +1,6 @@
-// Loggt sich in den Test-Stack ein und erzeugt Screenshots des Kalenders
-// (Woche/Tag/Monat/Liste) sowie Aufgaben und Kontakte.
-//   node shoot.mjs      (Stack muss laufen + geseedet sein, siehe generate.sh)
+// Logs into the test stack and creates screenshots of the calendar
+// (week/day/month/list) as well as tasks and contacts.
+//   node shoot.mjs      (stack must be running + seeded, see generate.sh)
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -31,13 +31,13 @@ await Promise.all([
   page.click('#rcmloginsubmit, button[type=submit]'),
 ]);
 
-// --- Kalender in allen Ansichten ---
+// --- Calendar in all views ---
 async function calendar(view, file) {
   await page.goto(`${BASE}/?_task=calendar`, { waitUntil: 'networkidle' });
   const btn = `.view-btn[data-view="${view}"]`;
   await page.waitForSelector(btn, { timeout: 15000 }).catch(() => {});
   await page.click(btn).catch(() => {});
-  // Events werden per AJAX nachgeladen + gerendert
+  // Events are loaded + rendered via AJAX
   await page.waitForTimeout(3000);
   await snap(file);
 }
@@ -47,15 +47,26 @@ await calendar('day', 'calendar-day.png');
 await calendar('month', 'calendar-month.png');
 await calendar('list', 'calendar-list.png');
 
-// --- Aufgaben ---
+// --- Tasks ---
 await page.goto(`${BASE}/?_task=tasks`, { waitUntil: 'networkidle' }).catch(() => {});
+await page.waitForSelector('.task-item', { timeout: 12000 }).catch(() => {});
 await page.waitForTimeout(2000);
 await snap('tasks.png');
 
-// --- Kontakte ---
+// --- Contacts (select the CardDAV source so the list is populated) ---
 await page.goto(`${BASE}/?_task=addressbook`, { waitUntil: 'networkidle' }).catch(() => {});
-await page.waitForTimeout(2000);
+await page.waitForSelector('#directorylist', { timeout: 12000 }).catch(() => {});
+await page.waitForTimeout(1000);
+// Click the address book entry (display name from seed.php: "Contacts")
+await page.evaluate(() => {
+  const items = [...document.querySelectorAll('#directorylist li')];
+  const hit = items.find(li => /contacts/i.test(li.textContent || ''));
+  const link = hit && hit.querySelector('a');
+  if (link) link.click();
+}).catch(() => {});
+await page.waitForSelector('#contacts-table tbody tr, .listing tr, .contact-list tr', { timeout: 10000 }).catch(() => {});
+await page.waitForTimeout(1500);
 await snap('contacts.png');
 
 await browser.close();
-console.log(`\n${done.length} Screenshots in ${OUT}`);
+console.log(`\n${done.length} screenshots in ${OUT}`);

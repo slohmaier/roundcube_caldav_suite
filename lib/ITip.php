@@ -6,8 +6,8 @@ use Sabre\VObject\Reader;
 use Sabre\VObject\Component\VCalendar;
 
 /**
- * iMIP / iTIP handling (RFC 5546 / 6047): liest text/calendar-Einladungen aus
- * Mails, baut REPLY/COUNTER und verschickt sie als iMIP-Mail an den Organizer.
+ * iMIP / iTIP handling (RFC 5546 / 6047): reads text/calendar invitations from
+ * mails, builds REPLY/COUNTER and sends them as an iMIP mail to the organizer.
  */
 class ITip
 {
@@ -16,7 +16,7 @@ class ITip
         return strtolower(preg_replace('/^mailto:/i', '', trim($val)));
     }
 
-    /** Parst eine iCalendar-Zeichenkette aus einem Mail-Part. Null bei Fehler/kein VEVENT. */
+    /** Parses an iCalendar string from a mail part. Null on error/no VEVENT. */
     public static function parse(string $ical): ?array
     {
         try {
@@ -58,9 +58,9 @@ class ITip
             if (isset($ev->DTSTART)) {
                 $dtstart = $ev->DTSTART->getDateTime();
                 $allday  = !$ev->DTSTART->hasTime();
-                // Floating-Zeiten (kein Z, kein TZID) haben in sabre/vobject die
-                // Zeitzone UTC, duerfen aber NICHT nach lokaler Zeitzone umgerechnet
-                // werden (sonst 09:00 -> 11:00 in Sommerzeit). Als Wandzeit belassen.
+                // Floating times (no Z, no TZID) have the UTC timezone in sabre/vobject
+                // but must NOT be converted to the local timezone (otherwise 09:00 ->
+                // 11:00 in summer time). Keep them as wall time.
                 if (method_exists($ev->DTSTART, 'isFloating') && $ev->DTSTART->isFloating()) {
                     $floating = true;
                 }
@@ -88,7 +88,7 @@ class ITip
         ];
     }
 
-    /** Findet den ATTENDEE-Eintrag, der zu einer meiner Mailadressen passt. */
+    /** Finds the ATTENDEE entry that matches one of my mail addresses. */
     public static function myAttendee(array $parsed, array $myEmails): ?array
     {
         $mine = array_map('strtolower', $myEmails);
@@ -110,8 +110,8 @@ class ITip
     }
 
     /**
-     * Baut eine METHOD:REPLY (RFC 5546): nur der antwortende ATTENDEE mit PARTSTAT,
-     * sonst Original-Event (UID/ORGANIZER/DTSTART/SUMMARY bleiben).
+     * Builds a METHOD:REPLY (RFC 5546): only the replying ATTENDEE with PARTSTAT,
+     * otherwise the original event (UID/ORGANIZER/DTSTART/SUMMARY are kept).
      */
     public static function buildReply(string $originalIcal, string $myEmail, string $myName, string $partstat, ?string $comment = null): ?string
     {
@@ -146,7 +146,7 @@ class ITip
         if (!isset($ev->SEQUENCE)) {
             $ev->SEQUENCE = 0;
         }
-        // Alarme/Anhaenge gehoeren nicht in eine REPLY
+        // Alarms/attachments do not belong in a REPLY
         unset($ev->VALARM);
         if ($comment !== null && $comment !== '') {
             unset($ev->COMMENT);
@@ -156,7 +156,7 @@ class ITip
         return $vcal->serialize();
     }
 
-    /** Baut eine METHOD:COUNTER mit neuem Start/Ende. */
+    /** Builds a METHOD:COUNTER with a new start/end. */
     public static function buildCounter(string $originalIcal, \DateTimeInterface $start, \DateTimeInterface $end, ?string $comment): ?string
     {
         try {
@@ -180,7 +180,7 @@ class ITip
         return $vcal->serialize();
     }
 
-    /** Bereitet das Event zum Speichern im eigenen Kalender vor (METHOD weg, mein PARTSTAT gesetzt). */
+    /** Prepares the event for storing in one's own calendar (METHOD removed, my PARTSTAT set). */
     public static function buildStoredEvent(string $originalIcal, string $myEmail, string $partstat): ?string
     {
         try {
@@ -203,14 +203,14 @@ class ITip
         return $vcal->serialize();
     }
 
-    /** Verschickt eine iMIP-Mail (REPLY/COUNTER) an den Organizer ueber Roundcube-SMTP. */
+    /** Sends an iMIP mail (REPLY/COUNTER) to the organizer via Roundcube SMTP. */
     public static function send(\rcmail $rc, string $fromEmail, string $fromName, string $toEmail, string $subject, string $bodyText, string $ics, string $method): bool
     {
-        // Das Plugin buendelt (transitiv) eine eigene pear-Kopie und prependet sie per
-        // composer include_paths.php in den include_path. Beim Laden von Mail_mime wuerde
-        // dadurch ein ZWEITES PEAR.php geladen -> "Cannot redeclare _PEAR_call_destructors".
-        // Darum die Plugin-pear-Pfade kurz entfernen, sodass Roundcubes (bereits geladenes)
-        // PEAR/Mail_mime genutzt wird. Danach wiederherstellen.
+        // The plugin bundles (transitively) its own copy of PEAR and prepends it via
+        // composer include_paths.php to the include_path. Loading Mail_mime would then
+        // load a SECOND PEAR.php -> "Cannot redeclare _PEAR_call_destructors".
+        // Therefore temporarily remove the plugin's PEAR paths so that Roundcube's
+        // (already loaded) PEAR/Mail_mime is used. Restore afterwards.
         $origIncludePath = get_include_path();
         $clean = array_filter(
             explode(PATH_SEPARATOR, $origIncludePath),
@@ -242,7 +242,7 @@ class ITip
             'X-Sender'   => $fromEmail,
         ]);
         $message->setTXTBody($bodyText);
-        // 7. Param (charset) traegt den method-Parameter in den Content-Type:
+        // The 7th param (charset) carries the method parameter into the Content-Type:
         //   Content-Type: text/calendar; charset=UTF-8; method=REPLY
         $message->addAttachment($ics, 'text/calendar', 'invite.ics', false, '8bit', '', RCUBE_CHARSET . '; method=' . $method);
 

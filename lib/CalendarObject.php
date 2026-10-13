@@ -22,7 +22,7 @@ class CalendarObject
 
     public function getSummary(): string
     {
-        return isset($this->component->SUMMARY) ? (string)$this->component->SUMMARY : '(Ohne Titel)';
+        return isset($this->component->SUMMARY) ? (string)$this->component->SUMMARY : '(No title)';
     }
 
     public function getDescription(): ?string
@@ -178,8 +178,8 @@ class CalendarObject
         if ($this->component->name === 'VEVENT') {
             if ($this->isAllDay()) {
                 // All-day: send pure dates (Y-m-d) to avoid timezone shift in browser.
-                // DTEND bleibt EXKLUSIV (Folgetag) -- getEventsForDate im Client rechnet
-                // damit. Der Edit-Dialog rechnet fuers Anzeigen -1 Tag (inklusiv).
+                // DTEND stays EXCLUSIVE (next day) -- getEventsForDate in the client
+                // accounts for that. The edit dialog subtracts 1 day for display (inclusive).
                 $data['start'] = $this->getStart()?->format('Y-m-d');
                 $data['end'] = $this->getEnd()?->format('Y-m-d');
             } else {

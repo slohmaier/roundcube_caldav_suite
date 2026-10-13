@@ -34,11 +34,6 @@ as a client. No Kolab, no heavyweight dependencies — just `sabre/dav` + `sabre
   subtypes (home/work/cell/…), birthday, anniversary and notes.
   Contacts also appear in the **recipient autocomplete** when composing mail (the plugin
   registers its CardDAV sources into `autocomplete_addressbooks` at runtime).
-- **Contacts (CardDAV)** — integrates as a Roundcube address book: name parts, nickname,
-  job title, organization & department, multiple emails/phones/addresses/URLs/IM with
-  subtypes (home/work/cell/…), birthday, anniversary and notes.
-  Contacts also appear in the **recipient autocomplete** when composing mail (the plugin
-  registers its CardDAV sources into `autocomplete_addressbooks` at runtime).
 - **Meeting invitations (iMIP/iTIP)** — calendar invitations in mail show an
   Accept / Tentative / Decline box plus "propose new time" (COUNTER); accepting
   writes the event to your calendar and emails an iTIP reply to the organizer.

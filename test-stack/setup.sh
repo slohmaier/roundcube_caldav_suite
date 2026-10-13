@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Richtet den Test-Stack ein, NACHDEM die Container laufen:
-#  - wartet auf Roundcube
-#  - legt den Test-User an (Login test/test)
-#  - setzt die CalDAV/CardDAV-Prefs des Users (das Plugin liest USER-Prefs, nicht config.inc.php)
-#  - legt Kalender-, Aufgaben- und Adressbuch-Collections in Radicale an
+# Sets up the test stack AFTER the containers are running:
+#  - waits for Roundcube
+#  - creates the test user (login test/test)
+#  - sets the user's CalDAV/CardDAV prefs (the plugin reads USER prefs, not config.inc.php)
+#  - creates calendar, task and address book collections in Radicale
 #
-# Benutzung:  docker compose up -d && ./setup.sh
+# Usage:  docker compose up -d && ./setup.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -13,22 +13,22 @@ BASE="http://127.0.0.1:8099"
 RAD="http://127.0.0.1:5233"
 RUSER="test"; RPASS="test"
 
-echo ">> Warte auf Roundcube ($BASE) ..."
+echo ">> Waiting for Roundcube ($BASE) ..."
 for i in $(seq 1 60); do
     if curl -sf "$BASE/" -o /dev/null; then break; fi
     sleep 2
-    if [ "$i" = 60 ]; then echo "Roundcube nicht erreichbar"; exit 1; fi
+    if [ "$i" = 60 ]; then echo "Roundcube not reachable"; exit 1; fi
 done
 
-echo ">> Warte auf Radicale ($RAD) ..."
+echo ">> Waiting for Radicale ($RAD) ..."
 for i in $(seq 1 60); do
     code="$(curl -s -o /dev/null -w '%{http_code}' "$RAD/" || echo 000)"
     if [ "$code" != "000" ]; then break; fi
     sleep 2
-    if [ "$i" = 60 ]; then echo "Radicale nicht erreichbar"; exit 1; fi
+    if [ "$i" = 60 ]; then echo "Radicale not reachable"; exit 1; fi
 done
 
-echo ">> Login (legt den User in der DB an) ..."
+echo ">> Login (creates the user in the DB) ..."
 J="$(mktemp)"
 TOKEN="$(curl -s -c "$J" "$BASE/" | grep -oP 'name="_token"[^>]*value="\K[^"]+' | head -1)"
 curl -s -b "$J" -c "$J" -X POST "$BASE/?_task=login&_action=login" \
@@ -37,7 +37,7 @@ curl -s -b "$J" -c "$J" -X POST "$BASE/?_task=login&_action=login" \
     --data-urlencode "_pass=$RPASS" -o /dev/null
 rm -f "$J"
 
-echo ">> CalDAV/CardDAV-Prefs fuer den Test-User setzen ..."
+echo ">> Set CalDAV/CardDAV prefs for the test user ..."
 docker compose exec -T rc-test-roundcube php -r '
 define("INSTALL_PATH","/var/www/html/");
 require_once INSTALL_PATH."program/include/clisetup.php";
@@ -45,7 +45,7 @@ $rc = rcmail::get_instance();
 $db = $rc->get_dbh();
 $res = $db->query("SELECT user_id FROM users WHERE username = ?", "test");
 $row = $db->fetch_assoc($res);
-if (!$row) { fwrite(STDERR, "Test-User nicht gefunden\n"); exit(1); }
+if (!$row) { fwrite(STDERR, "Test user not found\n"); exit(1); }
 $u = new rcube_user((int) $row["user_id"]);
 $u->save_prefs([
     "caldav_suite_url"      => "http://rc-test-radicale:5232",
@@ -68,6 +68,6 @@ curl -s -u "$RUSER:$RPASS" -X MKCOL "$RAD/$RUSER/contacts/" \
 </create>' -o /dev/null -w "   contacts: %{http_code}\n" || true
 
 echo ""
-echo "Fertig. Roundcube: $BASE   Login: $RUSER / $RPASS"
-echo "Radicale:          $RAD   (Login: $RUSER / $RPASS)"
-echo "PHPUnit (im Repo-Root):  php vendor/bin/phpunit --testsuite unit"
+echo "Done. Roundcube: $BASE   Login: $RUSER / $RPASS"
+echo "Radicale:        $RAD   (Login: $RUSER / $RPASS)"
+echo "PHPUnit (repo root):  php vendor/bin/phpunit --testsuite unit"

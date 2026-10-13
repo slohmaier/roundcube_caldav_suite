@@ -1,14 +1,14 @@
 /**
- * CalDAV Suite - Adressbuch-/Gruppen-Sidebar (#directorylist) navigierbar + sprechend.
+ * CalDAV Suite - makes the address book/group sidebar (#directorylist) navigable + speaking.
  *
- * Roundcubes #directorylist ist <ul role="tree"> mit <li role="treeitem">, aber OHNE
- * tabindex -> nichts ist fokussierbar, NVDA zeigt nur Braille, spricht nicht. Zudem
- * baut Roundcubes rcube_treelist die Liste nach dem Laden (und bei Gruppen-Aenderungen)
- * neu auf, und dieses Skript laeuft im <head> BEVOR `rcmail` existiert.
+ * Roundcube's #directorylist is <ul role="tree"> with <li role="treeitem">, but WITHOUT
+ * tabindex -> nothing is focusable, NVDA shows only braille, does not speak. Also
+ * Roundcube's rcube_treelist rebuilds the list after loading (and on group changes),
+ * and this script runs in the <head> BEFORE `rcmail` exists.
  *
- * Darum: auf rcmail+Adressbuch-Task pollen, dann unser aria-activedescendant-Muster
- * (caldav_a11y.makeListNavigable) anwenden, bis die Liste aufgebaut ist; ein
- * MutationObserver setzt die Items nach jedem Neuaufbau erneut auf.
+ * Therefore: poll for rcmail+address book task, then apply our aria-activedescendant
+ * pattern (caldav_a11y.makeListNavigable) until the list is built; a
+ * MutationObserver re-applies the items after every rebuild.
  */
 (function() {
     var bound = false;
@@ -33,13 +33,13 @@
     function enhance() {
         var ul = document.getElementById('directorylist');
         if (!ul || !window.caldav_a11y || !caldav_a11y.makeListNavigable) return false;
-        if (!ul.querySelectorAll('li').length) return false; // noch nicht aufgebaut
+        if (!ul.querySelectorAll('li').length) return false; // not built yet
         setupItems(ul);
         if (bound) return true;
         bound = true;
         caldav_a11y.makeListNavigable(ul, {
             itemSelector: 'li',
-            label: (window.caldav_suite && caldav_suite.label) ? caldav_suite.label('task_lists') : 'Adressbücher',
+            label: (window.caldav_suite && caldav_suite.label) ? caldav_suite.label('addressbooks') : 'Address books',
             onActivate: function(li) { var a = li.querySelector('a'); if (a) a.click(); },
             onToggle:   function(li) { var a = li.querySelector('a'); if (a) a.click(); }
         });
@@ -49,12 +49,12 @@
 
     var tries = 0;
     (function boot() {
-        // Auf rcmail + Adressbuch-Task warten (Skript laeuft frueh im <head>).
+        // Wait for rcmail + address book task (script runs early in the <head>).
         if (!window.rcmail || !rcmail.env || rcmail.env.task !== 'addressbook') {
             if (++tries < 60) window.setTimeout(boot, 100);
             return;
         }
-        // Retry, bis das treelist-Widget die Liste aufgebaut hat und enhance greift.
+        // Retry until the treelist widget has built the list and enhance applies.
         var n = 0;
         (function attempt() { if (!enhance() && ++n < 20) window.setTimeout(attempt, 250); })();
     })();

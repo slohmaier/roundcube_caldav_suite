@@ -31,10 +31,10 @@ class CalDAVClient
             'userName' => $username,
             'password' => $password,
         ]);
-        // Preemptives Basic-Auth erzwingen: sonst macht sabre pro Request den
-        // 401->Retry-Tanz, was die keep-alive-Wiederverwendung zerstoert. Bei
-        // vielen Collections ueber die Radicale-WAN-Hairpin-URL fuehrt das zu
-        // hunderten neuer Verbindungen -> Speedport-Hairpin haengt -> 504.
+        // Force preemptive Basic auth: otherwise sabre does the 401->retry dance
+        // for every request, which breaks keep-alive reuse. With many collections
+        // over the Radicale WAN hairpin URL this leads to hundreds of new
+        // connections -> the router's hairpin NAT hangs -> 504.
         $this->client->addCurlSetting(CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     }
 
@@ -144,7 +144,7 @@ class CalDAVClient
     }
 
     /**
-     * Parst eine calendar-query/sync Multistatus-Antwort zu CalendarObjects.
+     * Parses a calendar-query/sync Multistatus response into CalendarObjects.
      */
     private function parseQueryResponse(string $body, string $url, \DateTimeInterface $start, \DateTimeInterface $end): array
     {
@@ -203,7 +203,7 @@ class CalDAVClient
     }
 
     /**
-     * Parallel events query ueber mehrere Kalender-URLs (curl_multi).
+     * Parallel events query over multiple calendar URLs (curl_multi).
      * @param string[] $calendarUrls
      * @return array<string, CalendarObject[]> map url => objects
      */
@@ -241,7 +241,7 @@ class CalDAVClient
             curl_multi_add_handle($mh, $ch);
         }
 
-        // ausfuehren
+        // run the transfers
         do {
             $status = curl_multi_exec($mh, $running);
             if ($running) {
@@ -305,8 +305,8 @@ class CalDAVClient
      */
     public function putObject(string $url, string $icalData, ?string $etag = null, bool $force = false): bool
     {
-        // Schreibzugriff: bei veraltetem ETag (412) einmalig ohne If-Match wiederholen
-        // (z.B. wenn der Browser nach Infinite-Scroll ein altes ETag haelt).
+        // Write access: on a stale ETag (412) retry once without If-Match
+        // (e.g. when the browser still holds an old ETag after infinite scroll).
         $attempts = $force ? 1 : 2;
         for ($i = 0; $i < $attempts; $i++) {
             $headers = ['Content-Type' => 'text/calendar; charset=utf-8'];
@@ -315,12 +315,12 @@ class CalDAVClient
             } elseif ($i === 0 && !$force) {
                 $headers['If-None-Match'] = '*';
             }
-            // kein Header beim force-Retry
+            // no header on the force retry
             $response = $this->client->request('PUT', $url, $icalData, $headers);
             if (in_array($response['statusCode'], [201, 204])) {
                 return true;
             }
-            // nur bei 412 (ETag-Konflikt) und noch einem Versuch weiter
+            // continue only on 412 (ETag conflict) and one more attempt
             if ($response['statusCode'] !== 412 || $i >= $attempts - 1) {
                 break;
             }
@@ -477,12 +477,12 @@ class CalDAVClient
 
             $fullUrl = $this->resolveUrl($url, $href);
 
-            // Wenn die Collection BEIDE Typen unterstuetzt (explizit oder via
-            // Default, weil der Server kein supported-calendar-component-set
-            // deklariert — z.B. Apple-Reminders/Kalender auf Radicale), per
-            // Inhalt verfeinern: VTODO-Listen sollen nicht als Kalender und
-            // Kalender nicht als Aufgabenliste erscheinen. Die Checks werden
-            // gesammelt und NACH der Schleife parallel ausgefuehrt.
+            // If the collection supports BOTH types (explicitly or by
+            // default, because the server does not declare a
+            // supported-calendar-component-set — e.g. Apple Reminders/Calendars on
+            // Radicale), refine by content: VTODO lists should not appear as
+            // calendars and calendars not as task lists. The checks are
+            // collected and run in parallel AFTER the loop.
             if (in_array('VEVENT', $components, true) && in_array('VTODO', $components, true)) {
                 $pendingRefine[$fullUrl] = [
                     'displayName' => is_string($displayName) ? $displayName : '',
@@ -509,8 +509,8 @@ class CalDAVClient
             );
         }
 
-        // Verfeinerungs-Checks (VEVENT/VTODO pro mehrdeutiger Collection) parallel
-        // ausfuehren statt sequenziell (spart viele ~1.4s-REPORTs).
+        // Run refinement checks (VEVENT/VTODO per ambiguous collection) in
+        // parallel instead of sequentially (saves many ~1.4s REPORTs).
         if (!empty($pendingRefine)) {
             $allChecks = [];
             foreach ($pendingRefine as $fullUrl => $ref) {
@@ -552,9 +552,9 @@ class CalDAVClient
      * @return string[]
      */
     /**
-     * Pruefen ob eine Collection mindestens ein Objekt eines bestimmten
-     * Komponententyps (VEVENT/VTODO) enthaelt. Leichtgewichtiger calendar-query
-     * REPORT (nur getetag, keine calendar-data).
+     * Check whether a collection contains at least one object of a certain
+     * component type (VEVENT/VTODO). Lightweight calendar-query
+     * REPORT (getetag only, no calendar-data).
      */
     private function collectionHasComponent(string $url, string $comp): bool
     {
@@ -581,16 +581,16 @@ class CalDAVClient
             return false;
         }
 
-        // Mindestens eine <response> mit einem .ics-Objekt?
+        // At least one <response> with a .ics object?
         return (bool) preg_match('#<[^>]*:?response[^>]*>.*?\.ics#is', $response['body'] ?? '');
     }
 
     /**
-     * Prueft mehrere (url, comp)-Kombinationen PARALLEL (curl_multi), ob die
-     * Collection ein Objekt des Typs enthaelt. Liefert [url|comp => bool].
+     * Checks multiple (url, comp) combinations in PARALLEL (curl_multi) for whether
+     * the collection contains an object of the type. Returns [url|comp => bool].
      *
-     * Radicale deklariert fuer jeden Kalender pauschal [VEVENT,VTODO,VJOURNAL],
-     * wodurch sonst sequenziell pro Kalender x Typ ein REPORT laufen wuerde (~1.4s).
+     * Radicale declares [VEVENT,VTODO,VJOURNAL] for every calendar, which would
+     * otherwise run one REPORT per calendar x type sequentially (~1.4s).
      */
     private function collectionHasComponentsParallel(array $checks): array
     {
@@ -638,7 +638,7 @@ class CalDAVClient
             $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_multi_remove_handle($mh, $ch);
             curl_close($ch);
-            // Mindestens eine <response> mit einem .ics-Objekt?
+            // At least one <response> with a .ics object?
             $result[$key] = ($code === 207 && preg_match('#<[^>]*:?response[^>]*>.*?\.ics#is', $body ?? ''));
         }
         curl_multi_close($mh);
@@ -646,8 +646,8 @@ class CalDAVClient
     }
 
     /**
-     * Letzter Ausweg fuer leere, mehrdeutige Collections (kein Inhalt, keine
-     * Component-Set-Deklaration): Typ aus dem Anzeigenamen raten.
+     * Last resort for empty, ambiguous collections (no content, no
+     * component-set declaration): guess the type from the display name.
      */
     private function guessComponentsByName(string $name): array
     {

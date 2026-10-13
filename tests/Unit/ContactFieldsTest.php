@@ -156,7 +156,7 @@ class ContactFieldsTest extends TestCase
 
     public function testEditPreservesUnknownProps(): void
     {
-        // Bestehende Karte mit PHOTO + CATEGORIES + X-ABSHOWAS -> beim Edit erhalten
+        // Existing card with PHOTO + CATEGORIES + X-ABSHOWAS -> preserved on edit
         $vcf = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alt\r\nEMAIL;TYPE=HOME:a@x.de\r\n"
             . "PHOTO;ENCODING=b;TYPE=JPEG:Zm9vYmFy\r\nCATEGORIES:VIP\r\nX-ABSHOWAS:COMPANY\r\nEND:VCARD";
         $ab = $this->bookWith($vcf);
@@ -170,7 +170,7 @@ class ContactFieldsTest extends TestCase
 
     public function testFullRoundTrip(): void
     {
-        // schreiben -> als neue Karte lesen -> alle Felder zurueck
+        // write -> read back as a new card -> all fields return
         $ab = $this->bookWith("BEGIN:VCARD\r\nVERSION:3.0\r\nFN:X\r\nEND:VCARD");
         $ab->update(md5($this->url), [
             'name' => 'Dr. Anna Meier', 'firstname' => 'Anna', 'surname' => 'Meier',

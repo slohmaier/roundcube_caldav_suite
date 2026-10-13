@@ -32,12 +32,12 @@ class ContactCard
         if ($parts) {
             return implode(' ', $parts);
         }
-        // Firmenkontakte (Apple X-ABSHOWAS:COMPANY): Name aus ORG ableiten,
-        // sonst leerer FN -> Eintrag sortiert vor allen Namen.
+        // Company contacts (Apple X-ABSHOWAS:COMPANY): derive the name from ORG,
+        // otherwise an empty FN -> the entry sorts before all names.
         if (isset($this->vcard->ORG) && trim((string)$this->vcard->ORG) !== '') {
             return (string)$this->vcard->ORG;
         }
-        return '(Ohne Name)';
+        return '(No name)';
     }
 
     public function getFirstName(): string
@@ -125,8 +125,8 @@ class ContactCard
             $record['anniversary'] = (string)$this->vcard->ANNIVERSARY;
         }
 
-        // Emails mit Subtype-Keys (email:work / email:home / ...), damit
-        // Roundcube das richtige Label zeigt UND der Subtype round-trippt.
+        // Emails with subtype keys (email:work / email:home / ...) so that
+        // Roundcube shows the right label AND the subtype round-trips.
         if (isset($this->vcard->EMAIL)) {
             foreach ($this->vcard->EMAIL as $email) {
                 $val = trim((string)$email);
@@ -153,7 +153,7 @@ class ContactCard
             }
         }
 
-        // Instant Messaging (im:subtype) — Subtype aus X-SERVICE-TYPE oder TYPE
+        // Instant Messaging (im:subtype) — subtype from X-SERVICE-TYPE or TYPE
         if (isset($this->vcard->IMPP)) {
             foreach ($this->vcard->IMPP as $impp) {
                 $val = trim((string)$impp);
@@ -165,7 +165,7 @@ class ContactCard
             }
         }
 
-        // Adressen (address:subtype mit Roundcube-Childs)
+        // Addresses (address:subtype with Roundcube childs)
         if (isset($this->vcard->ADR)) {
             foreach ($this->vcard->ADR as $adr) {
                 $p = $adr->getParts();
@@ -185,8 +185,8 @@ class ContactCard
     }
 
     /**
-     * Roundcube-Subtype aus dem vCard-TYPE-Parameter ableiten (work/home/cell/...).
-     * Generische Marker (internet/voice/pref) werden uebersprungen.
+     * Derive the Roundcube subtype from the vCard TYPE parameter (work/home/cell/...).
+     * Generic markers (internet/voice/pref) are skipped.
      */
     private function subtypeOf($prop, string $default): string
     {

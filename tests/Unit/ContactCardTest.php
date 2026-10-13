@@ -32,7 +32,7 @@ class ContactCardTest extends TestCase
 
     public function testDisplayNameFallbackToOrgForCompany(): void
     {
-        // Apple-Firmenkontakt: leerer FN, Name nur in ORG
+        // Apple company contact: empty FN, name only in ORG
         $c = $this->card("BEGIN:VCARD\nVERSION:3.0\nFN:\nN:;;;;\nORG:Medicover Endokrinologie\nX-ABSHOWAS:COMPANY\nEND:VCARD");
         $this->assertSame('Medicover Endokrinologie', $c->getDisplayName());
     }
@@ -40,7 +40,7 @@ class ContactCardTest extends TestCase
     public function testDisplayNameUnnamed(): void
     {
         $c = $this->card("BEGIN:VCARD\nVERSION:3.0\nFN:\nN:;;;;\nEND:VCARD");
-        $this->assertSame('(Ohne Name)', $c->getDisplayName());
+        $this->assertSame('(No name)', $c->getDisplayName());
     }
 
     public function testNameRecordSortsCompanyUnderOrg(): void
@@ -84,7 +84,7 @@ class ContactCardTest extends TestCase
 
     public function testEmailInternetTypeSkippedUsesNextOrDefault(): void
     {
-        // TYPE=INTERNET,WORK -> internet uebersprungen -> work
+        // TYPE=INTERNET,WORK -> internet skipped -> work
         $c = $this->card("BEGIN:VCARD\nVERSION:3.0\nFN:X\nEMAIL;TYPE=INTERNET,WORK:a@b.de\nEND:VCARD");
         $rec = $c->toRcubeRecord();
         $this->assertSame(['a@b.de'], $rec['email:work']);
@@ -159,7 +159,7 @@ class ContactCardTest extends TestCase
         $this->assertSame('', $rec['organization']);
     }
 
-    // ---- Metadaten ----
+    // ---- Metadata ----
 
     public function testRecordCarriesUrlEtagAndId(): void
     {
@@ -170,7 +170,7 @@ class ContactCardTest extends TestCase
         $this->assertSame(md5('http://srv/abc.vcf'), $rec['ID']);
     }
 
-    // ---- Sonderzeichen ----
+    // ---- Special characters ----
 
     public function testSpecialCharsInNameRoundTrip(): void
     {

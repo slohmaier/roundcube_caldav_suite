@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# All-in-one: bereinigte Autoload erzeugen -> Stack hochfahren -> einrichten.
+# All-in-one: create cleaned autoload -> bring up the stack -> set up.
 #   ./start.sh            (Docker direkt)
 #   DOCKER="sudo docker" ./start.sh
 set -euo pipefail

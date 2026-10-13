@@ -1,11 +1,11 @@
-# Reproduzierbarer Test-Stack fuer caldav_suite.
-# Bringt Roundcube + Radicale (CalDAV/CardDAV) + Greenmail (Dummy-IMAP/SMTP) hoch
-# und mountet DIESES Plugin-Repo direkt als Roundcube-Plugin.
+# Reproducible test stack for caldav_suite.
+# Brings up Roundcube + Radicale (CalDAV/CardDAV) + Greenmail (dummy IMAP/SMTP)
+# and mounts THIS plugin repo directly as a Roundcube plugin.
 #
 #   cd test-stack && docker compose up -d && ./setup.sh
 #   -> http://127.0.0.1:8099   Login: test / test
 #
-# Alle Ports nur auf 127.0.0.1 (kein LAN-Expose).
+# All ports bind to 127.0.0.1 only (no LAN exposure).
 networks:
   rctest:
 
@@ -41,11 +41,11 @@ services:
       - ROUNDCUBEMAIL_PLUGINS=caldav_suite
       - ROUNDCUBEMAIL_SKIN=elastic
     volumes:
-      # Dieses Repo wird direkt als Plugin gemountet (inkl. vendor/).
+      # This repo is mounted directly as the plugin (incl. vendor/).
       - ..:/var/www/html/plugins/caldav_suite:ro
-      # Bereinigte Composer-Autoload (ohne die gebuendelte roundcube/roundcubemail-
-      # Dev-Kopie) — sonst kollidieren deren rcube_*-Klassen mit dem laufenden
-      # Roundcube und das Plugin laedt nicht. Erzeugt von prep-runtime-vendor.sh.
+      # Cleaned composer autoload (without the bundled roundcube/roundcubemail
+      # dev copy) — otherwise its rcube_* classes collide with the running
+      # Roundcube and the plugin does not load. Created by prep-runtime-vendor.sh.
       - ./vendor-runtime/autoload_classmap.php:/var/www/html/plugins/caldav_suite/vendor/composer/autoload_classmap.php:ro
       - ./vendor-runtime/autoload_static.php:/var/www/html/plugins/caldav_suite/vendor/composer/autoload_static.php:ro
     depends_on: [rc-test-radicale, rc-test-imap]

@@ -1,230 +1,227 @@
 # roundcube_caldav_suite
 
-## Überblick
+## Overview
 
-Roundcube-Plugin für Kalender, Aufgaben (CalDAV), Kontakte (CardDAV) und Meeting-Einladungen (iMIP/iTIP). Verbindet sich als Client auf einen externen CalDAV-Server (Radicale, Baikal, Nextcloud etc.). Kein eigener Server, kein Kolab, keine Schwergewicht-Dependencies.
+Roundcube plugin for calendars, tasks (CalDAV), contacts (CardDAV) and meeting
+invitations (iMIP/iTIP). It connects as a client to an external CalDAV server
+(Radicale, Baikal, Nextcloud, etc.). No own server, no Kolab, no heavyweight
+dependencies.
 
-## Zielgruppe
+## Audience
 
-- Selbsthoster mit bestehendem CalDAV-Server
-- Roundcube-User die Kalender und Aufgaben im Webmail wollen
-- Barrierefreie Nutzung (Screen Reader, Tastatur)
+- Self-hosters with an existing CalDAV server
+- Roundcube users who want calendars and tasks in webmail
+- Accessible usage (screen reader, keyboard)
 
 ## Features
 
-### Kalender
+### Calendar
 
-- CalDAV Discovery: PROPFIND auf Base-URL findet automatisch alle Kalender
-- Mehrere Kalender gleichzeitig anzeigen (verschiedene Farben)
-- Kalender ein/ausblenden per Checkbox; **Sichtbarkeit wird pro User gespeichert**
-- Termine erstellen, bearbeiten, löschen
-- Ganztägige Events und zeitgebundene Events
-- Wiederkehrende Termine (RRULE) anzeigen
-- Drag & Drop zum Verschieben (nur in Rasteransicht)
-- Quick-Add: Klick auf Zeitslot erstellt neuen Termin
-- **Bedienung:** Klick waehlt aus, Enter / Doppelklick / Edit-Icon oeffnet Bearbeiten,
-  Leertaste togglet Multi-Selection (Strg+Klick)
+- CalDAV discovery: PROPFIND on the base URL automatically finds all calendars
+- Show multiple calendars at once (different colors)
+- Show/hide calendars via checkbox; **visibility is stored per user**
+- Create, edit, delete events
+- All-day events and timed events
+- Recurring events (RRULE)
+- Drag & drop to move (grid view only)
+- Quick add: clicking a time slot creates a new event
+- **Interaction:** click selects, Enter / double-click / edit icon opens the editor,
+  space toggles multi-selection (Ctrl+click)
 
-### Aufgaben
+### Tasks
 
-- VTODO-Support: Aufgaben erstellen, bearbeiten, abhaken, löschen
-- Mehrere Aufgabenlisten (aus CalDAV entdeckt); **Sichtbarkeit pro User gespeichert**
-- Fälligkeitsdatum, Priorität, Notizen
-- **Fälligkeits-Indikator** (Kalender-Icon, rot bei Ueberfaelligkeit) in der Liste
-- **Details (Notiz/Ort) klappen bei Auswahl auf**, Screenreader liest sie vor
-- Sortierung: nach Fälligkeit, Priorität, Erstelldatum
-- Erledigte Aufgaben ein/ausblenden
-- **Bedienung:** Klick waehlt aus, Enter / Edit-Icon oeffnet Bearbeiten, Leertaste haakt ab
+- VTODO support: create, edit, check off, delete tasks
+- Multiple task lists (discovered via CalDAV); **visibility stored per user**
+- Due date, priority, notes
+- **Due-date indicator** (calendar icon, red when overdue) in the list
+- **Details (note/location) expand on selection**, screen reader reads them out
+- Sorting: by due date, priority, creation date
+- Show/hide completed tasks
+- **Interaction:** click selects, Enter / edit icon opens the editor, space checks off
 
-### Ansichten (wie iOS Kalender)
+### Views (like iOS Calendar)
 
-- **Monatsansicht** (Default): Raster mit Tagen, Events als farbige Punkte/Balken
-- **Wochenansicht**: 7-Tage-Raster mit Zeitachse
-- **Tagesansicht**: Einzelner Tag mit Zeitachse
-- **Listenansicht / Agenda**: Chronologische Liste, **Infinite Scrolling** (grosses
-  Startfenster 1 Monat vor/zurueck, laedt beim Scrollen nach), **Tage als eigene
-  navigierbare Items** (Enter/Doppelklick = Neuer Termin an dem Tag)
-- Schnelles Umschalten zwischen Ansichten (Toolbar-Buttons, Keyboard Shortcuts)
-- Ansichts-Präferenz wird pro User gespeichert
+- **Month view** (default): grid with days, events as colored dots/bars
+- **Week view**: 7-day grid with a time axis
+- **Day view**: single day with a time axis
+- **List view / agenda**: chronological list, **infinite scrolling** (large
+  initial window one month back/forward, loads more on scroll), **days as their own
+  navigable items** (Enter/double-click = new event on that day)
+- Fast switching between views (toolbar buttons, keyboard shortcuts)
+- View preference is stored per user
 
-### Einstellungen
+### Settings
 
-- CalDAV Server-URL (eine Base-URL, Kalender werden automatisch entdeckt)
-- Benutzername + Passwort (getrennt vom IMAP-Login, da oft unterschiedlich)
-- Standard-Ansicht wählen (Monat/Woche/Tag/Liste)
-- Standard-Kalender für neue Termine
-- Erster Wochentag (Montag/Sonntag)
-- Zeitformat (24h/12h)
-- Ortssuche-Provider (Photon / Nominatim / Google Places) + Google-API-Key
+- CalDAV server URL (one base URL, calendars are discovered automatically)
+- Username + password (separate from the IMAP login, since these often differ)
+- Default view (month/week/day/list)
+- Default calendar for new events
+- First day of week (Monday/Sunday)
+- Time format (24h/12h)
+- Location-search provider (Photon / Nominatim / Google Places) + Google API key
 
-### Barrierefreiheit
+### Accessibility
 
-- Listenansicht als vollständig barrierefreie Alternative
-- Semantisches HTML: Listen, Tabellen mit Headers, Landmarks
-- Alle Aktionen per Tastatur erreichbar
-- ARIA-Labels und Live-Regions für dynamische Updates
-- Kein Canvas, kein Drag-Pflicht (alles auch per Dialog bedienbar)
-- Skip-Links zum Navigieren
-- Screen Reader Announcements bei Ansichtswechsel
-- Fokus-Management bei Dialogen
-- Hoher Kontrast: Farben nie als einziges Unterscheidungsmerkmal
-- **Skip-Link** "Zum Kalender springen" beim Tabben
-- **Loading-Spinner** ueber dem Content + periodische "Laedt..."-Ansage per aria-live
-- Listen nutzen Roundcubes native `.listing`-Semantik (role=listbox/option)
+- List view as a fully accessible alternative
+- Semantic HTML: lists, tables with headers, landmarks
+- All actions reachable via keyboard
+- ARIA labels and live regions for dynamic updates
+- No canvas, no mandatory drag (everything also available via dialogs)
+- Skip links for navigation
+- Screen-reader announcements on view change
+- Focus management in dialogs
+- High contrast: color is never the only distinguishing feature
+- **Skip link** "Skip to calendar" when tabbing
+- **Loading spinner** over the content + periodic "Loading..." announcement via aria-live
+- Lists use Roundcube's native `.listing` semantics (role=listbox/option)
 
-### Roundcube-Integration
+### Roundcube integration
 
-- Zwei Menüpunkte in der Sidebar: "Kalender" und "Aufgaben"
-- Mail-Integration: .ics-Anhänge direkt in Kalender importieren
-- Meeting-Einladungen (iTip): Accept/Decline/Tentative direkt aus der Mail
-- Kontakt-Verknüpfung: Teilnehmer-Emails werden mit CardDAV-Kontakten abgeglichen
+- Two menu items in the sidebar: "Calendar" and "Tasks"
+- Mail integration: import `.ics` attachments directly into the calendar
+- Meeting invitations (iTip): accept/decline/tentative directly from the mail
+- Contact linking: attendee emails are matched against CardDAV contacts
 
-## Technologie
+## Technology
 
 ### Backend (PHP)
 
-- sabre/dav-client für CalDAV-Kommunikation (PROPFIND, REPORT, PUT, DELETE)
-- sabre/vobject für iCalendar-Parsing (VEVENT, VTODO, VTIMEZONE)
-- Roundcube Plugin API (rcube_plugin)
-- Caching: CalDAV-Responses werden in Roundcube-DB gecached (konfigurierbare TTL)
-- Kein eigener CalDAV-Server, kein LDAP, kein Memcached
+- sabre/dav client for CalDAV communication (PROPFIND, REPORT, PUT, DELETE)
+- sabre/vobject for iCalendar parsing (VEVENT, VTODO, VTIMEZONE)
+- Roundcube plugin API (rcube_plugin)
+- Caching: CalDAV responses are cached in the Roundcube DB (configurable TTL)
+- No own CalDAV server, no LDAP, no Memcached
 
 ### Frontend (JavaScript)
 
-- Vanilla JS oder leichtgewichtiges Framework (kein React/Vue/Angular)
-- CSS-Grid für Kalenderraster
-- Responsive: Desktop + Tablet + Mobile
-- Elastic Skin kompatibel (Roundcube Standard-Skin)
-- Dark Mode Support
+- Vanilla JS or a lightweight framework (no React/Vue/Angular)
+- CSS grid for the calendar grid
+- Responsive: desktop + tablet + mobile
+- Elastic skin compatible (Roundcube default skin)
+- Dark mode support
 
-### Abhängigkeiten
+### Dependencies
 
 - PHP >= 8.1
 - Roundcube >= 1.6
 - sabre/dav (Composer)
 - sabre/vobject (Composer)
-- Keine weiteren externen Abhängigkeiten
-- Kein libkolab, kein Kolab-Server, kein LDAP
+- No further external dependencies
+- No libkolab, no Kolab server, no LDAP
 
-## Dateistruktur
+## File structure
 
 ```
 roundcube_caldav_suite/
-  caldav_suite.php              # Plugin-Hauptklasse
-  config.inc.php.dist           # Default-Konfiguration
-  composer.json                 # Dependencies (sabre/dav, sabre/vobject)
-  
+  caldav_suite.php              # main plugin class
+  config.inc.php.dist           # default configuration
+  composer.json                 # dependencies (sabre/dav, sabre/vobject)
+
   lib/
-    CalDAVClient.php            # CalDAV Discovery + CRUD
-    CalendarBackend.php         # VEVENT-Logik
-    TaskBackend.php             # VTODO-Logik
-    Cache.php                   # DB-Caching Layer
-  
+    CalDAVClient.php            # CalDAV discovery + CRUD
+    CalendarBackend.php         # VEVENT logic
+    TaskBackend.php             # VTODO logic
+    Cache.php                   # DB caching layer
+
   skins/
     elastic/
       templates/
-        calendar.html           # Kalender-View Template
-        tasklist.html           # Aufgaben-View Template
-        settings.html           # Einstellungs-Seite
+        calendar.html           # calendar view template
+        tasklist.html           # tasks view template
       styles/
-        caldav_suite.css        # Styles für alle Views
-  
+        caldav_suite.css        # styles for all views
+
   localization/
-    de_DE.inc                   # Deutsch
+    de_DE.inc                   # German
     en_US.inc                   # English
-  
+
   js/
-    caldav_suite.js             # Hauptlogik
-    calendar_view.js            # Kalenderraster + Ansichtswechsel
-    task_view.js                # Aufgabenliste
-    event_dialog.js             # Termin erstellen/bearbeiten Dialog
-    task_dialog.js              # Aufgabe erstellen/bearbeiten Dialog
-    a11y.js                     # Barrierefreiheits-Helfer
-  
-  SQL/
-    postgres.initial.sql        # DB-Schema für Cache + User-Prefs
-    mysql.initial.sql
-    sqlite.initial.sql
+    caldav_suite.js             # main logic
+    calendar_view.js            # calendar grid + view switching
+    task_view.js                # task list
+    event_dialog.js             # create/edit event dialog
+    task_dialog.js              # create/edit task dialog
+    a11y.js                     # accessibility helpers
 ```
 
-## CalDAV-Protokoll
+## CalDAV protocol
 
 ### Discovery
-1. PROPFIND auf Base-URL mit `current-user-principal`
-2. PROPFIND auf Principal mit `calendar-home-set`
-3. PROPFIND auf Calendar-Home: alle Collections mit resourcetype `calendar`
-4. Für jede Collection: `supported-calendar-component-set` prüfen (VEVENT vs VTODO)
+1. PROPFIND on the base URL with `current-user-principal`
+2. PROPFIND on the principal with `calendar-home-set`
+3. PROPFIND on the calendar home: all collections with resourcetype `calendar`
+4. For each collection: check `supported-calendar-component-set` (VEVENT vs VTODO)
 
 ### Sync
-- `calendar-query` REPORT für Events in einem Zeitraum
-- `sync-collection` REPORT für inkrementelle Updates (falls Server unterstützt)
-- Fallback: Full PROPFIND + einzelne GET-Requests
+- `calendar-query` REPORT for events in a time range
+- `sync-collection` REPORT for incremental updates (if the server supports it)
+- Fallback: full PROPFIND + individual GET requests
 
-### Schreiben
-- PUT für neue/geänderte Events/Todos
-- DELETE für Löschen
-- If-Match Header für Konflikterkennung (ETags)
+### Writing
+- PUT for new/changed events/todos
+- DELETE for removal
+- If-Match header for conflict detection (ETags)
 
-## Konfiguration (config.inc.php.dist)
+## Configuration (config.inc.php.dist)
 
 ```php
-// CalDAV Server
-$config['caldav_suite_url'] = '';           // z.B. https://radicale.example.com/stefan/
-$config['caldav_suite_username'] = '';      // CalDAV Username
-$config['caldav_suite_password'] = '';      // CalDAV Passwort (verschlüsselt gespeichert)
+// CalDAV server
+$config['caldav_suite_url'] = '';           // e.g. https://radicale.example.com/user/
+$config['caldav_suite_username'] = '';      // CalDAV username
+$config['caldav_suite_password'] = '';      // CalDAV password (stored encrypted)
 
-// Ansicht
+// View
 $config['caldav_suite_default_view'] = 'month';  // month|week|day|list
-$config['caldav_suite_first_day'] = 1;            // 0=Sonntag, 1=Montag
+$config['caldav_suite_first_day'] = 1;            // 0=Sunday, 1=Monday
 $config['caldav_suite_time_format'] = '24';       // 24|12
 
 // Cache
-$config['caldav_suite_cache_ttl'] = 300;          // Sekunden
+$config['caldav_suite_cache_ttl'] = 300;          // seconds
 
-// Kalender
-$config['caldav_suite_default_calendar'] = '';     // ID des Standard-Kalenders
-$config['caldav_suite_colors'] = array();          // Kalender-ID => Farbe
+// Calendar
+$config['caldav_suite_default_calendar'] = '';     // ID of the default calendar
+$config['caldav_suite_colors'] = array();          // calendar ID => color
 ```
 
-## Abgrenzung
+## Scope
 
-Was dieses Plugin NICHT ist/macht:
-- Kein CalDAV-Server (nutzt einen externen)
-- Kein Kolab-Plugin-Fork (komplett neu geschrieben)
-- Kein LDAP/ActiveDirectory für User-Verwaltung
-- Keine Federation
-- Kein Email-Versand für Einladungen (nutzt Roundcube's SMTP)
-- Keine Ressourcen-Verwaltung (Räume, Beamer etc.)
+What this plugin is NOT / does not do:
+- Not a CalDAV server (it uses an external one)
+- Not a Kolab plugin fork (written completely from scratch)
+- No LDAP/Active Directory for user management
+- No federation
+- No email sending for invitations (uses Roundcube's SMTP)
+- No resource management (rooms, projectors, etc.)
 
-## Lizenz
+## License
 
-AGPLv3 (kompatibel mit Roundcube)
+AGPLv3 (compatible with Roundcube)
 
-## Getestete CalDAV-Server
+## Tested CalDAV servers
 
 - Radicale
 - Baikal
-- Nextcloud (CalDAV-Endpoint)
-- SOGo (CalDAV-Endpoint)
-- iCloud (CalDAV-Endpoint)
-- Google Calendar (CalDAV-Endpoint)
+- Nextcloud (CalDAV endpoint)
+- SOGo (CalDAV endpoint)
+- iCloud (CalDAV endpoint)
+- Google Calendar (CalDAV endpoint)
 
 ## Testing
 
-### Test-Strategie
+### Test strategy
 
-Drei Ebenen: Unit Tests, Integration Tests, E2E Tests.
+Three levels: unit tests, integration tests, E2E tests.
 
-### Unit Tests (PHPUnit)
+### Unit tests (PHPUnit)
 
-Testen die PHP-Klassen isoliert ohne CalDAV-Server oder Roundcube.
+Test the PHP classes in isolation, without a CalDAV server or Roundcube.
 
-- `CalDAVClient`: XML-Parsing von PROPFIND/REPORT-Responses, URL-Normalisierung, Header-Handling
-- `CalendarBackend`: VEVENT-Parsing, RRULE-Expansion, Timezone-Konvertierung, Zeitraum-Filterung
-- `TaskBackend`: VTODO-Parsing, Status-Mapping, Priorität-Sortierung
-- `Cache`: TTL-Logik, Invalidierung, DB-Queries
+- `CalDAVClient`: XML parsing of PROPFIND/REPORT responses, URL normalization, header handling
+- `CalendarBackend`: VEVENT parsing, RRULE expansion, timezone conversion, time range filtering
+- `TaskBackend`: VTODO parsing, status mapping, priority sorting
+- `Cache`: TTL logic, invalidation, DB queries
 
-Mocking: sabre/dav HTTP-Client wird gemockt, CalDAV-Responses als XML-Fixtures.
+Mocking: the sabre/dav HTTP client is mocked, CalDAV responses as XML fixtures.
 
 ```
 tests/
@@ -243,16 +240,16 @@ tests/
     todo_with_due.ics
 ```
 
-### Integration Tests (PHPUnit + Radicale)
+### Integration tests (PHPUnit + Radicale)
 
-Testen die CalDAV-Kommunikation gegen einen echten CalDAV-Server.
+Test the CalDAV communication against a real CalDAV server.
 
-- Docker Compose startet einen Radicale-Container für Tests
-- Tests erstellen/lesen/ändern/löschen echte Events und Todos
-- Discovery-Flow testen: Base-URL → Principal → Calendar-Home → Collections
-- Sync-Token-Flow testen: Initial-Sync → Änderung → Incremental-Sync
-- Konflikterkennung: ETag-basiertes If-Match testen
-- Timezone-Handling: Events in verschiedenen Zeitzonen erstellen und lesen
+- Docker Compose starts a Radicale container for the tests
+- Tests create/read/change/delete real events and todos
+- Test the discovery flow: base URL -> principal -> calendar home -> collections
+- Test the sync token flow: initial sync -> change -> incremental sync
+- Conflict detection: ETag-based If-Match
+- Timezone handling: create and read events in different timezones
 
 ```
 tests/
@@ -262,20 +259,20 @@ tests/
     TodoCRUDTest.php
     SyncTest.php
     TimezoneTest.php
-  docker-compose.test.yml      # Radicale für Tests
-  radicale-test-config/        # Radicale Config für Tests
+  docker-compose.test.yml      # Radicale for tests
+  radicale-test-config/        # Radicale config for tests
 ```
 
-### E2E Tests (Playwright oder Cypress)
+### E2E tests (Playwright or Cypress)
 
-Testen die komplette UI im Browser gegen Roundcube + Radicale.
+Test the complete UI in the browser against Roundcube + Radicale.
 
-- Login in Roundcube
-- Kalender-Ansicht öffnen, Ansichten wechseln
-- Termin erstellen, bearbeiten, löschen
-- Aufgabe erstellen, abhaken, löschen
-- Kalender ein/ausblenden
-- Einstellungen ändern (CalDAV-URL, Credentials)
+- Log in to Roundcube
+- Open the calendar view, switch views
+- Create, edit, delete events
+- Create, check off, delete tasks
+- Show/hide calendars
+- Change settings (CalDAV URL, credentials)
 
 ```
 tests/
@@ -283,150 +280,148 @@ tests/
     calendar.spec.js
     tasks.spec.js
     settings.spec.js
-  docker-compose.e2e.yml       # Roundcube + Radicale + DB für E2E
+  docker-compose.e2e.yml       # Roundcube + Radicale + DB for E2E
 ```
 
-### Barrierefreiheits-Tests
+### Accessibility tests
 
-- axe-core Integration in E2E-Tests (automatische WCAG-Checks)
-- Keyboard-Navigation-Tests: Tab-Reihenfolge, Enter/Space-Aktivierung, Escape-Schließen
-- Screen Reader Assertions: ARIA-Labels, Live-Regions, Announcements
-- Fokus-Tests: Fokus nach Dialog-Öffnen/Schließen, nach Ansichtswechsel
+- axe-core integration in E2E tests (automated WCAG checks)
+- Keyboard navigation tests: tab order, Enter/space activation, Escape close
+- Screen reader assertions: ARIA labels, live regions, announcements
+- Focus tests: focus after dialog open/close, after view change
 
 ### CI (GitHub Actions)
 
 ```yaml
 # .github/workflows/test.yml
-- PHP Unit Tests: PHP 8.1, 8.2, 8.3, 8.4
-- Integration Tests: PHP 8.1 + Radicale Docker
-- E2E Tests: Playwright + Roundcube Docker + Radicale Docker
-- Accessibility: axe-core Scan
-- Code Style: PHP-CS-Fixer
-- Static Analysis: PHPStan Level 6
+- PHP unit tests: PHP 8.1, 8.2, 8.3, 8.4
+- Integration tests: PHP 8.1 + Radicale Docker
+- E2E tests: Playwright + Roundcube Docker + Radicale Docker
+- Accessibility: axe-core scan
+- Code style: PHP-CS-Fixer
+- Static analysis: PHPStan level 6
 ```
 
-### Lokale Entwicklung
+### Local development
 
 ```bash
-# Alles starten (Roundcube + Radicale + DB)
+# Start everything (Roundcube + Radicale + DB)
 docker compose -f docker-compose.dev.yml up -d
 
-# Unit Tests
+# Unit tests
 composer test
 
-# Integration Tests (braucht laufenden Radicale)
+# Integration tests (needs a running Radicale)
 composer test:integration
 
-# E2E Tests
+# E2E tests
 npx playwright test
 
-# Alles
+# Everything
 composer test:all
 ```
 
-### Beispiel-Screenshots neu erzeugen
+### Regenerating the example screenshots
 
-`test-stack/screenshots/generate.sh` erzeugt automatisch Screenshots (Monat/Woche/Tag/
-Liste, Aufgaben, Kontakte) aus einem Demo-Stack mit Playwright:
+`test-stack/screenshots/generate.sh` automatically creates screenshots
+(month/week/day/list, tasks, contacts) from a demo stack with Playwright:
 
 ```bash
 cd test-stack/screenshots
 DOCKER="sudo docker" ./generate.sh
 ```
 
-Die PNGs landen in `test-stack/screenshots/out/`. **Fuer das Repo** nach der
-Generierung `out/*.png` nach `docs/` kopieren und committen (`.gitignore` deckt
-`out/` ab; die Repo-Screenshots liegen unter `docs/`).
+The PNGs land in `test-stack/screenshots/out/`. **For the repo**, after generating
+copy `out/*.png` to `docs/` and commit (`.gitignore` covers `out/`; the repo
+screenshots live under `docs/`).
 
-## Unterstützte Felder (Stand 2026-06-18)
+## Supported fields (as of 2026-06-18)
 
-Was das Plugin schreibt UND zurueckliest (Round-Trip getestet, Unit + gegen echtes
-Radicale). Nicht behandelte Felder gehen beim Edit NICHT verloren — siehe "Fetch-Merge".
+What the plugin writes AND reads back (round trip tested, unit + against a real
+Radicale). Fields that are not handled are NOT lost on edit — see "fetch-merge".
 
-### Kontakte (vCard 3.0)
+### Contacts (vCard 3.0)
 
-- **Empfaenger-Autovervollstaendigung:** `register_carddav_autocomplete()` (startup-Hook, task=mail) traegt die CardDAV-Adressbuch-IDs zur Laufzeit in `autocomplete_addressbooks` ein (Discovery 1x/Session gecacht, nur nicht-leer) -> Kontakte erscheinen in der An:-Suche. Roundcubes Autocomplete iteriert sonst nur konfigurierte Quellen-IDs, und die `caldav_<md5>`-IDs sind dynamisch.
+- **Recipient autocomplete:** `register_carddav_autocomplete()` (startup hook, task=mail) adds the CardDAV address book IDs to `autocomplete_addressbooks` at runtime (discovery cached once per session, only non-empty) -> contacts appear in the To: search. Roundcube's autocomplete otherwise iterates only configured source IDs, and the `caldav_<md5>` IDs are dynamic.
 
-- Name: FN + N (Nachname, Vorname, middlename, prefix, suffix — alle 5 N-Teile)
-- Spitzname (NICKNAME), Jobtitel (TITLE)
-- Organisation + Abteilung (strukturiertes ORG: org;department)
-- E-Mail mit Subtype (EMAIL;TYPE=HOME/WORK/...) — mehrere, je Subtype
-- Telefon mit Subtype (TEL;TYPE=HOME/WORK/CELL/...)
-- Adresse strukturiert (ADR;TYPE=...: street/locality/region/zipcode/country), mehrere
-- Webseite (URL), Instant Messaging (IMPP; Subtype via X-SERVICE-TYPE)
-- Geburtstag (BDAY), Jahrestag (ANNIVERSARY) — Datums-Normalisierung auf YYYY-MM-DD
-- Notizen (NOTE)
-- Firmenkontakte: leeres FN faellt auf ORG zurueck (Sortierung)
-- coltypes erweitert -> Roundcube-Formular zeigt all diese Felder
+- Name: FN + N (last, first, middle, prefix, suffix — all 5 N parts)
+- Nickname (NICKNAME), job title (TITLE)
+- Organization + department (structured ORG: org;department)
+- Email with subtype (EMAIL;TYPE=HOME/WORK/...) — multiple, per subtype
+- Phone with subtype (TEL;TYPE=HOME/WORK/CELL/...)
+- Structured address (ADR;TYPE=...: street/locality/region/zipcode/country), multiple
+- Website (URL), instant messaging (IMPP; subtype via X-SERVICE-TYPE)
+- Birthday (BDAY), anniversary (ANNIVERSARY) — date normalized to YYYY-MM-DD
+- Notes (NOTE)
+- Company contacts: empty FN falls back to ORG (sorting)
+- coltypes extended -> the Roundcube form shows all these fields
 
-### Termine (VEVENT, iCal RFC 5545)
+### Events (VEVENT, iCal RFC 5545)
 
-- Titel (SUMMARY), Start/Ende (DTSTART/DTEND), Ganztags (VALUE=DATE, Ende exklusiv +1)
-- Zeitzone via TZID; DST korrekt (Sommer +02:00 / Winter +01:00 fuer Europe/Berlin getestet)
-- Ort (LOCATION), Beschreibung (DESCRIPTION), URL, STATUS, TRANSP, CLASS
-- **Recurrence (RRULE)** — Lesen + Schreiben + beim Edit erhalten
-- Kategorien (CATEGORIES), Erinnerung (VALARM/TRIGGER)
-- Apple-Fahrtzeit: X-APPLE-TRAVEL-ADVISORY-BEHAVIOR (auto) / X-APPLE-TRAVEL-DURATION (Minuten)
-- Geo-Location: X-APPLE-STRUCTURED-LOCATION + GEO (Apple-Maps-Fahrtzeit)
+- Title (SUMMARY), start/end (DTSTART/DTEND), all-day (VALUE=DATE, end exclusive +1)
+- Timezone via TZID; DST correct (summer +02:00 / winter +01:00 for Europe/Berlin tested)
+- Location (LOCATION), description (DESCRIPTION), URL, STATUS, TRANSP, CLASS
+- **Recurrence (RRULE)** — read + write + preserved on edit
+- Categories (CATEGORIES), reminder (VALARM/TRIGGER)
+- Apple travel time: X-APPLE-TRAVEL-ADVISORY-BEHAVIOR (auto) / X-APPLE-TRAVEL-DURATION (minutes)
+- Geo location: X-APPLE-STRUCTURED-LOCATION + GEO (Apple Maps travel time)
 
-### Aufgaben (VTODO)
+### Tasks (VTODO)
 
-- Titel, Beschreibung, Ort, URL
-- Faelligkeit (DUE), Start (DTSTART) — mit Zeitzone
-- Prioritaet (high=1/medium=5/low=9/none), Fortschritt (PERCENT-COMPLETE)
-- Status/Erledigt (STATUS + COMPLETED), Kategorien (CATEGORIES), Recurrence (RRULE)
-- Abhaken (Toggle): holt VTODO, flippt nur Status, erhaelt alle anderen Felder
+- Title, description, location, URL
+- Due (DUE), start (DTSTART) — with timezone
+- Priority (high=1/medium=5/low=9/none), progress (PERCENT-COMPLETE)
+- Status/completed (STATUS + COMPLETED), categories (CATEGORIES), recurrence (RRULE)
+- Check off (toggle): fetches the VTODO, flips only the status, preserves all other fields
 
-### Fetch-Merge-Edit (wichtig)
+### Fetch-merge edit (important)
 
-Kontakte modifizieren die bestehende vCard in-place; Events/Tasks holen beim Edit das
-bestehende Objekt (`CalDAVClient::getObject`) und mergen nur die uebergebenen Felder
-(`updateICalEvent` / `updateICalTodo`). So bleiben Felder, die das Formular nicht kennt
-(RRULE, ATTENDEE, ORGANIZER, SEQUENCE, EXDATE, RELATED-TO, eigene X-Props), beim
-Speichern **erhalten** statt verloren zu gehen. Verifiziert: Titel-Edit eines Serien-
-termins behaelt die RRULE.
+Contacts modify the existing vCard in place; events/tasks fetch the existing object
+on edit (`CalDAVClient::getObject`) and merge only the passed fields
+(`updateICalEvent` / `updateICalTodo`). This preserves fields the form does not know
+about (RRULE, ATTENDEE, ORGANIZER, SEQUENCE, EXDATE, RELATED-TO, custom X- props)
+instead of losing them on save. Verified: a title edit of a recurring event keeps the RRULE.
 
-### Noch NICHT als eigene Formularfelder
+### Not yet separate form fields
 
-ATTENDEE/ORGANIZER (Einladungen/iTip), EXDATE/RECURRENCE-ID-Ausnahmen, mehrere VALARMs,
-PHOTO-Upload — werden beim Edit aber dank Fetch-Merge erhalten, nur nicht via UI editiert.
+ATTENDEE/ORGANIZER (invitations/iTip), EXDATE/RECURRENCE-ID exceptions, multiple
+VALARMs, PHOTO upload — but they are preserved on edit thanks to fetch-merge, just
+not editable via the UI.
 
 ### Tests
 
-`php vendor/bin/phpunit --testsuite unit` — 149 Unit-Tests (Backends, ContactCard,
-CalendarObject, CardDAVAddressbook mit gemocktem Client, Recurrence, Zeitzonen/DST,
-Fetch-Merge, alle Felder, Sonderzeichen-Roundtrip). Integration gegen ein echtes
-Radicale (lokaler Docker-Test-Stack) verifiziert.
+`php vendor/bin/phpunit --testsuite unit` — 149 unit tests (backends, ContactCard,
+CalendarObject, CardDAVAddressbook with a mocked client, recurrence, timezones/DST,
+fetch-merge, all fields, special-character round trips). Integration against a real
+Radicale (local Docker test stack) verified.
 
-## iMIP / iTIP (Kalender-Einladungen in Mails)
+## iMIP / iTIP (calendar invitations in mails)
 
-`lib/ITip.php` parst `text/calendar`-Parts und baut REPLY/COUNTER (sabre/vobject),
-sendet als iMIP-Mail via Roundcube-SMTP (`rcube::deliver_message` + `Mail_mime`).
+`lib/ITip.php` parses `text/calendar` parts and builds REPLY/COUNTER (sabre/vobject),
+sends them as an iMIP mail via Roundcube SMTP (`rcube::deliver_message` + `Mail_mime`).
 
-- **Hooks:** `message_load` (Einladung in geladener Mail erkennen) + `template_object_messagebody`
-  (Box ueber den Mailtext rendern). **Actions** `plugin.caldav-itip-{reply,counter}` MUESSEN
-  VOR `register_task()` registriert werden, sonst "No handler found".
-- **UI:** `render_itip_box()` -> `role=region` + `<dl>` + Kalender-`<select>` + Button-Gruppe
-  (Annehmen/Vorbehalt/Ablehnen/Vorschlag) + aria-live. `js/itip.js` verdrahtet; Vorschlag-Modal
-  via `caldav_suite.dialog()`. Box traegt `data-msg-uid/-mbox/-mime-id`; der Action-Handler laedt
-  den Part server-seitig nach (vertraut keinem Client-ICS).
-- **Annehmen/Vorbehalt:** Event mit eigenem `PARTSTAT` in den gewaehlten Kalender (`buildStoredEvent`)
-  + REPLY. **Ablehnen:** nur REPLY. **Vorschlag:** COUNTER mit neuer Zeit.
-- **STOLPERSTEIN (PEAR):** Das Plugin buendelt (transitiv via `roundcube/plugin-installer`) eine
-  eigene pear-Kopie und prependet sie per `vendor/composer/include_paths.php` in den include_path.
-  Beim Laden von `Mail_mime` knallt sonst `Cannot redeclare _PEAR_call_destructors`. `ITip::send`
-  nimmt die Plugin-pear-Pfade waehrend des Sendens kurz aus dem include_path.
-- **STOLPERSTEIN (composer-Autoload / Klassenshadowing):** `roundcube/plugin-installer`
-  zieht transitiv `roundcube/roundcubemail` in `vendor/`; dessen Classmap-Eintraege
-  werden per prepend VOR Roundcubes Autoloader registriert und shadowen die echten
-  Core-Klassen (konkret: die alte `rcmail_sendmail`-Kopie setzte `html_encoding=8bit`
-  fuer den HTML-Teil -> HTML ging als EINE lange Zeile raus -> strenge Mailserver
-  (a strict mail provider) lehnten mit `501 line too long` ab; ebenso die PEAR-Dubletten). Fix in
-  `composer.json`: `"exclude-from-classmap": ["/vendor/roundcube/roundcubemail/",
-  "/vendor/pear/"]` (Pfade relativ zur Plugin-Wurzel, inkl. `vendor/`) plus
-  `roundcube/plugin-installer` nach `require-dev` (composer fuehrt Plugins nur aus
-  dem Root-Projekt aus). `tests/bootstrap.php` laedt die vendored Core-Klassen fuer
-  die Unit-Tests bedarfsweise nach (`phpunit.xml` -> `bootstrap="tests/bootstrap.php"`).
-  Danach `composer dump-autoload`.
+- **Hooks:** `message_load` (detect an invitation in the loaded mail) + `template_object_messagebody`
+  (render the box above the mail text). **Actions** `plugin.caldav-itip-{reply,counter}` MUST be
+  registered BEFORE `register_task()`, otherwise "No handler found".
+- **UI:** `render_itip_box()` -> `role=region` + `<dl>` + calendar `<select>` + button group
+  (accept/tentative/decline/propose) + aria-live. `js/itip.js` wires it up; the propose modal
+  via `caldav_suite.dialog()`. The box carries `data-msg-uid/-mbox/-mime-id`; the action handler
+  reloads the part server-side (does not trust any client ICS).
+- **Accept/tentative:** event with own `PARTSTAT` into the chosen calendar (`buildStoredEvent`)
+  + REPLY. **Decline:** REPLY only. **Propose:** COUNTER with a new time.
+- **PITFALL (PEAR):** the plugin bundles (transitively via `roundcube/plugin-installer`) its own
+  PEAR copy and prepends it to the include_path via `vendor/composer/include_paths.php`.
+  Loading `Mail_mime` otherwise fails with `Cannot redeclare _PEAR_call_destructors`. `ITip::send`
+  briefly removes the plugin PEAR paths from the include_path while sending.
+- **PITFALL (composer autoload / class shadowing):** `roundcube/plugin-installer` transitively
+  pulls `roundcube/roundcubemail` into `vendor/`; its classmap entries are registered via prepend
+  BEFORE Roundcube's autoloader and shadow the real core classes (concretely: the old
+  `rcmail_sendmail` copy set `html_encoding=8bit` for the HTML part -> HTML went out as ONE long
+  line -> strict mail servers rejected it with `501 line too long`; same for the PEAR duplicates).
+  Fix in `composer.json`: `"exclude-from-classmap": ["/vendor/roundcube/roundcubemail/",
+  "/vendor/pear/"]` (paths relative to the plugin root, incl. `vendor/`) plus moving
+  `roundcube/plugin-installer` to `require-dev` (composer only executes plugins from the root
+  project). `tests/bootstrap.php` loads the vendored core classes on demand for the unit tests
+  (`phpunit.xml` -> `bootstrap="tests/bootstrap.php"`). Afterwards run `composer dump-autoload`.
 - **Test:** `test-stack/run-itip-test.sh` (greenmail SMTP/IMAP, Playwright `itip-test.mjs`):
-  Box-Render + a11y, Annehmen -> CalDAV-Event + REPLY in greenmail, Counter-Modal -> COUNTER-Mail.
+  box render + a11y, accept -> CalDAV event + REPLY in greenmail, counter modal -> COUNTER mail.

@@ -1,13 +1,13 @@
 /**
- * CalDAV Suite — iMIP/iTIP Einladungs-UI in der Mailansicht.
+ * CalDAV Suite — iMIP/iTIP invitation UI in the mail view.
  *
- * Die Einladungs-Box wird serverseitig ueber den Mailtext gerendert
- * (template_object_messagebody). Hier verdrahten wir Annehmen / Mit Vorbehalt /
- * Ablehnen und "Anderen Termin vorschlagen" (modaler Dialog). Antworten gehen per
- * AJAX an plugin.caldav-itip-reply bzw. plugin.caldav-itip-counter.
+ * The invitation box is rendered server-side above the mail body
+ * (template_object_messagebody). Here we wire up accept / tentative /
+ * decline and "propose new time" (modal dialog). Responses are sent via
+ * AJAX to plugin.caldav-itip-reply and plugin.caldav-itip-counter.
  *
- * a11y: Status-Updates ueber die boxeigene aria-live-Region; der Vorschlag-Dialog
- * nutzt caldav_suite.dialog() (jQuery-UI, Fokus-Management + Esc wie Event-Dialog).
+ * a11y: status updates via the box's own aria-live region; the propose dialog
+ * uses caldav_suite.dialog() (jQuery UI, focus management + Esc like the event dialog).
  */
 (function() {
     var box = null;

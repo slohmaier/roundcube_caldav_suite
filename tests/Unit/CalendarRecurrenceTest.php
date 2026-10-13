@@ -47,7 +47,7 @@ class CalendarRecurrenceTest extends TestCase
         $this->assertSame('FREQ=MONTHLY;BYMONTHDAY=15', $this->asObject($ical)->toArray()['rrule']);
     }
 
-    // ---- Fetch-Merge: Edit darf nicht behandelte Felder NICHT verlieren ----
+    // ---- Fetch-merge: editing must NOT lose unhandled fields ----
 
     private function existingSeries(): string
     {
@@ -86,7 +86,7 @@ class CalendarRecurrenceTest extends TestCase
 
     public function testEditPreservesTimesWhenNotProvided(): void
     {
-        // nur Titel aendern -> DTSTART/DTEND bleiben
+        // change only the title -> DTSTART/DTEND remain
         $ev = $this->vevent($this->backend->updateICalEvent($this->existingSeries(), ['title' => 'X']));
         $this->assertStringContainsString('20260701T100000', (string) $ev->DTSTART->serialize());
     }
@@ -97,7 +97,7 @@ class CalendarRecurrenceTest extends TestCase
         $this->assertNull($this->backend->updateICalEvent($todo, ['title' => 'x']));
     }
 
-    // ---- Zeitzonen / DST ----
+    // ---- Timezones / DST ----
 
     public function testTimezoneSummerOffsetCEST(): void
     {
@@ -105,7 +105,7 @@ class CalendarRecurrenceTest extends TestCase
             'title' => 'Sommer', 'start' => '2026-07-01T12:00', 'end' => '2026-07-01T13:00',
             'timezone' => 'Europe/Berlin',
         ]);
-        // Wallclock 12:00 Berlin im Sommer = 10:00 UTC (+02:00)
+        // Wallclock 12:00 Berlin in summer = 10:00 UTC (+02:00)
         $this->assertSame('2026-07-01T12:00:00+02:00', $this->asObject($ical)->getStart()->format('c'));
     }
 
@@ -115,7 +115,7 @@ class CalendarRecurrenceTest extends TestCase
             'title' => 'Winter', 'start' => '2026-01-15T12:00', 'end' => '2026-01-15T13:00',
             'timezone' => 'Europe/Berlin',
         ]);
-        // Wallclock 12:00 Berlin im Winter = 11:00 UTC (+01:00)
+        // Wallclock 12:00 Berlin in winter = 11:00 UTC (+01:00)
         $this->assertSame('2026-01-15T12:00:00+01:00', $this->asObject($ical)->getStart()->format('c'));
     }
 
@@ -129,7 +129,7 @@ class CalendarRecurrenceTest extends TestCase
         $this->assertSame('2026-07-01T09:00:00-04:00', $obj->getStart()->format('c')); // EDT
     }
 
-    // ---- Weitere Felder ----
+    // ---- Further fields ----
 
     public function testStatusUrlCategories(): void
     {
@@ -140,7 +140,7 @@ class CalendarRecurrenceTest extends TestCase
         ]);
         $obj = $this->asObject($ical)->toArray();
         $this->assertSame('CONFIRMED', $obj['status']);
-        $this->assertSame('https://example.com/e', $obj['url']);
+        $this->assertSame('https://example.com/e', $obj['link']);
         $this->assertSame(['Arbeit', 'Wichtig'], $obj['categories']);
     }
 

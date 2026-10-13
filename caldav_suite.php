@@ -2,11 +2,11 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-// Das Plugin buendelt (transitiv) eine eigene pear-Kopie, die composer per
-// include_paths.php in den include_path prependet. Roundcube bringt dieselben
-// pear-Pakete bereits mit -> sonst "Cannot redeclare _PEAR_call_destructors"
-// beim Laden von Mail_mime/PEAR (z.B. im Compose-Fenster). Die Plugin-pear-Pfade
-// daher global entfernen; Roundcubes PEAR/Mail_mime wird genutzt.
+// The plugin bundles (transitively) its own copy of PEAR, which composer prepends
+// to the include_path via include_paths.php. Roundcube already ships the same PEAR
+// packages -> otherwise "Cannot redeclare _PEAR_call_destructors" when loading
+// Mail_mime/PEAR (e.g. in the compose window). Remove the plugin's PEAR paths
+// globally; Roundcube's PEAR/Mail_mime is used instead.
 $__caldav_inc = get_include_path();
 $__caldav_clean = array_filter(
     explode(PATH_SEPARATOR, $__caldav_inc),
@@ -23,15 +23,15 @@ class caldav_suite extends rcube_plugin
 
     private $rc;
 
-    /** Erkannte Kalender-Einladung in der gerade geladenen Mail (oder null). */
+    /** Detected calendar invitation in the currently loaded mail (or null). */
     private $itip = null;
 
     public function init()
     {
         $this->rc = rcmail::get_instance();
 
-        // Geocoding-Key immer im Browser-env bereitstellen (nicht nur in calendar_view),
-        // damit der Event-Dialog in jedem Kontext darauf zugreifen kann.
+        // Always expose the geocoding key in the browser env (not only in calendar_view)
+        // so the event dialog can access it in any context.
         $gprefs = $this->rc->user->get_prefs();
         $this->rc->output->set_env('caldav_geocode_provider', $gprefs['caldav_suite_geocode_provider'] ?? 'photon');
         $this->rc->output->set_env('caldav_geocode_url', $gprefs['caldav_suite_geocode_url'] ?? '');
@@ -66,8 +66,8 @@ class caldav_suite extends rcube_plugin
         $this->add_hook('addressbooks_list', [$this, 'addressbooks_list']);
         $this->add_hook('addressbook_get', [$this, 'addressbook_get']);
 
-        // iMIP / iTIP: Kalender-Einladungen in Mails (Annehmen/Ablehnen/Vorschlag).
-        // Die zugehoerigen Actions werden oben VOR register_task() registriert.
+        // iMIP / iTIP: calendar invitations in mails (accept/decline/counter).
+        // The related actions are registered above BEFORE register_task().
         $this->add_hook('message_load', [$this, 'on_message_load']);
         $this->add_hook('template_object_messagebody', [$this, 'mail_itip_box']);
     }
@@ -76,7 +76,7 @@ class caldav_suite extends rcube_plugin
     {
         $this->add_texts('localization/', true);
 
-        // CardDAV-Adressbuecher in die Empfaenger-Autovervollstaendigung aufnehmen
+        // Add CardDAV address books to recipient autocomplete
         $this->register_carddav_autocomplete();
 
         $this->add_button([
@@ -98,14 +98,14 @@ class caldav_suite extends rcube_plugin
         ], 'taskbar');
 
         // CSS and base JS on all tasks (needed for taskbar icons + settings)
-        // Achtung: NICHT $this->local_skin_path() verwenden. Das gibt den aktiven Skin
-        // (hier 'elastic-de') zurueck, in dem KEIN caldav_suite.css liegt -> CSS wuerde
-        // nie geladen. Die Styles liegen unter 'elastic', daher dort explizit laden.
+        // Note: do NOT use $this->local_skin_path(). It returns the active skin
+        // (here 'elastic-de'), which contains NO caldav_suite.css -> the CSS would
+        // never load. The styles live under 'elastic', so load them explicitly there.
         $this->include_stylesheet('skins/elastic/styles/caldav_suite.css');
         $this->include_script('js/caldav_suite.js');
         $this->include_script('js/a11y.js');
 
-        // iMIP-Einladungs-UI in der Mailansicht
+        // iMIP invitation UI in the mail view
         if ($this->rc->task === 'mail') {
             $this->include_script('js/itip.js');
         }
@@ -121,7 +121,7 @@ class caldav_suite extends rcube_plugin
         }
 
         if ($this->rc->task === 'addressbook') {
-            // Adressbuch-/Gruppen-Sidebar navigierbar + sprechend (aria-activedescendant)
+            // Make the address book/group sidebar navigable + speaking (aria-activedescendant)
             $this->include_script('js/addressbook_a11y.js');
         }
 
@@ -156,7 +156,7 @@ class caldav_suite extends rcube_plugin
         $this->rc->output->set_env('caldav_geocode_provider', $prefs['caldav_suite_geocode_provider'] ?? 'photon');
         $this->rc->output->set_env('caldav_geocode_url', $prefs['caldav_suite_geocode_url'] ?? '');
         $this->rc->output->set_env('caldav_geocode_key', $prefs['caldav_suite_geocode_key'] ?? '');
-        // Sprache fuer die Ortssuche aus der Roundcube-User-Sprache ableiten (z.B. 'de_DE' -> 'de').
+        // Derive the location-search language from the Roundcube user language (e.g. 'de_DE' -> 'de').
         $lang = $this->rc->user->language ?: $this->rc->config->get('language', 'en');
         $lang = strtolower(substr($lang, 0, 2));
         $this->rc->output->set_env('caldav_geocode_lang', $lang);
@@ -182,8 +182,8 @@ class caldav_suite extends rcube_plugin
 
     public function render_calendar_list($attrib)
     {
-        // Inneres <ul> wird per JS zur beschrifteten role=listbox (makeListNavigable);
-        // Wrapper bleibt presentational, sonst doppelte Label-Ansage.
+        // The inner <ul> is turned into a labelled role=listbox by JS (makeListNavigable);
+        // the wrapper stays presentational, otherwise the label is announced twice.
         return '<div id="calendar-list"></div>';
     }
 
@@ -194,8 +194,8 @@ class caldav_suite extends rcube_plugin
 
     public function render_tasklist_list($attrib)
     {
-        // Inneres <ul> wird per JS zur beschrifteten role=listbox (makeListNavigable);
-        // Wrapper bleibt presentational, sonst doppelte Label-Ansage.
+        // The inner <ul> is turned into a labelled role=listbox by JS (makeListNavigable);
+        // the wrapper stays presentational, otherwise the label is announced twice.
         return '<div id="tasklist-list"></div>';
     }
 
@@ -237,7 +237,7 @@ class caldav_suite extends rcube_plugin
         $this->rc->output->send();
     }
 
-    /** Speichert die Sichtbarkeit (an/aus) aller Kalender in den User-Prefs. */
+    /** Stores the visibility (on/off) of all calendars in the user prefs. */
     public function action_set_visible_calendars()
     {
         $ids = rcube_utils::get_input_value('_visible', rcube_utils::INPUT_POST);
@@ -270,7 +270,7 @@ class caldav_suite extends rcube_plugin
         $this->rc->output->send();
     }
 
-    /** Ortssuche (Geocoding) ueber Server-Proxy: umgeht CORS und haelt den API-Key serverseitig. */
+    /** Location search (geocoding) via server proxy: bypasses CORS and keeps the API key server-side. */
     public function action_geocode()
     {
         $prefs = $this->rc->user->get_prefs();
@@ -354,7 +354,7 @@ class caldav_suite extends rcube_plugin
 
     public function action_get_events()
     {
-        // Zeit- und Memory-Limit fuer grosse Abfragen anheben.
+        // Raise the time and memory limit for large queries.
         @ini_set('memory_limit', '256M');
         @set_time_limit(120);
 
@@ -408,7 +408,7 @@ class caldav_suite extends rcube_plugin
         }
 
         $data = rcube_utils::get_input_value('_event', rcube_utils::INPUT_POST);
-        // _event wird als JSON-String vom Dialog gesendet -> in Array parsen.
+        // _event is sent as a JSON string by the dialog -> parse it into an array.
         if (is_string($data)) {
             $decoded = json_decode($data, true);
             if (is_array($decoded)) {
@@ -421,8 +421,8 @@ class caldav_suite extends rcube_plugin
 
         $backend = new \Slohmaier\CalDAVSuite\CalendarBackend();
 
-        // Edit: bestehendes Objekt holen und mergen (erhaelt RRULE/ATTENDEE/etc.),
-        // sonst neu bauen.
+        // Edit: fetch the existing object and merge (preserves RRULE/ATTENDEE/etc.),
+        // otherwise build it from scratch.
         if ($existingUrl && ($existing = $client->getObject($existingUrl))) {
             $ical = $backend->updateICalEvent($existing->serialize(), $data) ?: $backend->buildICalEvent($data);
         } else {
@@ -445,7 +445,7 @@ class caldav_suite extends rcube_plugin
     public function action_delete_event()
     {
         $client = $this->get_caldav_client();
-        // Einzel-URL (ueberl. fuer Alt-Aufrufe) oder mehrere URLs (Multiselection)
+        // Single URL (legacy for old callers) or multiple URLs (multiselection)
         $urls = rcube_utils::get_input_value('_urls', rcube_utils::INPUT_POST);
         if (is_array($urls)) {
             $urls = array_values(array_filter($urls, 'is_string'));
@@ -549,7 +549,7 @@ class caldav_suite extends rcube_plugin
         }
 
         $data = rcube_utils::get_input_value('_task', rcube_utils::INPUT_POST);
-        // _task wird als JSON-String gesendet -> in Array parsen.
+        // _task is sent as a JSON string -> parse it into an array.
         if (is_string($data)) {
             $decoded = json_decode($data, true);
             if (is_array($decoded)) {
@@ -562,8 +562,8 @@ class caldav_suite extends rcube_plugin
 
         $backend = new \Slohmaier\CalDAVSuite\TaskBackend();
 
-        // Edit: bestehendes Objekt holen und mergen (erhaelt RRULE/eigene Props),
-        // sonst neu bauen.
+        // Edit: fetch the existing object and merge (preserves RRULE/custom props),
+        // otherwise build it from scratch.
         if ($existingUrl && ($existing = $client->getObject($existingUrl))) {
             $ical = $backend->updateICalTodo($existing->serialize(), $data) ?: $backend->buildICalTodo($data);
         } else {
@@ -585,7 +585,7 @@ class caldav_suite extends rcube_plugin
     public function action_delete_task()
     {
         $client = $this->get_caldav_client();
-        // Einzel-URL (ueberl. fuer Alt-Aufrufe) oder mehrere URLs (Multiselection)
+        // Single URL (legacy for old callers) or multiple URLs (multiselection)
         $urls = rcube_utils::get_input_value('_urls', rcube_utils::INPUT_POST);
         if (is_array($urls)) {
             $urls = array_values(array_filter($urls, 'is_string'));
@@ -831,10 +831,10 @@ class caldav_suite extends rcube_plugin
     // ---- CardDAV Addressbook Hooks ----
 
     /**
-     * Traegt die CardDAV-Adressbuecher dieses Plugins in autocomplete_addressbooks ein,
-     * damit Kontakte bei der Empfaenger-Suche im Mail-Composer erscheinen. Roundcubes
-     * Autocomplete iteriert nur die konfigurierten Quellen-IDs; die caldav_*-IDs sind
-     * dynamisch -> hier zur Laufzeit ergaenzen. Discovery 1x pro Session gecacht.
+     * Adds this plugin's CardDAV address books to autocomplete_addressbooks so that
+     * contacts appear in the recipient search in the mail composer. Roundcube's
+     * autocomplete only iterates the configured source IDs; the caldav_* IDs are
+     * dynamic -> add them here at runtime. Discovery is cached once per session.
      */
     private function register_carddav_autocomplete()
     {
@@ -846,9 +846,10 @@ class caldav_suite extends rcube_plugin
             return;
         }
 
-        // Discovery 1x pro Session cachen, aber NUR solange die caldav_suite_url gleich
-        // bleibt. Sonst bleibt nach einem URL-Wechsel (z.B. extern -> intern) eine veraltete
-        // Adressbuch-ID stehen und der Autocomplete meldet "Addressbook source not found".
+        // Cache the discovery once per session, but ONLY as long as the
+        // caldav_suite_url stays the same. Otherwise, after a URL change (e.g.
+        // external -> internal), a stale address book ID remains and autocomplete
+        // reports "Addressbook source not found".
         $cacheKey = 'caldav_suite_abook_ids_' . md5($prefs['caldav_suite_url']);
         $ids = $_SESSION[$cacheKey] ?? [];
         if (empty($ids)) {
@@ -972,9 +973,9 @@ class caldav_suite extends rcube_plugin
      * Get all CalDAV clients including additional URLs (e.g. shared calendars).
      * @return CalDAVClient[]
      */
-    // ===== iMIP / iTIP (Kalender-Einladungen in Mails) =====
+    // ===== iMIP / iTIP (calendar invitations in mails) =====
 
-    /** message_load: gerade geladene Mail auf eine REQUEST-Einladung pruefen. */
+    /** message_load: check the just-loaded mail for a REQUEST invitation. */
     public function on_message_load($args)
     {
         $message = $args['object'] ?? null;
@@ -1001,7 +1002,7 @@ class caldav_suite extends rcube_plugin
         return $args;
     }
 
-    /** template_object_messagebody: Einladungs-Box ueber den Mailtext setzen. */
+    /** template_object_messagebody: place the invitation box above the mail body. */
     public function mail_itip_box($args)
     {
         if (empty($this->itip)) {
@@ -1071,8 +1072,8 @@ class caldav_suite extends rcube_plugin
 
     private function get_calendars_list(): array
     {
-        // 1x pro Session cachen, damit die iTIP-Box (und Kalenderliste) nicht bei jeder
-        // Einladungsmail einen kompletten CalDAV-Discovery ueber nginx macht (langsam).
+        // Cache once per session so the iTIP box (and calendar list) does not run a
+        // full CalDAV discovery through nginx for every invitation mail (slow).
         if (isset($_SESSION['caldav_suite_calendars']) && is_array($_SESSION['caldav_suite_calendars'])) {
             return $_SESSION['caldav_suite_calendars'];
         }
@@ -1117,8 +1118,8 @@ class caldav_suite extends rcube_plugin
 
     private function itip_local_dt(\DateTimeInterface $dt, bool $floating = false): string
     {
-        // Floating-Zeit (kein Z, kein TZID): Wandzeit direkt in Zielzeitzone belassen,
-        // NICHT ueber UTC umrechnen (sonst +2h in Sommerzeit).
+        // Floating time (no Z, no TZID): keep the wall time as-is in the target
+        // timezone, do NOT convert via UTC (would add +2h in summer time).
         if ($floating) {
             $tz = new \DateTimeZone($this->rc->config->get('timezone') ?: 'UTC');
             $d  = new \DateTime($dt->format('Y-m-d\TH:i'), $tz);
@@ -1193,7 +1194,7 @@ class caldav_suite extends rcube_plugin
         $myEmail = $me['email'] ?? ($ident['email'] ?? '');
         $myName  = $me['name'] ?: ($ident['name'] ?? '');
 
-        // Annehmen/Vorbehalt -> Event in gewaehlten Kalender schreiben
+        // Accept/tentative -> write the event into the selected calendar
         if (in_array($partstat, ['ACCEPTED', 'TENTATIVE'], true) && $calUrl) {
             $stored = \Slohmaier\CalDAVSuite\ITip::buildStoredEvent($ical, $myEmail, $partstat);
             $client = $this->get_caldav_client();
@@ -1203,7 +1204,7 @@ class caldav_suite extends rcube_plugin
                 try {
                     $client->putObject($url, $stored, null);
                 } catch (\Throwable $e) {
-                    // Schreibfehler nicht fatal fuer die REPLY
+                    // A write error is not fatal for the REPLY
                 }
             }
         }
@@ -1273,8 +1274,8 @@ class caldav_suite extends rcube_plugin
     }
 
     /**
-     * Liefert die Kalender eines Clients, 1x pro Session gecacht (spart den ~2s-Discover
-     * bei jedem AJAX-Request). Rekonstruiert Collection-Objekte aus dem Session-Cache.
+     * Returns a client's calendars, cached once per session (saves the ~2s discovery
+     * on every AJAX request). Reconstructs Collection objects from the session cache.
      *
      * @return \Slohmaier\CalDAVSuite\Collection[]
      */

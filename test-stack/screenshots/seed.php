@@ -1,10 +1,10 @@
 <?php
 /**
- * Befuellt Radicale mit einer prall gefuellten Demo-Woche:
- * mehrere farbige Kalender, Ganztagstermine, Doppelbelegungen, Serientermine
- * und Termine mit Apple-Fahrtzeit. Laeuft IM Roundcube-Container
- * (docker compose exec -T rc-test-roundcube php < seed.php), nutzt das gemountete
- * Plugin (vendor/ + CalendarBackend).
+ * Fills Radicale with a rich demo week:
+ * several colored calendars, all-day events, double bookings, recurring events
+ * and events with Apple travel time. Runs INSIDE the Roundcube container
+ * (docker compose exec -T rc-test-roundcube php < seed.php), uses the mounted
+ * plugin (vendor/ + CalendarBackend).
  */
 
 require '/var/www/html/plugins/caldav_suite/vendor/autoload.php';
@@ -17,11 +17,11 @@ $base = 'http://rc-test-radicale:5232/test';
 $client = new Client(['baseUri' => $base, 'userName' => 'test', 'password' => 'test']);
 $cb = new CalendarBackend();
 
-// --- Kalender (Pfad, Name, Apple-Farbe) ---
+// --- Calendars (path, name, Apple color) ---
 $calendars = [
-    ['arbeit',  'Arbeit',  '#e74c3c'],
-    ['privat',  'Privat',  '#3498db'],
-    ['familie', 'Familie', '#27ae60'],
+    ['work',    'Work',    '#e74c3c'],
+    ['private', 'Private', '#3498db'],
+    ['family',  'Family',  '#27ae60'],
     ['sport',   'Sport',   '#f39c12'],
 ];
 foreach ($calendars as [$path, $name, $color]) {
@@ -34,10 +34,29 @@ foreach ($calendars as [$path, $name, $color]) {
         . '</D:prop></D:set></C:mkcalendar>';
     try {
         $client->request('MKCALENDAR', "$base/$path/", $body, ['Content-Type' => 'application/xml']);
-    } catch (\Throwable $e) { /* existiert schon -> egal */ }
+    } catch (\Throwable $e) { /* already exists -> ignore */ }
 }
 
-// --- Hilfsfunktionen, alles relativ zum Montag DIESER Woche ---
+// Task list (VTODO) and address book (CardDAV) must exist for the demo data below.
+try {
+    $client->request('MKCALENDAR', "$base/tasks/",
+        '<?xml version="1.0" encoding="utf-8"?>'
+        . '<C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">'
+        . '<D:set><D:prop><D:displayname>Tasks</D:displayname>'
+        . '<C:supported-calendar-component-set><C:comp name="VTODO"/></C:supported-calendar-component-set>'
+        . '</D:prop></D:set></C:mkcalendar>',
+        ['Content-Type' => 'application/xml']);
+} catch (\Throwable $e) { /* already exists */ }
+
+try {
+    $client->request('MKCOL', "$base/contacts/",
+        '<?xml version="1.0"?><create xmlns="DAV:" xmlns:CR="urn:ietf:params:xml:ns:carddav">'
+        . '<set><prop><resourcetype><collection/><CR:addressbook/></resourcetype>'
+        . '<displayname>Contacts</displayname></prop></set></create>',
+        ['Content-Type' => 'application/xml']);
+} catch (\Throwable $e) { /* already exists */ }
+
+// --- Helpers, everything relative to THIS week's Monday ---
 $monday = new DateTimeImmutable('monday this week');
 $day = fn(int $offset, string $time = '') => trim($monday->modify("+$offset days")->format('Y-m-d') . ' ' . $time);
 
@@ -49,75 +68,75 @@ $put = function (string $cal, array $args) use ($client, $cb, $base, &$count) {
     $count++;
 };
 
-// ===== Montag — Doppelbelegung + Fahrtzeit =====
-$put('arbeit', ['title' => 'Daily Standup', 'start' => $day(0, '09:00'), 'end' => $day(0, '09:15'),
+// ===== Monday — double booking + travel time =====
+$put('work', ['title' => 'Daily Standup', 'start' => $day(0, '09:00'), 'end' => $day(0, '09:15'),
     'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', 'categories' => ['Team']]);
-$put('privat', ['title' => 'Augenarzt', 'start' => $day(0, '09:00'), 'end' => $day(0, '10:30'),
-    'location' => 'LMU Augenklinik, München', 'location_geo' => '48.1100,11.4660',
-    'travel_mode' => 'auto', 'reminder_minutes' => 30]); // Doppelbelegung mit Standup + Fahrtzeit
-$put('arbeit', ['title' => 'Projekt-Review', 'start' => $day(0, '14:00'), 'end' => $day(0, '15:30'),
-    'location' => 'Raum 3.14']);
-$put('familie', ['title' => 'Kinder abholen', 'start' => $day(0, '16:00'), 'end' => $day(0, '16:30'),
-    'travel_mode' => '15', 'location' => 'Kita Sonnenschein']);
+$put('private', ['title' => 'Eye doctor', 'start' => $day(0, '09:00'), 'end' => $day(0, '10:30'),
+    'location' => 'City Eye Clinic', 'location_geo' => '48.1100,11.4660',
+    'travel_mode' => 'auto', 'reminder_minutes' => 30]); // double booking with standup + travel time
+$put('work', ['title' => 'Project review', 'start' => $day(0, '14:00'), 'end' => $day(0, '15:30'),
+    'location' => 'Room 3.14']);
+$put('family', ['title' => 'Pick up the kids', 'start' => $day(0, '16:00'), 'end' => $day(0, '16:30'),
+    'travel_mode' => '15', 'location' => 'Sunny Kindergarten']);
 
-// ===== Dienstag — Ganztags (Messe) über mehrere Tage + Termine =====
-$put('arbeit', ['title' => 'Messe Berlin', 'start' => $day(1), 'end' => $day(3), 'allday' => true,
-    'categories' => ['Reise']]); // Di–Do, erscheint im Ganztags-Band
-$put('privat', ['title' => 'Zahnarzt', 'start' => $day(1, '11:00'), 'end' => $day(1, '12:00'),
-    'location' => 'Dr. Müller, Schwabing', 'travel_mode' => '30', 'location_geo' => '48.1620,11.5810']);
-$put('sport', ['title' => 'Lauftraining', 'start' => $day(1, '18:30'), 'end' => $day(1, '19:30'),
+// ===== Tuesday — multi-day all-day event (trade fair) + events =====
+$put('work', ['title' => 'Trade fair Berlin', 'start' => $day(1), 'end' => $day(3), 'allday' => true,
+    'categories' => ['Travel']]); // Tue–Thu, appears in the all-day band
+$put('private', ['title' => 'Dentist', 'start' => $day(1, '11:00'), 'end' => $day(1, '12:00'),
+    'location' => 'Dr. Miller, Downtown', 'travel_mode' => '30', 'location_geo' => '48.1620,11.5810']);
+$put('sport', ['title' => 'Running training', 'start' => $day(1, '18:30'), 'end' => $day(1, '19:30'),
     'rrule' => 'FREQ=WEEKLY;BYDAY=TU,TH']);
 
-// ===== Mittwoch — Dreifach-Überlappung =====
-$put('arbeit', ['title' => 'Sprint Planning', 'start' => $day(2, '10:00'), 'end' => $day(2, '12:00')]);
-$put('familie', ['title' => 'Handwerker Termin', 'start' => $day(2, '10:30'), 'end' => $day(2, '11:30')]);
-$put('privat', ['title' => 'Friseur', 'start' => $day(2, '11:00'), 'end' => $day(2, '12:00')]);
-$put('arbeit', ['title' => '1:1 mit Chef', 'start' => $day(2, '15:00'), 'end' => $day(2, '15:30')]);
+// ===== Wednesday — triple overlap =====
+$put('work', ['title' => 'Sprint planning', 'start' => $day(2, '10:00'), 'end' => $day(2, '12:00')]);
+$put('family', ['title' => 'Handyman appointment', 'start' => $day(2, '10:30'), 'end' => $day(2, '11:30')]);
+$put('private', ['title' => 'Haircut', 'start' => $day(2, '11:00'), 'end' => $day(2, '12:00')]);
+$put('work', ['title' => '1:1 with boss', 'start' => $day(2, '15:00'), 'end' => $day(2, '15:30')]);
 
-// ===== Donnerstag — Calls + Überlappung =====
-$put('arbeit', ['title' => 'Kundencall ACME', 'start' => $day(3, '09:30'), 'end' => $day(3, '10:30'),
+// ===== Thursday — calls + overlap =====
+$put('work', ['title' => 'Customer call ACME', 'start' => $day(3, '09:30'), 'end' => $day(3, '10:30'),
     'location' => 'Online']);
-$put('familie', ['title' => 'Elterngespräch Schule', 'start' => $day(3, '10:00'), 'end' => $day(3, '11:00'),
-    'travel_mode' => '20', 'location' => 'Gymnasium']);
-$put('privat', ['title' => 'Mittagessen mit Anna', 'start' => $day(3, '12:30'), 'end' => $day(3, '14:00'),
-    'location' => 'Café Glück']);
+$put('family', ['title' => 'Parent-teacher meeting', 'start' => $day(3, '10:00'), 'end' => $day(3, '11:00'),
+    'travel_mode' => '20', 'location' => 'High School']);
+$put('private', ['title' => 'Lunch with Anna', 'start' => $day(3, '12:30'), 'end' => $day(3, '14:00'),
+    'location' => 'Cafe Central']);
 
-// ===== Freitag — Ganztags + Abendtermin =====
-$put('familie', ['title' => 'Geburtstag Oma', 'start' => $day(4), 'end' => $day(4), 'allday' => true]);
-$put('arbeit', ['title' => 'Retrospektive', 'start' => $day(4, '13:00'), 'end' => $day(4, '14:00')]);
-$put('privat', ['title' => 'Feierabendbier', 'start' => $day(4, '17:30'), 'end' => $day(4, '19:30'),
-    'location' => 'Augustiner', 'travel_mode' => 'auto', 'location_geo' => '48.1390,11.5660']);
+// ===== Friday — all-day + evening event =====
+$put('family', ['title' => "Grandma's birthday", 'start' => $day(4), 'end' => $day(4), 'allday' => true]);
+$put('work', ['title' => 'Retrospective', 'start' => $day(4, '13:00'), 'end' => $day(4, '14:00')]);
+$put('private', ['title' => 'After-work drinks', 'start' => $day(4, '17:30'), 'end' => $day(4, '19:30'),
+    'location' => 'The Old Brewery', 'travel_mode' => 'auto', 'location_geo' => '48.1390,11.5660']);
 
-// ===== Wochenende =====
-$put('sport', ['title' => 'Fußballspiel', 'start' => $day(5, '10:00'), 'end' => $day(5, '12:00'),
-    'location' => 'Sportplatz Ost', 'travel_mode' => 'auto', 'location_geo' => '48.1700,11.6200',
+// ===== Weekend =====
+$put('sport', ['title' => 'Soccer match', 'start' => $day(5, '10:00'), 'end' => $day(5, '12:00'),
+    'location' => 'East Sports Field', 'travel_mode' => 'auto', 'location_geo' => '48.1700,11.6200',
     'reminder_minutes' => 60]);
-$put('familie', ['title' => 'Brunch bei den Eltern', 'start' => $day(6, '11:00'), 'end' => $day(6, '14:00'),
-    'travel_mode' => '45', 'location' => 'Augsburg']);
-$put('privat', ['title' => 'Kino', 'start' => $day(6, '20:00'), 'end' => $day(6, '22:30')]);
+$put('family', ['title' => 'Brunch with parents', 'start' => $day(6, '11:00'), 'end' => $day(6, '14:00'),
+    'travel_mode' => '45', 'location' => 'Springfield']);
+$put('private', ['title' => 'Cinema', 'start' => $day(6, '20:00'), 'end' => $day(6, '22:30')]);
 
-// ===== Aufgaben (VTODO) in der Aufgabenliste =====
+// ===== Tasks (VTODO) in the task list =====
 $tb = new TaskBackend();
 $putTask = function (array $args) use ($client, $tb, $base) {
     $ical = $tb->buildICalTodo($args);
-    $url = "$base/aufgaben/demo-" . bin2hex(random_bytes(6)) . '.ics';
+    $url = "$base/tasks/demo-" . bin2hex(random_bytes(6)) . '.ics';
     $client->request('PUT', $url, $ical, ['Content-Type' => 'text/calendar; charset=utf-8']);
 };
 
-// Fälligkeit relativ zum Montag setzen (due => YYYY-MM-DD)
+// Due date relative to Monday (due => YYYY-MM-DD)
 $due = fn(int $offset) => $monday->modify("+$offset days")->format('Y-m-d');
-$putTask(['title' => 'Steuererklärung einreichen', 'due' => $due(1), 'priority' => 'high', 'description' => 'Unterlagen zusammenlegen und abgeben.']);
-$putTask(['title' => 'Wochenplan erstellen', 'due' => $due(2), 'priority' => 'medium']);
-$putTask(['title' => 'Geschenk für Oma besorgen', 'due' => $due(4), 'priority' => 'medium']);
-$putTask(['title' => 'Zahnarzttermin vereinbaren', 'due' => $due(-1), 'priority' => 'high', 'description' => 'Kontrolle + professionelle Reinigung.']);
-$putTask(['title' => 'Einkaufsliste schreiben', 'due' => $due(3), 'priority' => 'low', 'location' => 'Supermarkt']);
+$putTask(['title' => 'Submit tax return', 'due' => $due(1), 'priority' => 'high', 'description' => 'Collect the documents and hand them in.']);
+$putTask(['title' => 'Plan the week', 'due' => $due(2), 'priority' => 'medium']);
+$putTask(['title' => 'Buy a gift for grandma', 'due' => $due(4), 'priority' => 'medium']);
+$putTask(['title' => 'Make a dentist appointment', 'due' => $due(-1), 'priority' => 'high', 'description' => 'Check-up + professional cleaning.']);
+$putTask(['title' => 'Write a shopping list', 'due' => $due(3), 'priority' => 'low', 'location' => 'Supermarket']);
 
-// ===== Kontakte (vCard) im Adressbuch =====
+// ===== Contacts (vCard) in the address book =====
 $contacts = [
-    ['Anna', 'Becker', 'anna.becker@example.com', 'Firma GmbH'],
-    ['Max', 'Mustermann', 'max@mustermann.de', ''],
-    ['Julia', 'Schmidt', 'julia.schmidt@example.org', 'Agentur XY'],
-    ['Thomas', 'Müller', 't.mueller@example.net', ''],
+    ['Anna', 'Becker', 'anna.becker@example.com', 'Example GmbH'],
+    ['Max', 'Sample', 'max.sample@example.com', ''],
+    ['Julia', 'Schmidt', 'julia.schmidt@example.org', 'Agency XY'],
+    ['Thomas', 'Miller', 't.miller@example.net', ''],
 ];
 foreach ($contacts as [$first, $last, $email, $org]) {
     $uid = \Sabre\VObject\UUIDUtil::getUUID();
@@ -128,4 +147,4 @@ foreach ($contacts as [$first, $last, $email, $org]) {
     $client->request('PUT', "$base/contacts/$uid.vcf", $vcard, ['Content-Type' => 'text/vcard; charset=utf-8']);
 }
 
-echo "Seed fertig: $count Termine in " . count($calendars) . " Kalendern (Woche ab " . $monday->format('d.m.Y') . "), Aufgaben und Kontakte ergaenzt.\n";
+echo "Seed done: $count events in " . count($calendars) . " calendars (week from " . $monday->format('d.m.Y') . "), tasks and contacts added.\n";

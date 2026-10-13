@@ -13,19 +13,15 @@
         visibleCalendars: {},
         events: [],
         loading: false,
-        // Infinite-Scrolling-Fenster der Listenansicht (geladener Zeitraum)
+        // Infinite-scroll window of the list view (loaded period)
         listStart: null,
         listEnd: null,
         listLoadingMore: false,
-        listPendingAppend: false,   // beim naechsten response: Events ANHAENGEN
-        listPendingPrepend: false,   // beim naechsten response: Events VORANSTELLEN
+        listPendingAppend: false,   // on the next response: APPEND events
+        listPendingPrepend: false,   // on the next response: PREPEND events
         listScrollBound: false,
         listScrolledToToday: false
     };
-
-    var DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-    var DAYS_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-    var MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
     rcmail.addEventListener('init', function() {
         if (rcmail.task !== 'calendar') return;
@@ -52,8 +48,8 @@
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             if (e.key === 'ArrowLeft') { navigate(-1); e.preventDefault(); }
             if (e.key === 'ArrowRight') { navigate(1); e.preventDefault(); }
-            if (e.key === 'k' || e.key === 'K') { navigate(-1); e.preventDefault(); } // vorige Woche/Periode
-            if (e.key === 'j' || e.key === 'J') { navigate(1); e.preventDefault(); }  // naechste Woche/Periode
+            if (e.key === 'k' || e.key === 'K') { navigate(-1); e.preventDefault(); } // previous week/period
+            if (e.key === 'j' || e.key === 'J') { navigate(1); e.preventDefault(); }  // next week/period
             if (e.key === 't' || e.key === 'T') { state.currentDate = new Date(); loadAndRender(); }
             if (e.key === 'm' || e.key === 'M') switchView('month');
             if (e.key === 'w' || e.key === 'W') switchView('week');
@@ -79,13 +75,13 @@
             if (!data.events) { state.listLoadingMore = false; return; }
 
             if (state.currentView === 'list' && state.listPendingAppend) {
-                // Neuere Termine unten anhaengen
+                // Append newer events at the bottom
                 state.listPendingAppend = false;
                 state.listLoadingMore = false;
                 state.events = state.events.concat(data.events);
-                renderCurrentView(true); // nur Liste neu rendern, Scroll-Position unten behalten
+                renderCurrentView(true); // re-render only the list, keep scroll position at the bottom
             } else if (state.currentView === 'list' && state.listPendingPrepend) {
-                // Aeltere Termine oben voranstellen
+                // Prepend older events at the top
                 state.listPendingPrepend = false;
                 state.listLoadingMore = false;
                 state.events = data.events.concat(state.events);
@@ -132,36 +128,36 @@
             case 'month': d = new Date(d.getFullYear(), d.getMonth() + direction, 1); break;
             case 'week': d = new Date(d.getTime() + direction * 7 * 86400000); break;
             case 'day': d = new Date(d.getTime() + direction * 86400000); break;
-            case 'list': d = new Date(d.getTime() + direction * 7 * 86400000); break; // wochenweise
+            case 'list': d = new Date(d.getTime() + direction * 7 * 86400000); break; // week by week
         }
         state.currentDate = d;
         loadAndRender();
     }
 
     function loadAndRender() {
-        state.pendingAnnounce = true;   // nach dem Laden Range + Anzahl ansagen
-        // Bei jedem Datumswechsel (Heute/Picker/Pfeile) in der Listenansicht wieder
-        // zum aktuellen Datum springen.
+        state.pendingAnnounce = true;   // announce range + count after loading
+        // On every date change (today/picker/arrows) in the list view, jump back
+        // to the current date.
         state.listScrolledToToday = false;
         updateTitle();
         loadEvents();
     }
 
-    // Erster Wochentag aus den Einstellungen: 0 = Sonntag, 1 = Montag (Default Montag).
-    // Robust gegen String/0 (frueheres "|| 1" verbog Sonntag faelschlich auf Montag).
+    // First day of week from the settings: 0 = Sunday, 1 = Monday (default Monday).
+    // Robust against string/0 (the earlier "|| 1" wrongly bent Sunday to Monday).
     function getFirstDay() {
         var fd = parseInt(rcmail.env.caldav_first_day, 10);
         return (fd === 0 || fd === 1) ? fd : 1;
     }
 
-    // Lesbarer Wochen-Range, z.B. "15. – 21. Juni 2026" bzw. "29. Juni – 5. Juli 2026".
+    // Readable week range, e.g. "Jun 15 – 21, 2026" or "Jun 29 – Jul 5, 2026".
     function weekRangeText(start, end) {
         var sd = start.getDate(), ed = end.getDate();
-        var sm = MONTHS[start.getMonth()], em = MONTHS[end.getMonth()], ey = end.getFullYear();
+        var sm = caldav_suite.monthLong(start.getMonth()), em = caldav_suite.monthLong(end.getMonth()), ey = end.getFullYear();
         if (start.getMonth() === end.getMonth() && start.getFullYear() === ey) {
-            return sd + '. – ' + ed + '. ' + em + ' ' + ey;
+            return sm + ' ' + sd + ' – ' + ed + ', ' + ey;
         }
-        return sd + '. ' + sm + ' – ' + ed + '. ' + em + ' ' + ey;
+        return sm + ' ' + sd + ' – ' + em + ' ' + ed + ', ' + ey;
     }
 
     function openRangePicker() {
@@ -184,9 +180,9 @@
     function loadEvents() {
         var range = getViewRange();
         state.loading = true;
-        // Overlay nur bei regulärem Laden anzeigen (nicht beim Infinite-Scroll-Nachladen).
+        // Show the overlay only on a regular load (not on infinite-scroll append).
         if (!state.listLoadingMore) caldav_suite.showLoading('calendar', '#calendar-grid');
-        // Listenansicht: Fenster merken (fuer Infinite Scrolling)
+        // List view: remember the window (for infinite scrolling)
         if (state.currentView === 'list') {
             state.listStart = range.start;
             state.listEnd = range.end;
@@ -202,8 +198,8 @@
         });
     }
 
-    // Laedt einen weiteren Zeitraum-Block fuer die Listenansicht (Infinite Scroll).
-    // direction: -1 = aeltere Termine oben, +1 = neuere Termine unten.
+    // Loads another period block for the list view (infinite scroll).
+    // direction: -1 = older events on top, +1 = newer events at the bottom.
     function loadListMore(direction) {
         if (state.listLoadingMore || state.loading) return;
         if (!state.listStart || !state.listEnd) return;
@@ -227,7 +223,7 @@
             _end: newEnd.toISOString(),
             _calendars: visibleIds
         });
-        // Fenster erweitern, damit naechstes Nachladen korrekt anknuepft
+        // Extend the window so the next load appends correctly
         state.listStart = direction < 0 ? newStart : state.listStart;
         state.listEnd = direction > 0 ? newEnd : state.listEnd;
     }
@@ -260,8 +256,8 @@
                 end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
                 break;
             case 'list':
-                // Listenansicht: Startfenster um "heute" (1 Monat zurueck, 1 Monat vor).
-                // Weitere Bloecke werden per Infinite-Scrolling nachgeladen.
+                // List view: initial window around "today" (1 month back, 1 month forward).
+                // Further blocks are loaded via infinite scrolling.
                 start = new Date(d.getFullYear(), d.getMonth() - 1, 1);
                 start.setHours(0, 0, 0, 0);
                 end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
@@ -271,8 +267,8 @@
         return { start: start, end: end };
     }
 
-    // Prueft, ob die aktuell angezeigte Zeitrange das heutige Datum enthaelt.
-    // Liefert true, dann haengt updateTitle den Marker "(aktuell)" an.
+    // Checks whether the currently displayed time range contains today's date.
+    // Returns true, then updateTitle appends the "(current)" marker.
     function isCurrentRange() {
         var now = new Date();
         var range = getViewRange();
@@ -287,7 +283,7 @@
         var title = '';
         switch (state.currentView) {
             case 'month':
-                title = MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+                title = caldav_suite.monthLong(d.getMonth()) + ' ' + d.getFullYear();
                 break;
             case 'week':
             case 'list':
@@ -305,7 +301,7 @@
     function renderCurrentView(keepScroll) {
         updateTitle();
         var container = $('#calendar-grid');
-        // Scroll-Position vor dem Re-Render merken (fuer Infinite Scrolling)
+        // Remember the scroll position before the re-render (for infinite scrolling)
         var scroller = container.closest('.scroller')[0];
         var prevScrollTop = scroller ? scroller.scrollTop : 0;
         switch (state.currentView) {
@@ -317,12 +313,12 @@
         if (keepScroll && scroller) {
             scroller.scrollTop = prevScrollTop;
         }
-        // Nur bei Range-Wechsel (navigate/heute/Woche-wählen/View-Wechsel) ansagen,
-        // nicht beim blossen Ein-/Ausblenden eines Kalenders.
+        // Announce only on range change (navigate/today/pick-week/switch-view),
+        // not when merely showing/hiding a calendar.
         if (state.pendingAnnounce) {
             state.pendingAnnounce = false;
             var cnt = getVisibleEvents().length;
-            caldav_suite.announce($('#btn-range').text() + ', ' + cnt + ' ' + (cnt === 1 ? 'Termin' : 'Termine'));
+            caldav_suite.announce($('#btn-range').text() + ', ' + cnt + ' ' + caldav_suite.label('events'));
         }
     }
 
@@ -330,10 +326,10 @@
 
     function renderCalendarList() {
         var calAria = function(cal, on) {
-            return cal.name + ', ' + (on ? 'eingeblendet' : 'ausgeblendet');
+            return cal.name + ', ' + (on ? caldav_suite.label('shown') : caldav_suite.label('hidden'));
         };
-        // Navigierbare Liste wie Aufgabenlisten-Sidebar: role=option-Items, KEINE
-        // fokussierbaren Kinder (kein <input>). Status via .checked-Klasse + aria-label.
+        // Navigable list like the task-list sidebar: role=option items, NO
+        // focusable children (no <input>). Status via .checked class + aria-label.
         var html = '<ul id="calendar-ul" class="listing navlist">';
         state.calendars.forEach(function(cal) {
             var on = !!state.visibleCalendars[cal.id];
@@ -367,13 +363,13 @@
             setCal(item, !item.classList.contains('checked'));
         };
 
-        // Nur Klick auf die Checkbox togglet; Klick auf Zeile/Name aendert nichts.
+        // Only a click on the checkbox toggles; a click on the row/name does nothing.
         $('#calendar-list .calendar-check').click(function(e) {
             e.stopPropagation();
             toggleCal($(this).closest('.calendar-item')[0]);
         });
         $('#calendar-list .calendar-item').click(function() {
-            // bewusst nichts (kein Toggle mehr), nur Navigation/Auswahl via a11y
+            // intentionally nothing (no toggle anymore), only navigation/selection via a11y
         });
 
         caldav_a11y.makeListNavigable(document.getElementById('calendar-ul'), {
@@ -413,13 +409,12 @@
         today.setHours(0, 0, 0, 0);
         var events = getVisibleEvents();
 
-        var html = '<table class="calendar-month" role="grid" aria-label="' + MONTHS[d.getMonth()] + ' ' + d.getFullYear() + '">';
+        var html = '<table class="calendar-month" role="grid" aria-label="' + caldav_suite.monthLong(d.getMonth()) + ' ' + d.getFullYear() + '">';
         html += '<thead><tr>';
         var firstDay = getFirstDay();
         for (var i = 0; i < 7; i++) {
             var dayIdx = (firstDay + i) % 7;
-            var dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-            html += '<th scope="col">' + dayNames[dayIdx] + '</th>';
+            html += '<th scope="col">' + caldav_suite.weekdayShort(dayIdx) + '</th>';
         }
         html += '</tr></thead><tbody>';
 
@@ -460,7 +455,7 @@
             var date = $(this).data('date');
             caldav_event_dialog.open({ start: date + 'T09:00', end: date + 'T10:00' }, state.calendars);
         });
-        // Einfacher Klick waehlt aus, Doppelklick oeffnet Bearbeiten, Enter oeffnet Bearbeiten.
+        // Simple click selects, double-click opens edit, Enter opens edit.
         container.find('.month-event').click(function() {
             var url = $(this).data('url');
             container.find('.month-event').removeClass('selected');
@@ -496,7 +491,7 @@
         for (var i = 0; i < 7; i++) {
             var isToday = cur.toDateString() === today.toDateString();
             html += '<div class="week-day-header' + (isToday ? ' today' : '') + '" role="columnheader">'
-                + DAYS_SHORT[i] + ' ' + cur.getDate() + '.' + (cur.getMonth()+1)
+                + caldav_suite.weekdayShort(cur.getDay()) + ' ' + cur.getDate() + ' ' + caldav_suite.monthShort(cur.getMonth())
                 + '</div>';
             cur.setDate(cur.getDate() + 1);
         }
@@ -505,7 +500,7 @@
         // All-day events row
         var hasAllDay = false;
         cur = new Date(range.start);
-        var allDayHtml = '<div class="week-allday"><div class="time-gutter">ganzt.</div>';
+        var allDayHtml = '<div class="week-allday"><div class="time-gutter">' + caldav_suite.label('allday') + '</div>';
         for (var d = 0; d < 7; d++) {
             var allDayEvents = getEventsForDate(events, cur).filter(function(e) { return e.allDay; });
             allDayHtml += '<div class="week-allday-cell">';
@@ -560,8 +555,8 @@
                         var leftPct = item.col * widthPct;
                         html += '<div class="week-travel-block" style="height:' + travelHeightPx + 'px;'
                             + 'top:' + travelTopPx + 'px;left:' + leftPct + '%;width:' + widthPct + '%;'
-                            + '" aria-label="' + travelMin + ' Minuten Wegzeit">'
-                            + travelMin + ' Min. Wegzeit'
+                            + '" aria-label="' + travelMin + ' ' + caldav_suite.label('travel_time') + '">'
+                            + travelMin + ' ' + caldav_suite.label('travel_time')
                             + '</div>';
                     }
 
@@ -589,7 +584,7 @@
         html += '</div></div>';
 
         container.html(html);
-        // Einfacher Klick waehlt aus, Doppelklick oeffnet Bearbeiten, Enter oeffnet Bearbeiten.
+        // Simple click selects, double-click opens edit, Enter opens edit.
         container.find('.week-event-inline, .week-allday-event').click(function() {
             var url = $(this).data('url');
             container.find('.week-event-inline, .week-allday-event').removeClass('selected');
@@ -654,8 +649,8 @@
                     var leftPct = item.col * widthPct;
                     html += '<div class="week-travel-block" style="height:' + travelHeightPx + 'px;'
                         + 'top:' + travelTopPx + 'px;left:' + leftPct + '%;width:' + widthPct + '%;'
-                        + '" aria-label="' + travelMin + ' Minuten Wegzeit">'
-                        + travelMin + ' Min. Wegzeit'
+                        + '" aria-label="' + travelMin + ' ' + caldav_suite.label('travel_time') + '">'
+                        + travelMin + ' ' + caldav_suite.label('travel_time')
                         + '</div>';
                 }
 
@@ -684,7 +679,7 @@
 
         container.html(html);
 
-        // Einfacher Klick waehlt aus, Doppelklick oeffnet Bearbeiten, Enter oeffnet Bearbeiten.
+        // Simple click selects, double-click opens edit, Enter opens edit.
         container.find('.day-event-inline, .day-allday-event').click(function() {
             var url = $(this).data('url');
             container.find('.day-event-inline, .day-allday-event').removeClass('selected');
@@ -711,10 +706,10 @@
         var events = getVisibleEvents();
         events.sort(function(a, b) { return (a.start || '') < (b.start || '') ? -1 : 1; });
 
-        // Range-Header (fokussierbare Ueberschrift): macht die angezeigte Woche + Anzahl klar.
+        // Range header (focusable heading): makes the displayed week + count clear.
         var cnt = events.length;
-        var header = '<h3 class="list-range" tabindex="-1">Woche ' + rcmail.quote_html($('#btn-range').text())
-            + ' — ' + cnt + ' ' + (cnt === 1 ? 'Termin' : 'Termine') + '</h3>';
+        var header = '<h3 class="list-range" tabindex="-1">' + caldav_suite.label('week') + ' ' + rcmail.quote_html($('#btn-range').text())
+            + ' — ' + cnt + ' ' + caldav_suite.label('events') + '</h3>';
 
         if (events.length === 0) {
             container.html(header + '<p class="hint">' + caldav_suite.label('no_events') + '</p>');
@@ -727,12 +722,12 @@
             var ev = state.events.find(function(e) { return e.url === url; });
             if (ev) caldav_event_dialog.open(ev, state.calendars);
         };
-        // Neuer Termin an einem bestimmten Tag (data-date, YYYY-MM-DD).
+        // New event on a specific day (data-date, YYYY-MM-DD).
         var newEvOn = function(dateStr) {
             if (!dateStr) return;
             caldav_event_dialog.open({ start: dateStr + 'T09:00', end: dateStr + 'T10:00' }, state.calendars);
         };
-        // einzelnes Item togglen (Multi: Strg+Klick / Leertaste); add==true erzwingt Anwaehlen
+        // toggle a single item (multi: Ctrl+click / space); add==true forces selecting
         var toggleOne = function(item, add) {
             var url = item.getAttribute('data-url');
             if (url === null) return;
@@ -744,7 +739,7 @@
         };
         var toggleSelection = function(item) { toggleOne(item); };
 
-        // Auswahl setzen: nur dieses Item (Rest deselektiert)
+        // Set selection: only this item (the rest is deselected)
         var setSelection = function(item) {
             if (!item) return;
             selectedUrls = {};
@@ -752,7 +747,7 @@
         };
 
         var html = header + '<ul class="listing">';
-        // Nach Datum gruppieren: pro Tag ein eigenes navigierbares Tag-Item, darunter die Termine.
+        // Group by date: one navigable day item per day, the events below it.
         var byDate = {};
         events.forEach(function(ev) {
             var d = ev.start ? ev.start.substr(0, 10) : '';
@@ -762,7 +757,7 @@
         var dates = Object.keys(byDate).sort();
 
         dates.forEach(function(dateStr) {
-            // Tag-Header als eigenes navigierbares Item (fokusierbar, sagt das Datum).
+            // Day header as its own navigable item (focusable, announces the date).
             html += '<li class="list-day" role="option" data-date="' + dateStr + '" aria-label="' + caldav_suite.formatDateLong(dateStr) + '">'
                 + '<span class="list-day-label" aria-hidden="true">' + caldav_suite.formatDateLong(dateStr) + '</span>'
                 + '</li>';
@@ -770,13 +765,13 @@
             byDate[dateStr].forEach(function(ev) {
                 var color = getCalendarColor(ev.calendarId);
                 var calName = getCalendarName(ev.calendarId);
-                var time = ev.allDay ? 'Ganztägig' : caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end);
+                var time = ev.allDay ? caldav_suite.label('allday') : caldav_suite.formatTime(ev.start) + ' – ' + caldav_suite.formatTime(ev.end);
                 var travelHtml = '', travelLbl = '';
                 if (ev.travel_mode) {
-                    travelLbl = ev.travel_mode === 'auto' ? 'Fahrzeit automatisch' : 'Fahrzeit ' + ev.travel_mode + ' Minuten';
-                    travelHtml = '<span class="event-travel" aria-hidden="true">🚗 ' + (ev.travel_mode === 'auto' ? 'Auto' : ev.travel_mode + ' min') + '</span>';
+                    travelLbl = caldav_suite.label('travel_time') + ' ' + (ev.travel_mode === 'auto' ? caldav_suite.label('travel_auto') : ev.travel_mode + ' min');
+                    travelHtml = '<span class="event-travel" aria-hidden="true">🚗 ' + (ev.travel_mode === 'auto' ? caldav_suite.label('travel_auto') : ev.travel_mode + ' min') + '</span>';
                 }
-                var aria = [time, ev.summary, ev.location || '', (calName ? 'Kalender ' + calName : ''), travelLbl]
+                var aria = [time, ev.summary, ev.location || '', (calName ? caldav_suite.label('calendar') + ' ' + calName : ''), travelLbl]
                     .filter(function(s) { return s; }).join(', ');
                 var evDate = ev.start ? ev.start.substr(0, 10) : '';
                 html += '<li class="list-event" data-url="' + ev.url + '" data-date="' + evDate + '" aria-label="' + rcmail.quote_html(aria) + '">'
@@ -793,14 +788,14 @@
 
         container.html(html);
 
-        // Edit-Icon oeffnet direkt das Bearbeiten
+        // Edit icon opens the edit dialog directly
         container.find('.event-edit').click(function(e) {
             e.stopPropagation();
             openEv($(this).closest('.list-event').attr('data-url'));
         });
 
-        // Klick: Strg+Klick togglet (Multi), normaler Klick selektiert einzeln,
-        // Doppelklick oeffnet Bearbeiten.
+        // Click: Ctrl+click toggles (multi), a normal click selects a single item,
+        // double-click opens edit.
         container.find('.list-event').on('click', function(e) {
             if (e.ctrlKey || e.metaKey) { toggleSelection($(this)); }
             else { setSelection($(this)); }
@@ -808,19 +803,19 @@
         container.find('.list-event').on('dblclick', function(e) {
             openEv($(this).attr('data-url'));
         });
-        // Doppelklick auf einen Tag -> Neuer Termin an diesem Tag.
+        // Double-click on a day -> new event on that day.
         container.find('.list-day').on('dblclick', function(e) {
             newEvOn($(this).attr('data-date'));
         });
 
         caldav_a11y.makeListNavigable(container.find('.listing')[0], {
             itemSelector: '.list-event, .list-day',
-            label: 'Terminliste',
-            // Beim Reintabben zum aktuellen Datum springen statt zum aeltesten Termin.
+            label: caldav_suite.label('event_list'),
+            // When tabbing back in, jump to the current date instead of the oldest event.
             initialIndex: function(items) {
                 var target = state.currentDate;
                 var ts = target.getFullYear() + '-' + ('0'+(target.getMonth()+1)).slice(-2) + '-' + ('0'+target.getDate()).slice(-2);
-                // Bevorzugt das Tages-Item des aktuellen Datums, sonst das erste >= heute.
+                // Prefer the day item of the current date, otherwise the first >= today.
                 var first = -1;
                 for (var i = 0; i < items.length; i++) {
                     var d = items[i].getAttribute('data-date');
@@ -830,23 +825,23 @@
                 }
                 return first < 0 ? 0 : first;
             },
-            // Explizite Ansage beim Pfeilen (aria-activedescendant wird von NVDA
-            // beim Pfeilen nicht immer zuverlaessig angekündigt).
+            // Explicit announcement on arrowing (NVDA does not always announce
+            // aria-activedescendant reliably when arrowing).
             onChange: function(item) {
                 var lbl = item.getAttribute('aria-label') || item.textContent || '';
                 caldav_suite.announce(lbl);
             },
-            onActivate: function(item) { // Enter -> Termin bearbeiten bzw. bei Tag: Neuer Termin
+            onActivate: function(item) { // Enter -> edit event, or for a day: new event
                 var u = item.getAttribute('data-url');
                 if (u) openEv(u);
                 else newEvOn(item.getAttribute('data-date'));
             },
-            onToggle: function(item) { // Leertaste -> Multiselect togglen (nur bei Termin)
+            onToggle: function(item) { // Space -> toggle multiselect (events only)
                 if (item.getAttribute('data-url') !== null) toggleSelection($(item));
             }
         });
 
-        // Infinite Scrolling: am unteren/oberen Rand neuen Block laden.
+        // Infinite scrolling: load a new block at the bottom/top edge.
         var scroller = container.closest('.scroller')[0];
         if (scroller && !state.listScrollBound) {
             state.listScrollBound = true;
@@ -859,15 +854,15 @@
             });
         }
 
-        // Nach dem ersten Laden (nicht bei Infinite-Scroll-Nachladen) zum aktuellen
-        // Datum (heute bzw. per Picker gewaehlt) springen, statt oben bei den aeltesten
-        // Terminen zu starten.
+        // After the first load (not on infinite-scroll append), jump to the current
+        // date (today or picked), instead of starting at the top with the oldest
+        // events.
         if (scroller && !state.listScrolledToToday) {
             state.listScrolledToToday = true;
             var target = state.currentDate;
             var targetStr = target.getFullYear() + '-' + ('0'+(target.getMonth()+1)).slice(-2) + '-' + ('0'+target.getDate()).slice(-2);
             var targetEl = null;
-            // Finde den ersten Termin ab/an diesem Datum
+            // Find the first event at/after this date
             var items = container.find('.list-event').toArray();
             for (var i = 0; i < items.length; i++) {
                 var dstr = items[i].getAttribute('data-date');

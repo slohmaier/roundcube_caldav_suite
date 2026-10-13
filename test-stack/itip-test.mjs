@@ -1,7 +1,7 @@
 /**
- * UI-Test fuer die iMIP/iTIP-Einladungs-Box in der Mailansicht.
- * Voraussetzung: Stack laeuft, Einladungs-Mail liegt im INBOX (uid 1),
- * CalDAV-Prefs + Identitaet test@example.com gesetzt, Radicale-Kalender vorhanden.
+ * UI test for the iMIP/iTIP invitation box in the mail view.
+ * Prerequisite: stack running, invitation mail in INBOX (uid 1),
+ * CalDAV prefs + identity test@example.com set, Radicale calendar present.
  */
 import { chromium } from './screenshots/node_modules/playwright/index.mjs';
 
@@ -17,11 +17,11 @@ await p.goto(`${B}/?_task=login`, { waitUntil: 'networkidle' });
 await p.fill('#rcmloginuser', 'test'); await p.fill('#rcmloginpwd', 'test');
 await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle' }).catch(() => {}), p.click('#rcmloginsubmit, button[type=submit]')]);
 
-// Nachricht als Vollseite oeffnen (wie Stefans list-Layout, ohne Preview-iframe)
+// Open the message as a full page (like a list layout, without the preview iframe)
 await p.goto(`${B}/?_task=mail&_action=show&_uid=1&_mbox=INBOX`, { waitUntil: 'networkidle' });
 await p.waitForTimeout(1200);
 
-console.log('\n[1] Box rendert + a11y-Struktur');
+console.log('\n[1] Box renders + a11y structure');
 const box = await p.evaluate(() => {
   const el = document.querySelector('.caldav-itip');
   if (!el) return null;
@@ -39,30 +39,30 @@ const box = await p.evaluate(() => {
     start: el.getAttribute('data-start')
   };
 });
-ok(!!box, 'Einladungs-Box vorhanden');
+ok(!!box, 'Invitation box present');
 if (box) {
   ok(box.region === 'region', 'role=region');
-  ok(box.titled, 'aria-labelledby zeigt auf existierende Ueberschrift');
-  ok(/Team-Meeting Q3/.test(box.title), 'Titel = Event-Name: ' + JSON.stringify(box.title));
-  ok(box.dl, 'Details als <dl>');
-  ok(box.select, 'Kalender-<select> vorhanden');
-  ok(box.group === 'group' && !!box.grouplabel, 'Button-Gruppe role=group + aria-label');
-  ok(box.buttons.length === 4, 'vier Buttons: ' + JSON.stringify(box.buttons));
-  ok(box.live, 'aria-live Status-Region');
+  ok(box.titled, 'aria-labelledby points to an existing heading');
+  ok(/Team Meeting Q3/.test(box.title), 'title = event name: ' + JSON.stringify(box.title));
+  ok(box.dl, 'details as <dl>');
+  ok(box.select, 'calendar <select> present');
+  ok(box.group === 'group' && !!box.grouplabel, 'button group role=group + aria-label');
+  ok(box.buttons.length === 4, 'four buttons: ' + JSON.stringify(box.buttons));
+  ok(box.live, 'aria-live status region');
 }
 
-console.log('\n[2] Tastatur: Buttons fokussierbar');
+console.log('\n[2] Keyboard: buttons focusable');
 const focusable = await p.evaluate(() => {
   const btns = [...document.querySelectorAll('.caldav-itip-actions button')];
   let allButtons = btns.every(b => b.tagName === 'BUTTON' && !b.disabled);
-  // Tab-Reihenfolge: erstes Button per focus() erreichbar
+  // Tab order: first button reachable via focus()
   btns[0].focus();
   return { allButtons, focused: document.activeElement === btns[0] };
 });
-ok(focusable.allButtons, 'alle Antwort-Buttons sind echte aktive <button>');
-ok(focusable.focused, 'Button per Tastatur fokussierbar');
+ok(focusable.allButtons, 'all reply buttons are real active <button>');
+ok(focusable.focused, 'button focusable via keyboard');
 
-console.log('\n[3] Annehmen -> Status wechselt + Buttons gesperrt');
+console.log('\n[3] Accept -> status changes + buttons locked');
 await Promise.all([
   p.waitForResponse(r => r.url().includes('plugin.caldav-itip-reply'), { timeout: 12000 }).catch(() => {}),
   p.click('.caldav-itip-reply[data-partstat="ACCEPTED"]')
@@ -72,11 +72,11 @@ const after = await p.evaluate(() => ({
   status: (document.getElementById('caldav-itip-status') || {}).textContent || '',
   locked: [...document.querySelectorAll('.caldav-itip-reply')].every(b => b.disabled)
 }));
-ok(after.status !== '' && !/pending|ausstehend/i.test(after.status), 'Status nicht mehr "ausstehend": ' + JSON.stringify(after.status));
-ok(/accept|angenommen/i.test(after.status), 'Status zeigt Annahme: ' + JSON.stringify(after.status));
-ok(after.locked, 'Antwort-Buttons nach Aktion gesperrt');
+ok(after.status !== '' && !/pending|ausstehend/i.test(after.status), 'status no longer "pending": ' + JSON.stringify(after.status));
+ok(/accept|angenommen/i.test(after.status), 'status shows acceptance: ' + JSON.stringify(after.status));
+ok(after.locked, 'reply buttons locked after the action');
 
-console.log('\n[5] Gegenvorschlag-Modal (Counter) — frische Seite');
+console.log('\n[5] Counter proposal modal (counter) — fresh page');
 await p.goto(`${B}/?_task=mail&_action=show&_uid=1&_mbox=INBOX`, { waitUntil: 'networkidle' });
 await p.waitForTimeout(1000);
 await p.click('.caldav-itip-propose');
@@ -92,14 +92,14 @@ const modal = await p.evaluate(() => {
     startVal: (document.getElementById('itip-cn-start') || {}).value
   };
 });
-ok(modal.visible, 'Modal sichtbar');
-ok(modal.role === 'dialog', 'Modal role=dialog');
-ok(modal.start && modal.end && modal.comment, 'Modal-Felder (Beginn/Ende/Nachricht) vorhanden');
-ok(/2026-07-03T/.test(modal.startVal || ''), 'Beginn vorbefuellt aus Event: ' + JSON.stringify(modal.startVal));
-// neue Zeit + senden
+ok(modal.visible, 'modal visible');
+ok(modal.role === 'dialog', 'modal role=dialog');
+ok(modal.start && modal.end && modal.comment, 'modal fields (start/end/message) present');
+ok(/2026-07-03T/.test(modal.startVal || ''), 'start pre-filled from event: ' + JSON.stringify(modal.startVal));
+// new time + send
 await p.fill('#itip-cn-start', '2026-07-03T14:00');
 await p.fill('#itip-cn-end', '2026-07-03T15:00');
-await p.fill('#itip-cn-comment', 'Geht erst ab 14 Uhr');
+await p.fill('#itip-cn-comment', 'Can only do it from 2pm');
 await Promise.all([
   p.waitForResponse(r => r.url().includes('plugin.caldav-itip-counter'), { timeout: 12000 }).catch(() => {}),
   p.evaluate(() => {
@@ -108,18 +108,18 @@ await Promise.all([
   })
 ]);
 await p.waitForTimeout(800);
-ok(true, 'Gegenvorschlag abgesendet');
+ok(true, 'counter proposal sent');
 
 await b.close();
 
-// Radicale: Event muss jetzt im Kalender liegen (Dateiname = slugifizierte UID, @ entfernt)
-console.log('\n[4] Event in Radicale geschrieben');
+// Radicale: the event must now be in the calendar (filename = slugified UID, @ removed)
+console.log('\n[4] Event written to Radicale');
 const res = await fetch('http://127.0.0.1:5233/test/kalender/itip-e2e-001example.com.ics', {
   headers: { Authorization: 'Basic ' + Buffer.from('test:test').toString('base64') }
 }).catch(() => null);
 let body = res && res.ok ? await res.text() : '';
-ok(res && res.ok && /Team-Meeting Q3/.test(body), 'CalDAV-Objekt angelegt (HTTP ' + (res ? res.status : 'ERR') + ')');
-ok(/PARTSTAT=ACCEPTED/.test(body), 'eigener PARTSTAT=ACCEPTED gesetzt');
+ok(res && res.ok && /Team Meeting Q3/.test(body), 'CalDAV object created (HTTP ' + (res ? res.status : 'ERR') + ')');
+ok(/PARTSTAT=ACCEPTED/.test(body), 'own PARTSTAT=ACCEPTED set');
 
-console.log('\n' + (fails.length ? `FEHLER: ${fails.length}` : 'ALLE iTIP-TESTS GRUEN'));
+console.log('\n' + (fails.length ? `ERRORS: ${fails.length}` : 'ALL iTIP TESTS GREEN'));
 process.exit(fails.length ? 1 : 0);

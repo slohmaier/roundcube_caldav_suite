@@ -78,7 +78,7 @@ class CardDAVAddressbookTest extends TestCase
         $this->assertSame('Max', $n[1]);         // given
     }
 
-    // ---- update: Email Subtypes (DER BUG) ----
+    // ---- update: email subtypes (THE BUG) ----
 
     public function testUpdateEmailWorkSubtype(): void
     {
@@ -119,7 +119,7 @@ class CardDAVAddressbookTest extends TestCase
     public function testUpdateClearingEmailRemovesIt(): void
     {
         $ab = $this->bookWithContact($this->defaultVcf());
-        // kein email-Key -> alle EMAIL entfernt
+        // no email key -> all EMAIL removed
         $ab->update(md5($this->contactUrl), ['name' => 'X']);
         $this->assertFalse(isset($this->savedVcard()->EMAIL), 'EMAIL haette entfernt werden muessen');
     }
@@ -182,7 +182,7 @@ class CardDAVAddressbookTest extends TestCase
         $this->assertSame($this->contactEtag, $this->put['etag']);
     }
 
-    // ---- update: Sonderzeichen ----
+    // ---- update: special characters ----
 
     public function testUpdateSpecialCharsRoundTrip(): void
     {
@@ -194,7 +194,7 @@ class CardDAVAddressbookTest extends TestCase
         $this->assertSame('Ärzte, Zahn; GmbH', (string) $v->ORG);
     }
 
-    // ---- update: nicht gefunden ----
+    // ---- update: not found ----
 
     public function testUpdateUnknownIdReturnsFalse(): void
     {

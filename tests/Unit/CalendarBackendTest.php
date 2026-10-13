@@ -110,7 +110,7 @@ class CalendarBackendTest extends TestCase
         $this->assertStringContainsString('GEO:48.1351;11.5820', $ical);
     }
 
-    // ---- Erweiterte Edge-Cases ----
+    // ---- Extended edge cases ----
 
     private function parseEvent(string $ical): \Sabre\VObject\Component
     {
@@ -192,7 +192,7 @@ class CalendarBackendTest extends TestCase
 
     public function testAllDayEndIsExclusivePlusOne(): void
     {
-        // allday end 2026-08-15 -> DTEND 20260816 (iCal exklusiv)
+        // allday end 2026-08-15 -> DTEND 20260816 (iCal exclusive)
         $ical = $this->backend->buildICalEvent([
             'title' => 'Urlaub', 'start' => '2026-08-01', 'end' => '2026-08-15', 'allday' => true,
         ]);

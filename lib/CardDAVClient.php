@@ -18,10 +18,10 @@ class CardDAVClient
             'userName' => $username,
             'password' => $password,
         ]);
-        // Preemptives Basic-Auth erzwingen: sonst macht sabre pro Request den
-        // 401->Retry-Tanz, was die keep-alive-Wiederverwendung zerstoert. Bei
-        // vielen Collections ueber die Radicale-WAN-Hairpin-URL fuehrt das zu
-        // hunderten neuer Verbindungen -> Speedport-Hairpin haengt -> 504.
+        // Force preemptive Basic auth: otherwise sabre does the 401->retry dance
+        // for every request, which breaks keep-alive reuse. With many collections
+        // over the Radicale WAN hairpin URL this leads to hundreds of new
+        // connections -> the router's hairpin NAT hangs -> 504.
         $this->client->addCurlSetting(CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     }
 

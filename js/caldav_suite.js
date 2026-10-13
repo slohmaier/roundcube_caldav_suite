@@ -10,6 +10,12 @@ window.caldav_suite = {
         return rcmail.get_label(key, 'caldav_suite') || key;
     },
 
+    // Current locale (from the document language Roundcube sets, e.g. "de"),
+    // used for locale-aware date formatting. Falls back to English.
+    locale: function() {
+        return (document.documentElement.lang || 'en').replace(/_/g, '-');
+    },
+
     ajax: function(action, data, callback) {
         rcmail.http_post('plugin.' + action, { _data: JSON.stringify(data) }, rcmail.set_busy(true, 'loading'));
         if (callback) {
@@ -51,23 +57,23 @@ window.caldav_suite = {
         }
     },
 
-    // ---- Loading-Overlay + Screenreader-Ansage ----
+    // ---- Loading overlay + screenreader announcement ----
     _loading: {},
 
-    // Legt einen Spinner-Overlay ueber den Container und sagt periodisch "Laedt..." an.
-    // key: eindeutiger Bezeichner (z.B. 'calendar', 'tasks'). containerSel: z.B. '#calendar-grid'.
+    // Places a spinner overlay over the container and periodically announces "Loading...".
+    // key: unique identifier (e.g. 'calendar', 'tasks'). containerSel: e.g. '#calendar-grid'.
     showLoading: function(key, containerSel) {
-        if (this._loading[key]) return; // schon aktiv
+        if (this._loading[key]) return; // already active
         var container = $(containerSel);
         if (!container.length) return;
         var overlay = $('<div class="caldav-loading" role="status" aria-live="polite"></div>')
             .append('<span class="caldav-spinner"></span>')
-            .append('<span class="caldav-loading-text">Lädt…</span>');
+            .append('<span class="caldav-loading-text">' + this.label('loading') + '</span>');
         container.append(overlay);
         var t0 = Date.now();
-        // Alle ~2.5s die Lade-Ansage wiederholen (aria-live), bis fertig.
+        // Repeat the loading announcement every ~2.5s (aria-live) until done.
         var timer = setInterval(function() {
-            caldav_suite.announce('Lädt…');
+            caldav_suite.announce(caldav_suite.label('loading'));
         }, 2500);
         this._loading[key] = { overlay: overlay, timer: timer, t0: t0 };
     },
@@ -96,15 +102,28 @@ window.caldav_suite = {
     formatDate: function(dateStr) {
         if (!dateStr) return '';
         var d = new Date(dateStr);
-        return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear();
+        return new Intl.DateTimeFormat(this.locale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
     },
 
     formatDateLong: function(dateStr) {
         if (!dateStr) return '';
         var d = new Date(dateStr);
-        var days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-        var months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
-        return days[d.getDay()] + ', ' + d.getDate() + '. ' + months[d.getMonth()] + ' ' + d.getFullYear();
+        return new Intl.DateTimeFormat(this.locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+    },
+
+    // Localized weekday name; index follows Date.getDay() (0 = Sunday).
+    weekdayShort: function(dayIndex) {
+        var d = new Date(2024, 0, 7 + dayIndex); // 2024-01-07 is a Sunday
+        return new Intl.DateTimeFormat(this.locale(), { weekday: 'short' }).format(d);
+    },
+
+    // Localized month name; 0 = January.
+    monthShort: function(monthIndex) {
+        return new Intl.DateTimeFormat(this.locale(), { month: 'short' }).format(new Date(2024, monthIndex, 1));
+    },
+
+    monthLong: function(monthIndex) {
+        return new Intl.DateTimeFormat(this.locale(), { month: 'long' }).format(new Date(2024, monthIndex, 1));
     }
 };
 
@@ -119,7 +138,7 @@ window.caldav_suite_test_connection = function() {
         return;
     }
 
-    $('#caldav-test-result').text('Testing...').css('color', '');
+    $('#caldav-test-result').text(caldav_suite.label('testing')).css('color', '');
     $('#caldav-test-btn').prop('disabled', true);
 
     rcmail.http_post('plugin.caldav-test-connection', {
@@ -132,10 +151,12 @@ if (window.rcmail) {
         rcmail.addEventListener('plugin.caldav-test-result', function(data) {
             $('#caldav-test-btn').prop('disabled', false);
             if (data.success) {
-                var msg = '✓ ' + data.calendars + ' Kalender, ' + data.tasklists + ' Aufgabenlisten, ' + (data.addressbooks || 0) + ' Adressbücher';
+                var msg = '✓ ' + data.calendars + ' ' + caldav_suite.label('calendars')
+                    + ', ' + data.tasklists + ' ' + caldav_suite.label('task_lists')
+                    + ', ' + (data.addressbooks || 0) + ' ' + caldav_suite.label('addressbooks');
                 $('#caldav-test-result').text(msg).css('color', 'green');
             } else {
-                $('#caldav-test-result').text('✗ Verbindung fehlgeschlagen').css('color', 'red');
+                $('#caldav-test-result').text('✗ ' + caldav_suite.label('connection_failed')).css('color', 'red');
             }
         });
     });

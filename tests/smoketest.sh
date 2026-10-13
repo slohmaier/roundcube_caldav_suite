@@ -1,12 +1,14 @@
 #!/bin/bash
 # Smoketest: verifies Roundcube loads the caldav_suite plugin correctly.
-# Konfigurierbar ueber Umgebungsvariablen:
-#   RC_URL        Basis-URL des Roundcube (Default: http://127.0.0.1:80)
-#   RC_HOST_HEADER  optionaler Host-Header (z.B. "-H Host:mail.example.org")
-#   RC_LOGS_CHECK   1 = Plugin-Load-Fehler in Container-Logs pruefen (Default: 0)\n#   RC_CONTAINER    Container-Name fuer den Log-Check (Default: roundcube)
+# Configurable via environment variables:
+#   RC_URL        base URL of Roundcube (default: http://127.0.0.1:80)
+#   RC_HOST_HEADER  optional Host header (e.g. "-H Host:mail.example.org")
+#   RC_LOGS_CHECK   1 = check container logs for plugin-load errors (default: 0)
+#   RC_CONTAINER    container name for the log check (default: roundcube)
 HOST="${RC_URL:-http://127.0.0.1:80}"
 HDR="${RC_HOST_HEADER:-}"
-LOGS_CHECK="${RC_LOGS_CHECK:-0}"\nCONTAINER="${RC_CONTAINER:-roundcube}"
+LOGS_CHECK="${RC_LOGS_CHECK:-0}"
+CONTAINER="${RC_CONTAINER:-roundcube}"
 FAIL=0
 
 check() {
@@ -33,7 +35,7 @@ check "Logo"                    "/static.php/skins/elastic/images/logo-custom.pn
 # Optional: no PHP plugin-load errors in recent container logs (needs RC_LOGS_CHECK=1)
 if [ "$LOGS_CHECK" = "1" ]; then
     if ! command -v docker >/dev/null 2>&1; then
-        echo "  WARN  docker nicht verfuegbar, Log-Check uebersprungen"
+        echo "  WARN  docker not available, skipping log check"
     else
         ERRORS=$(sudo docker logs $CONTAINER --tail 20 2>&1 | grep -c "Failed to load plugin file.*caldav_suite")
         if [ "$ERRORS" -eq 0 ]; then

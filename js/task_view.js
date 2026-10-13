@@ -13,9 +13,9 @@
         filter: 'open'   // 'open' | 'completed' | 'all'
     };
 
-    // Nach einem Toggle (Reload) den Fokus wieder auf dieselbe Aufgabe setzen.
-    // Faellt sie aus der Liste (erledigt + "Erledigte zeigen" aus), Fokus auf den
-    // Nachbarn legen, damit er nicht auf <body> faellt und NVDA im Fokus-Modus bleibt.
+    // After a toggle (reload), set focus back onto the same task.
+    // If it dropped out of the list (completed + "show completed" off), move focus to
+    // the neighbor so it does not fall to <body> and NVDA stays in focus mode.
     var pendingFocusUrl = null;
     var pendingFocusFallback = null;
 
@@ -51,14 +51,14 @@
         rcmail.addEventListener('plugin.caldav-task-saved', function(data) { if (data.success) loadTasks(); });
         rcmail.addEventListener('plugin.caldav-task-deleted', function(data) { if (data.success) loadTasks(); });
         rcmail.addEventListener('plugin.caldav-task-toggled', function(data) {
-            // Toggle clientseitig anwenden statt die ganze Liste neu zu laden (spart ~1.5s).
+            // Apply the toggle client-side instead of reloading the whole list (saves ~1.5s).
             if (!data.success || !data.url) return;
             var task = state.tasks.find(function(t) { return t.url === data.url; });
             if (!task) { loadTasks(); return; }
             task.completed = !!data.completed;
             if (task.completed) { task.status = 'COMPLETED'; task.percent_complete = 100; }
             else { task.status = 'NEEDS-ACTION'; }
-            // Fokus auf die getoggte Aufgabe behalten
+            // Keep focus on the toggled task
             pendingFocusUrl = data.url;
             pendingFocusFallback = [];
             renderTasks();
@@ -69,8 +69,8 @@
 
     function loadTasks() {
         caldav_suite.showLoading('tasks', '#task-list-container');
-        // Nur bei "Offen" duerfen erledigte serverseitig wegfallen; sonst alle holen
-        // und clientseitig filtern (siehe renderTasks).
+        // Only with "Open" may completed tasks be dropped server-side; otherwise fetch
+        // all and filter client-side (see renderTasks).
         rcmail.http_post('plugin.caldav-tasks', {
             _include_completed: state.filter === 'open' ? '0' : '1'
         });
@@ -78,7 +78,7 @@
 
     function renderTaskListSidebar() {
         var listAria = function(list, on) {
-            return list.name + ', ' + (on ? 'eingeblendet' : 'ausgeblendet');
+            return list.name + ', ' + (on ? caldav_suite.label('shown') : caldav_suite.label('hidden'));
         };
         var html = '<ul id="tasklist-ul" class="listing navlist">';
         state.taskLists.forEach(function(list) {
@@ -109,18 +109,18 @@
             renderTasks();
         };
 
-        // Nur Klick auf die Checkbox togglet; Klick auf Zeile/Name aendert nichts.
+        // Only a click on the checkbox toggles; a click on the row/name does nothing.
         $('#tasklist-list .tasklist-check').click(function(e) {
             e.stopPropagation();
             toggleList($(this).closest('.tasklist-item')[0]);
         });
         $('#tasklist-list .tasklist-item').click(function() {
-            // bewusst nichts (kein Toggle mehr)
+            // intentionally nothing (no toggle anymore)
         });
 
-        // Gleiche Pfeil-Navigation wie die Hauptliste: hoch/runter zwischen den Listen,
-        // Leertaste/Enter blendet die Liste ein/aus. KEINE fokussierbaren Kind-Elemente
-        // (Status via .checked-Klasse + aria-label).
+        // Same arrow navigation as the main list: up/down between lists,
+        // Space/Enter shows/hides the list. NO focusable child elements
+        // (status via .checked class + aria-label).
         caldav_a11y.makeListNavigable(document.getElementById('tasklist-ul'), {
             itemSelector: '.tasklist-item',
             label: caldav_suite.label('task_lists'),
@@ -154,7 +154,7 @@
 
         if (tasks.length === 0) {
             $('#task-list-container').html('<p class="hint" tabindex="-1">' + caldav_suite.label('no_tasks') + '</p>');
-            // Liste leer -> Fokus auf den Hinweis statt verloren auf <body>.
+            // List empty -> focus the hint instead of losing focus to <body>.
             if (pendingFocusUrl) {
                 var hint = document.querySelector('#task-list-container .hint');
                 if (hint) hint.focus();
@@ -164,7 +164,7 @@
             return;
         }
 
-        var prioWord = { 'priority-high': 'hoch', 'priority-medium': 'mittel', 'priority-low': 'niedrig' };
+        var prioWord = { 'priority-high': caldav_suite.label('priority_high'), 'priority-medium': caldav_suite.label('priority_medium'), 'priority-low': caldav_suite.label('priority_low') };
 
         var html = '<ul id="task-list" class="listing">';
         tasks.forEach(function(task) {
@@ -179,28 +179,28 @@
             var dueDetailHtml = '';
             if (task.due) {
                 isOverdue = new Date(task.due) < new Date() && !task.completed;
-                // Indikator-Punkt in der Liste (rot bei Ueberfaelligkeit, sonst neutral).
+                // Indicator dot in the list (red when overdue, otherwise neutral).
                 dueIndicator = '<span class="task-due-indicator' + (isOverdue ? ' overdue' : '') + '"'
-                    + ' aria-hidden="true" title="Fällig: ' + caldav_suite.formatDate(task.due) + '"></span>';
-                // Datum als Text nur in der Detailansicht (bei Auswahl).
+                    + ' aria-hidden="true" title="' + caldav_suite.label('due_date') + ': ' + caldav_suite.formatDate(task.due) + '"></span>';
+                // Date as text only in the detail view (when selected).
                 dueDetailHtml = '<div class="task-due-detail' + (isOverdue ? ' overdue' : '') + '">'
                     + caldav_suite.label('due_date') + ': ' + caldav_suite.formatDate(task.due)
-                    + (isOverdue ? ' (überfällig)' : '') + '</div>';
+                    + (isOverdue ? ' (' + caldav_suite.label('overdue') + ')' : '') + '</div>';
             }
 
-            // Volles aria-label -> NVDA liest beim Pfeilen genau eine klare Ansage.
+            // Full aria-label -> NVDA reads exactly one clear announcement when arrowing.
             var aria = [
                 task.summary,
-                task.due ? ('fällig ' + caldav_suite.formatDate(task.due) + (isOverdue ? ' überfällig' : '')) : '',
-                priorityClass ? ('Priorität ' + prioWord[priorityClass]) : '',
-                task.completed ? 'erledigt' : 'offen'
+                task.due ? (caldav_suite.label('due_date') + ' ' + caldav_suite.formatDate(task.due) + (isOverdue ? ' ' + caldav_suite.label('overdue') : '')) : '',
+                priorityClass ? (caldav_suite.label('priority') + ' ' + prioWord[priorityClass]) : '',
+                task.completed ? caldav_suite.label('done') : caldav_suite.label('open')
             ].filter(function(s) { return s; }).join(', ');
 
-            // KEINE fokussierbaren Nachfahren (kein <input>/<button>) im role=option-Item:
-            // NVDA/Browser wuerde sonst Aktivierung/Klick auf das fokussierbare Kind statt
-            // auf die Option routen ("nur Checkbox fokussiert"). Status steckt im aria-label
-            // + .completed-Klasse; Check/Edit sind rein visuelle, per CSS gestylte <span>s.
-            // Detail-Zeile (Notiz/Ort) nur bei Auswahl anzeigen.
+            // NO focusable descendants (no <input>/<button>) in the role=option item:
+            // otherwise NVDA/browser would route activation/click to the focusable child
+            // instead of the option ("only checkbox focused"). Status lives in the aria-label
+            // + .completed class; check/edit are purely visual <span>s styled via CSS.
+            // Detail line (note/location) only shown when selected.
             var detailHtml = '';
             var extras = [];
             if (task.description) { detailHtml += '<div class="task-desc" aria-hidden="true">' + rcmail.quote_html(task.description) + '</div>'; }
@@ -229,11 +229,11 @@
             var task = state.tasks.find(function(t) { return t.url === url; });
             if (task) caldav_task_dialog.open(task, state.taskLists);
         };
-        // Ab-/anhaken ueber Item-Attribute (kein <input> mehr). Status = .completed-Klasse.
+        // Check off/on via item attributes (no <input> anymore). Status = .completed class.
         var toggleDone = function(item) {
             if (!item) return;
             pendingFocusUrl = item.getAttribute('data-url');
-            // Nachbarn als Fokus-Fallback merken (naechste bevorzugt, sonst vorige Aufgabe).
+            // Remember neighbors as focus fallback (next preferred, otherwise previous task).
             pendingFocusFallback = [];
             var next = item.nextElementSibling, prev = item.previousElementSibling;
             if (next) pendingFocusFallback.push(next.getAttribute('data-url'));
@@ -246,10 +246,10 @@
             });
         };
 
-        // ---- Auswahl (wie Termin-Liste): Klick waehlt aus, Aktionen via Leiste ----
-        var prioWord = { 'priority-high': 'hoch', 'priority-medium': 'mittel', 'priority-low': 'niedrig' };
+        // ---- Selection (like the event list): click selects, actions via the toolbar ----
+        var prioWord = { 'priority-high': caldav_suite.label('priority_high'), 'priority-medium': caldav_suite.label('priority_medium'), 'priority-low': caldav_suite.label('priority_low') };
 
-        // Screenreader: bei Auswahl einer Aufgabe die vollstaendigen Details vorlesen.
+        // Screenreader: read the full details when a task is selected.
         var announceTaskDetails = function(url) {
             var task = state.tasks.find(function(t) { return t.url === url; });
             if (!task) return;
@@ -257,14 +257,14 @@
             var due = task.due ? new Date(task.due) : null;
             if (due) {
                 var over = due < new Date() && !task.completed;
-                parts.push('Fällig ' + caldav_suite.formatDate(task.due) + (over ? ', überfällig' : ''));
+                parts.push(caldav_suite.label('due_date') + ' ' + caldav_suite.formatDate(task.due) + (over ? ', ' + caldav_suite.label('overdue') : ''));
             }
-            if (task.priority >= 1 && task.priority <= 3) parts.push('Priorität hoch');
-            else if (task.priority >= 4 && task.priority <= 6) parts.push('Priorität mittel');
-            else if (task.priority >= 7) parts.push('Priorität niedrig');
-            if (task.completed) parts.push('erledigt');
-            if (task.description) parts.push('Notiz: ' + task.description);
-            if (task.location) parts.push('Ort: ' + task.location);
+            if (task.priority >= 1 && task.priority <= 3) parts.push(caldav_suite.label('priority') + ' ' + caldav_suite.label('priority_high'));
+            else if (task.priority >= 4 && task.priority <= 6) parts.push(caldav_suite.label('priority') + ' ' + caldav_suite.label('priority_medium'));
+            else if (task.priority >= 7) parts.push(caldav_suite.label('priority') + ' ' + caldav_suite.label('priority_low'));
+            if (task.completed) parts.push(caldav_suite.label('done'));
+            if (task.description) parts.push(caldav_suite.label('note') + ': ' + task.description);
+            if (task.location) parts.push(caldav_suite.label('location') + ': ' + task.location);
             caldav_suite.announce(parts.join('. '));
         };
 
@@ -285,42 +285,42 @@
             else { selectedTaskUrls[url] = true; item.addClass('selected'); }
         };
 
-        // Maus: Klick auf Check hakt ab, Klick auf Zeile/Summary waehlt nur aus (kein Auto-Edit).
+        // Mouse: click on check completes it, click on row/summary only selects (no auto-edit).
         $('#task-list .task-check').click(function() { toggleDone($(this).closest('.task-item')[0]); });
         $('#task-list .task-item').click(function(e) {
             if (e.ctrlKey || e.metaKey) { toggleTaskSelection($(this)); }
             else { setTaskSelection($(this)); }
         });
 
-        // Edit-Icon in der Zeile oeffnet direkt das Bearbeiten (ohne Auswahl noetig).
+        // Edit icon in the row opens the edit dialog directly (no selection needed).
         $('#task-list .task-edit').click(function(e) {
             e.stopPropagation();
             openEdit($(this).closest('.task-item').attr('data-url'));
         });
 
-        // Einheitliche, screenreader-navigierbare Liste: Pfeil hoch/runter, Enter = auswaehlen,
-        // Leertaste = ab-/anhaken.
+        // Uniform, screenreader-navigable list: arrow up/down, Enter = select,
+        // Space = check off/on.
         caldav_a11y.makeListNavigable(document.getElementById('task-list'), {
             itemSelector: '.task-item',
             label: caldav_suite.label('tasks'),
-            onActivate: function(item) { // Enter -> Bearbeiten
+            onActivate: function(item) { // Enter -> edit
                 openEdit(item.getAttribute('data-url'));
             },
             onToggle: toggleDone
         });
 
-        // Nach einem Toggle-Reload den Fokus zuruecksetzen.
+        // Reset focus after a toggle reload.
         if (pendingFocusUrl) {
             var list = document.getElementById('task-list');
             var ok = caldav_a11y.focusItemByAttr(list, 'data-url', pendingFocusUrl);
-            // Aufgabe ist aus der Liste gefallen -> Nachbarn probieren.
+            // Task dropped out of the list -> try the neighbors.
             if (!ok && pendingFocusFallback) {
                 for (var i = 0; i < pendingFocusFallback.length && !ok; i++) {
                     ok = caldav_a11y.focusItemByAttr(list, 'data-url', pendingFocusFallback[i]);
                 }
             }
-            // Letzter Ausweg: Listbox-Container fokussieren (sein focus-Handler setzt die
-            // erste Option aktiv), damit der Fokus nie auf <body> faellt.
+            // Last resort: focus the listbox container (its focus handler sets the
+            // first option active) so focus never falls to <body>.
             if (!ok && list) { list.focus(); }
             pendingFocusUrl = null;
             pendingFocusFallback = null;

@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Erzeugt Beispiel-Screenshots des Plugins:
-#   1. faehrt den Test-Stack hoch
-#   2. setzt User-Prefs (Default-Ansicht = Woche)
-#   3. seedet eine prall gefuellte Demo-Woche (mehrere Kalender, Ganztags,
-#      Doppelbelegungen, Serien, Fahrtzeit)
-#   4. installiert Playwright + Chromium (falls noetig)
-#   5. macht Screenshots -> out/
+# Generates example screenshots of the plugin:
+#   1. brings up the test stack
+#   2. sets user prefs (default view = week, language = English)
+#   3. seeds a rich demo week (several calendars, all-day, overlaps, series, travel time)
+#   4. installs Playwright + Chromium (if needed)
+#   5. takes screenshots -> out/
 #
-# Benutzung:        ./generate.sh
+# Usage:            ./generate.sh
 # Docker via sudo:  DOCKER="sudo docker" ./generate.sh
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -17,15 +16,15 @@ BASE="http://127.0.0.1:8099"
 RAD="http://127.0.0.1:5233"
 dc() { ( cd .. && $DOCKER compose "$@" ); }
 
-echo ">> Bereinigte Autoload erzeugen + Stack hochfahren ..."
+echo ">> Create cleaned autoload + bring up the stack ..."
 ( cd .. && ./prep-runtime-vendor.sh )
 dc up -d
 
-echo ">> Warte auf Roundcube + Radicale ..."
+echo ">> Wait for Roundcube + Radicale ..."
 for i in $(seq 1 60); do curl -sf "$BASE/" -o /dev/null && break; sleep 2; done
 for i in $(seq 1 60); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$RAD/")" != "000" ] && break; sleep 2; done
 
-echo ">> User anlegen + Prefs (Default-Ansicht Woche) ..."
+echo ">> Create user + prefs (default view week, language English) ..."
 J="$(mktemp)"
 TOKEN="$(curl -s -c "$J" "$BASE/" | grep -oP 'name="_token"[^>]*value="\K[^"]+' | head -1)"
 curl -s -b "$J" -c "$J" -X POST "$BASE/?_task=login&_action=login" \
@@ -39,18 +38,19 @@ $u=new rcube_user((int)$row["user_id"]);
 $u->save_prefs([
   "caldav_suite_url"=>"http://rc-test-radicale:5232","caldav_suite_username"=>"test",
   "caldav_suite_password"=>$rc->encrypt("test"),"caldav_suite_default_view"=>"week",
+  "language"=>"en_US",
 ]); echo "prefs ok\n";'
 
-echo ">> Demo-Woche seeden ..."
+echo ">> Seed demo week ..."
 dc exec -T rc-test-roundcube php < seed.php
 
-echo ">> Playwright + Chromium bereitstellen ..."
+echo ">> Provide Playwright + Chromium ..."
 [ -d node_modules/playwright ] || npm install --no-audit --no-fund
-# Browser-Binary (ohne Root). System-Libs ggf.: sudo npx playwright install-deps chromium
+# Browser binary (without root). System libs if needed: sudo npx playwright install-deps chromium
 npx playwright install chromium
 
-echo ">> Screenshots erzeugen ..."
+echo ">> Take screenshots ..."
 node shoot.mjs
 
 echo ""
-echo "Fertig. Screenshots in: $(pwd)/out/"
+echo "Done. Screenshots in: $(pwd)/out/"

@@ -4,7 +4,7 @@
 
 window.caldav_event_dialog = {
     open: function(eventData, calendars) {
-        // Verschiebt ein "YYYY-MM-DD"-Datum tz-sicher um n Tage (fuer All-Day-DTEND).
+        // Shifts a "YYYY-MM-DD" date by n days in a tz-safe way (for all-day DTEND).
         function ymdShift(ymd, days) {
             var p = ymd.split('-');
             var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
@@ -29,14 +29,14 @@ window.caldav_event_dialog = {
         var ev = Object.assign({}, defaults, eventData || {});
 
         // Format dates for input fields. All-day = <input type="date"> (Y-m-d),
-        // timed = <input type="datetime-local"> (Y-m-dTH:i). Beim Bearbeiten eines
-        // bestehenden All-Day-Events kommt start/end als reines Datum -> Input-Typ
-        // muss schon beim Aufbau passen, sonst bleibt das Feld leer.
+        // timed = <input type="datetime-local"> (Y-m-dTH:i). When editing an
+        // existing all-day event, start/end come as a pure date -> the input type
+        // must already match on build-up, otherwise the field stays empty.
         var dateInputType = ev.allDay ? 'date' : 'datetime-local';
         if (ev.allDay) {
             if (ev.start) ev.start = ev.start.substr(0, 10);
-            // DTEND ist exklusiv (Folgetag) -> inklusiven letzten Tag anzeigen (-1 Tag).
-            // Die Save-Seite (CalendarBackend) rechnet beim Speichern wieder +1 Tag.
+            // DTEND is exclusive (next day) -> show the inclusive last day (-1 day).
+            // The save side (CalendarBackend) adds +1 day again when saving.
             if (ev.end) ev.end = ymdShift(ev.end.substr(0, 10), -1);
         } else {
             if (ev.start && ev.start.length > 16) ev.start = ev.start.substr(0, 16);
@@ -86,7 +86,7 @@ window.caldav_event_dialog = {
             + '<option value="30"' + (ev.reminder_minutes === '30' ? ' selected' : '') + '>30 min</option>'
             + '<option value="60"' + (ev.reminder_minutes === '60' ? ' selected' : '') + '>1 h</option>'
             + '<option value="120"' + (ev.reminder_minutes === '120' ? ' selected' : '') + '>2 h</option>'
-            + '<option value="1440"' + (ev.reminder_minutes === '1440' ? ' selected' : '') + '>1 Tag</option>'
+            + '<option value="1440"' + (ev.reminder_minutes === '1440' ? ' selected' : '') + '>' + caldav_suite.label('one_day') + '</option>'
             + '</select></div>'
             + '<div class="prop"><label for="ev-calendar">' + caldav_suite.label('select_calendar') + '</label>'
             + '<select id="ev-calendar" class="form-control">' + calOptions + '</select></div>'
@@ -137,7 +137,7 @@ window.caldav_event_dialog = {
 
         var dlg = caldav_suite.dialog(title, html, buttons);
 
-        // Aktuelle Dauer aus den Feldern berechnen (Default 1h wenn ungueltig).
+        // Compute the current duration from the fields (default 1h if invalid).
         var currentMs = function() {
             var st = dlg.find('#ev-start').val();
             var en = dlg.find('#ev-end').val();
@@ -145,7 +145,7 @@ window.caldav_event_dialog = {
             return (isNaN(ms) || ms <= 0) ? 3600000 : ms;
         };
 
-        // Start aendern -> Ende um die AKTUELLE Dauer nachziehen (Beginn nie vor Ende).
+        // Change start -> pull the end along by the CURRENT duration (start never after end).
         var syncEndFromStart = function() {
             var start = dlg.find('#ev-start').val();
             if (!start) return;
@@ -204,7 +204,7 @@ window.caldav_event_dialog = {
  * Geocoding module - supports Photon and Nominatim backends.
  */
 window.caldav_geocode = {
-    // Browser-Standort (einmalig abfragen, fuer Location-Bias der Suche).
+    // Browser location (queried once, for location bias of the search).
     _geo: null,
     _geoAsked: false,
     getLocation: function(cb) {
@@ -217,7 +217,7 @@ window.caldav_geocode = {
         }, function() { cb(null); }, { timeout: 5000, maximumAge: 600000 });
     },
 
-    // Ortssuche ueber den Roundcube-Server-Proxy (versteckt den Google-Key, umgeht CORS).
+    // Location search via the Roundcube server proxy (hides the Google key, bypasses CORS).
     search: function(query, dlg) {
         window.caldav_geocode._activeDlg = dlg;
         rcmail.http_post('plugin.caldav-geocode', { _q: query });
@@ -227,7 +227,7 @@ window.caldav_geocode = {
         var results = [];
         if (provider === 'google') {
             ((data && data.places) || []).forEach(function(p) {
-                var name = (p.displayName && p.displayName.text) || p.formattedAddress || 'Unbekannt';
+                var name = (p.displayName && p.displayName.text) || p.formattedAddress || 'Unknown';
                 var loc = p.location || {};
                 results.push({
                     name: name,
@@ -262,7 +262,7 @@ window.caldav_geocode = {
                 if (p.country && p.country !== 'Deutschland' && p.country !== 'Germany') {
                     parts.push(p.country);
                 }
-                var name = parts.join(', ') || p.name || 'Unbekannt';
+                var name = parts.join(', ') || p.name || 'Unknown';
                 var coords = f.geometry && f.geometry.coordinates;
                 results.push({
                     name: name,
@@ -274,7 +274,7 @@ window.caldav_geocode = {
         return results;
     },
 
-    // Merkt sich den aktuellen Dialog, um die geocode-Response zu rendern.
+    // Remembers the current dialog to render the geocode response.
     _activeDlg: null,
 
     renderResults: function(results, dlg) {
@@ -293,7 +293,7 @@ window.caldav_geocode = {
                     dlg.find('#ev-location-geo').val(r.lat && r.lng ? r.lat + ',' + r.lng : '');
                     list.empty().hide();
                     dlg.find('#ev-location').focus();
-                    caldav_suite.announce(r.name + ' ausgewählt');
+                    caldav_suite.announce(r.name + ' ' + caldav_suite.label('selected'));
                 })
                 .on('keydown', function(e) {
                     if (e.key === 'Enter' || e.key === ' ') { $(this).click(); e.preventDefault(); }
@@ -304,7 +304,7 @@ window.caldav_geocode = {
     }
 };
 
-// Antwort des Server-Geocode-Proxys entgegennehmen und im aktiven Dialog rendern.
+// Receive the server geocode proxy response and render it in the active dialog.
 if (window.rcmail) {
     rcmail.addEventListener('init', function() {
         rcmail.addEventListener('plugin.caldav-geocode-response', function(data) {
@@ -313,7 +313,7 @@ if (window.rcmail) {
             if (data && data.results) {
                 window.caldav_geocode.renderResults(data.results, dlg);
             } else if (dlg.length) {
-                dlg.find('#ev-location-results').html('<li class="hint">Suche fehlgeschlagen</li>').show();
+                dlg.find('#ev-location-results').html('<li class="hint">' + caldav_suite.label('search_failed') + '</li>').show();
             }
         });
     });

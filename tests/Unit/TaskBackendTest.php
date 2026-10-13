@@ -24,7 +24,7 @@ class TaskBackendTest extends TestCase
         return $vcal->VTODO;
     }
 
-    // ---- buildICalTodo: Grundgeruest ----
+    // ---- buildICalTodo: base skeleton ----
 
     public function testBuildBasicTodo(): void
     {
@@ -60,7 +60,7 @@ class TaskBackendTest extends TestCase
         $this->assertSame('', (string) $todo->SUMMARY);
     }
 
-    // ---- Prioritaeten ----
+    // ---- Priorities ----
 
     public function testPriorityHigh(): void
     {
@@ -114,7 +114,7 @@ class TaskBackendTest extends TestCase
         $this->assertFalse(isset($todo->COMPLETED));
     }
 
-    // ---- Faelligkeit ----
+    // ---- Due date ----
 
     public function testDueDate(): void
     {
@@ -139,7 +139,7 @@ class TaskBackendTest extends TestCase
         $this->assertSame('Mehr Details hier', (string) $todo->DESCRIPTION);
     }
 
-    // ---- Sonderzeichen / Edge-Cases ----
+    // ---- Special characters / edge cases ----
 
     public function testSpecialCharsInTitleRoundTrip(): void
     {
@@ -195,7 +195,7 @@ class TaskBackendTest extends TestCase
         $todo = $this->parseTodo($ical);
         $this->assertSame('COMPLETED', (string) $todo->STATUS);
         $this->assertTrue(isset($todo->COMPLETED));
-        // andere Felder erhalten
+        // other fields preserved
         $this->assertSame('Wichtige Aufgabe', (string) $todo->SUMMARY);
         $this->assertSame('KEEP-1', (string) $todo->UID);
         $this->assertSame('1', (string) $todo->PRIORITY);
@@ -237,7 +237,7 @@ class TaskBackendTest extends TestCase
         $client = $this->createMock(CalDAVClient::class);
         $client->method('getObject')->willReturn(Reader::read($existing));
         $ical = $this->backend->toggleCompleted('http://srv/t.ics', true, $client);
-        // genau eine STATUS-Property (kein Doppeln durch das Toggle)
+        // exactly one STATUS property (no duplication from the toggle)
         $this->assertSame(1, substr_count($ical, 'STATUS:'));
         $this->assertSame(1, substr_count($ical, 'STATUS:COMPLETED'));
     }

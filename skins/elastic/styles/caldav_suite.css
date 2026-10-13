@@ -1,14 +1,14 @@
 /* CalDAV Suite - Roundcube Elastic Skin Styles */
-/* Farben aus dem Elastic-Theme (colors.less / dark.less) uebernommen, da das Theme
-   keine CSS-Custom-Properties (var(--color-*)) bereitstellt.
+/* Colors taken from the Elastic theme (colors.less / dark.less), because the theme
+   does not provide CSS custom properties (var(--color-*)).
    Light: main=#37beff, border=#ddd, font=#22292c, black-shade-bg=#e9ebed
    Dark (html.dark-mode): main=#1c89c2, bg=#21292c, font=#c5d1d3, border=#4d6066, list-border=#2c373a
-   Akzent = @color-main (#37beff) / dark @color-dark-main (#1c89c2). */
+   Accent = @color-main (#37beff) / dark @color-dark-main (#1c89c2). */
 
 /* Screen reader only */
 .voice { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
-/* Skip-Link: beim Tabben sichtbar, springt zum Kalender-Hauptinhalt. */
+/* Skip link: visible when tabbing, jumps to the calendar main content. */
 .skip-link {
     position: absolute;
     left: -9999px;
@@ -27,9 +27,9 @@
 #taskmenu .button-calendar::before { content: "\f073"; }
 #taskmenu .button-tasks::before { content: "\f0ae"; }
 
-/* Toolbar (respektiert Elastic-Layout; Titel liegt oben, Toolbar darunter) */
-/* Toolbar: Outlook-Stil. 3-Spalten-Grid -> links (Heute+Pfeile), Mitte zentriert
-   (Zeitraum-Titel), rechts (Ansicht). Keine Ueberlappung, auch bei schmalem Container. */
+/* Toolbar (respects the Elastic layout; title on top, toolbar below) */
+/* Toolbar: Outlook style. 3-column grid -> left (today+arrows), center centered
+   (period title), right (view). No overlap, even with a narrow container. */
 .caldav-nav { display: grid !important; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.5em; flex-wrap: nowrap !important; width: 100%; }
 .caldav-nav-left { display: flex; align-items: center; gap: 0.25em; justify-self: start; }
 .caldav-nav-right { display: flex; align-items: center; gap: 0.25em; justify-self: end; }
@@ -41,9 +41,9 @@
 .view-btn.active { font-weight: 700; background: rgba(55, 190, 255, 0.15); }
 
 /* ---- Calendar Sidebar ---- */
-/* Kalenderliste: native .listing fuer selected/Hover. Jeder Eintrag traegt einen
-   farbigen Balken (border-left, inline gesetzt) + eine Checkbox (button, klickbar).
-   Theme setzt auf li white-space:nowrap + overflow:hidden -> fuer das flex-Layout zuruecksetzen. */
+/* Calendar list: native .listing for selected/hover. Each entry carries a
+   colored bar (border-left, set inline) + a checkbox (button, clickable).
+   The theme sets li white-space:nowrap + overflow:hidden -> reset for the flex layout. */
 .calendar-item { display: flex !important; align-items: center; gap: 0.6em; padding: 0.45em 0.6em 0.45em 0.9em !important; cursor: pointer; white-space: normal !important; overflow: visible !important; position: relative; }
 .calendar-check { flex: 0 0 auto; width: 1.15em; height: 1.15em; box-sizing: border-box; border: 2px solid #888; border-radius: 3px; margin-right: 0.6em; padding: 0; background: transparent; cursor: pointer; }
 .calendar-item.checked .calendar-check { background: #37beff; border-color: #37beff; }
@@ -107,7 +107,7 @@
 .list-actions .btn:not(:disabled) { opacity: 1; }
 .list-range { padding: 0.6em 1em; margin: 0; font-size: 1em; font-weight: 600; border-bottom: 2px solid #ddd; }
 .list-date { font-size: 0.9em; font-weight: 600; margin: 1.5em 0 0.3em; padding-bottom: 0.3em; border-bottom: 1px solid #ddd; }
-/* Tages-Header in der Listenansicht: navigierbares Item, optisch als Datumstrenner. */
+/* Day header in the list view: navigable item, visually a date separator. */
 .list-day { display: flex; align-items: center; padding: 0.45em 0.6em; font-weight: 600; background: rgba(0,0,0,0.03); border-bottom: 1px solid #ddd; cursor: default; }
 .list-day.selected { outline: 2px solid #37beff; outline-offset: -1px; }
 .list-event { display: flex; align-items: center; gap: 0.6em; padding: 0.5em 0.6em; cursor: pointer; }
@@ -129,7 +129,7 @@
 .tasklist-item.checked .tasklist-check { background: #37beff; border-color: #37beff; }
 .tasklist-item.checked .tasklist-check::after { content: '\2713'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
 .task-list { list-style: none; padding: 0; margin: 0; }
-/* Aufgabe: Kachel-artig, Summary-Zeile + ausklappbare Details bei Auswahl. */
+/* Task: tile-like, summary row + expandable details on selection. */
 .task-item { display: flex; align-items: flex-start; gap: 0.5em; padding: 0.6em 1em; border-bottom: 1px solid #eee; cursor: pointer; }
 .task-item.selected { background: rgba(55,190,255,0.12); }
 .task-body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: 0.15em; }
@@ -145,7 +145,7 @@
 .task-item.completed .task-check::after { content: '\2713'; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); font-size: 0.85em; line-height: 1; }
 .task-edit { cursor: pointer; }
 .task-summary { flex: 0 1 auto; cursor: pointer; }
-/* Fälligkeits-Indikator: Kalender-Icon in der Liste, gruen (normal) / rot (ueberfaellig). */
+/* Due-date indicator: calendar icon in the list, green (normal) / red (overdue). */
 .task-due-indicator { flex: 0 0 auto; color: #41b849; margin-left: 0.4em; font-family: Icons; font-size: 0.85em; }
 .task-due-indicator::before { content: "\f133"; }
 .task-due-indicator.overdue { color: #ff5552; }
@@ -182,7 +182,7 @@
 .hint { color: #888; text-align: center; padding: 2em; }
 .toggle { display: flex; align-items: center; gap: 0.5em; padding: 0.5em 0.8em; cursor: pointer; }
 
-/* ===== iMIP/iTIP Kalender-Einladung in der Mailansicht ===== */
+/* ===== iMIP/iTIP calendar invitation in the mail view ===== */
 .caldav-itip { border: 1px solid #ddd; border-left: 4px solid #37beff; border-radius: 4px; background: #f5fafc; padding: 12px 16px; margin: 0 0 16px 0; }
 .caldav-itip-title { font-size: 1.1em; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .caldav-itip-badge { font-size: .75em; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; background: #37beff; color: #fff; padding: 2px 8px; border-radius: 10px; }
@@ -197,7 +197,7 @@
 .caldav-itip-actions .btn:focus-visible, .caldav-itip-calsel select:focus-visible { outline: 3px solid #37beff; outline-offset: 2px; }
 .caldav-itip-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* ---- Dark Mode (Elastic nutzt html.dark-mode, nicht prefers-color-scheme) ---- */
+/* ---- Dark mode (Elastic uses html.dark-mode, not prefers-color-scheme) ---- */
 html.dark-mode .calendar-month th { border-color: #4d6066; }
 html.dark-mode .calendar-month td { border-color: #2c373a; }
 html.dark-mode .calendar-month td:hover { background: rgba(255,255,255,0.03); }

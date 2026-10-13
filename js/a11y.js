@@ -49,17 +49,17 @@ window.caldav_a11y = {
     },
 
     /**
-     * Macht eine Liste screenreader-navigierbar: ARIA-Listbox + Roving-Tabindex +
-     * Pfeil-Navigation. Der Fokus liegt direkt auf dem aktiven role="option" ->
-     * NVDA schaltet automatisch in den Fokus-Modus und Pfeil-hoch/runter springt
-     * sauber von Item zu Item (wie Mail-/Kontaktliste).
+     * Makes a list screenreader-navigable: ARIA listbox + roving tabindex +
+     * arrow navigation. Focus sits directly on the active role="option" ->
+     * NVDA automatically switches into focus mode and arrow up/down moves
+     * cleanly from item to item (like the mail/contact list).
      *
-     * container: jQuery- oder DOM-Element (wird zur Listbox).
+     * container: jQuery or DOM element (becomes the listbox).
      * opts:
-     *   itemSelector  CSS-Selektor der Items (default '[role="option"]')
-     *   label         aria-label der Liste
-     *   onActivate(item, index)  Enter (und Leertaste, falls kein onToggle)
-     *   onToggle(item, index)    Leertaste (optional, z.B. Aufgabe ab-/anhaken)
+     *   itemSelector  CSS selector of the items (default '[role="option"]')
+     *   label         aria-label of the list
+     *   onActivate(item, index)  Enter (and Space, if no onToggle)
+     *   onToggle(item, index)    Space (optional, e.g. check off a task)
      */
     makeListNavigable: function(container, opts) {
         container = (container && container.jquery) ? container[0] : container;
@@ -67,9 +67,9 @@ window.caldav_a11y = {
         opts = opts || {};
         var itemSel = opts.itemSelector || '[role="option"]';
 
-        // aria-activedescendant-Muster: GENAU EIN Tab-Stopp (der Container). Pfeiltasten
-        // bewegen die aktive Option, der Fokus bleibt auf dem Container. Funktioniert in
-        // Firefox+NVDA und Chromium gleich (Roving-Tabindex blieb in Firefox haengen).
+        // aria-activedescendant pattern: EXACTLY ONE tab stop (the container). Arrow keys
+        // move the active option, focus stays on the container. Works the same in
+        // Firefox+NVDA and Chromium (roving tabindex got stuck in Firefox).
         container.setAttribute('role', 'listbox');
         container.setAttribute('tabindex', '0');
         if (opts.label) container.setAttribute('aria-label', opts.label);
@@ -89,14 +89,14 @@ window.caldav_a11y = {
                 it.classList.toggle('selected', sel);
             });
             container.setAttribute('aria-activedescendant', el.id);
-            // Optionale Ansage bei Auswahlwechsel (zusaetzlich zu aria-activedescendant,
-            // da NVDA letzteres beim Pfeilen nicht immer zuverlaessig ankündigt).
+            // Optional announcement on selection change (in addition to aria-activedescendant,
+            // because NVDA does not always announce the latter reliably when arrowing).
             if (typeof opts.onChange === 'function') {
                 opts.onChange(el);
             }
-            // Nur den lokalen Scroller (naechster .scroller-Container) scrollen, NICHT das
-            // gesamte Seitenlayout. Sonst wird bei der Listenansicht das Layout verschoben
-            // (Sidebar verschwindet, Liste wird 100% breit).
+            // Scroll only the local scroller (nearest .scroller container), NOT the
+            // whole page layout. Otherwise the list view shifts the layout
+            // (sidebar disappears, list becomes 100% wide).
             if (scroll !== false) {
                 var sc = el.closest && el.closest('.scroller');
                 if (sc) {
@@ -117,8 +117,8 @@ window.caldav_a11y = {
             it.removeAttribute('tabindex');
         });
 
-        // Beim Fokussieren der Liste die (erste bzw. per opts.initialIndex gewaehlte)
-        // Option aktiv markieren (falls keine aktiv).
+        // When the list is focused, mark the (first, or the one chosen via
+        // opts.initialIndex) option active (if none is active).
         container.addEventListener('focus', function() {
             if (!activeItem()) {
                 var items = getItems();
@@ -148,15 +148,15 @@ window.caldav_a11y = {
                     break;
             }
         });
-        // Maus-Klick auf eine Option -> aktiv setzen (Fokus bleibt am Container).
+        // Mouse click on an option -> set it active (focus stays on the container).
         container.addEventListener('click', function(e) {
             var it = e.target.closest && e.target.closest(itemSel);
             if (it && container.contains(it)) setActive(it, false);
         });
     },
 
-    /** Setzt nach einem Re-Render wieder die aktive Option mit [attr="value"]
-     *  (activedescendant) und fokussiert den Listbox-Container. */
+    /** After a re-render, restores the active option with [attr="value"]
+     *  (activedescendant) and focuses the listbox container. */
     focusItemByAttr: function(container, attr, value) {
         container = (container && container.jquery) ? container[0] : container;
         if (!container || value == null) return false;

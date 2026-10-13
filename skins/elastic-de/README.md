@@ -1,41 +1,40 @@
-# elastic-de skin override — Accessibility (Screen Reader)
+# elastic-de skin override — Accessibility (screen reader)
 
-Site-Skin `elastic-de` (extends `elastic`). Enthält den Accessibility-Fix für die
-**Kontaktliste** (CardDAV/caldav_suite) unter NVDA.
+Site skin `elastic-de` (extends `elastic`). Contains the accessibility fix for the
+**contact list** (CardDAV/caldav_suite) under NVDA.
 
 ## Problem
 
-In der Kontaktliste sprang NVDA mit Pfeil-runter nicht zum nächsten Kontakt
-("toolbar button unavailable" / nur "Textrahmen"); man musste manuell mit
-NVDA+Leertaste (CapsLock+Space) in den Fokus-Modus schalten. Die **Mailliste**
-funktionierte dagegen automatisch.
+In the contact list, NVDA did not move to the next contact with arrow-down
+("toolbar button unavailable" / only "text frame"); you had to manually switch to
+focus mode with NVDA+Space (CapsLock+Space). The **mail list**, in contrast,
+worked automatically.
 
-## Ursache
+## Cause
 
-Roundcube rendert die Kontaktliste als ARIA-Listbox (`role="listbox"`, Zeilen
-`role="option"`), legt den DOM-Fokus aber auf eine `<td>`-Zelle statt per
-`aria-activedescendant` auf die aktive Option. NVDA findet keine aktive Option und
-bleibt im Browse-Modus → Pfeile greifen ins Leere. Zusätzlich war die
-Kontakt-Tabelle **namenlos** (kein `aria-labelledby`) → NVDA las nur "Textrahmen".
-Die Mailliste ist dagegen eine schlichte Tabelle **mit** `aria-labelledby` und
-einem Scroller mit `tabindex="-1"`.
+Roundcube renders the contact list as an ARIA listbox (`role="listbox"`, rows
+`role="option"`), but places the DOM focus on a `<td>` cell instead of setting the
+active option via `aria-activedescendant`. NVDA finds no active option and stays in
+browse mode -> the arrow keys do nothing. In addition, the contact table was
+**unnamed** (no `aria-labelledby`) -> NVDA only read "text frame". The mail list, in
+contrast, is a plain table **with** `aria-labelledby` and a scroller with `tabindex="-1"`.
 
 ## Fix (templates/addressbook.html)
 
-Kontaktliste an die funktionierende Mailliste angeglichen:
-- `role="listbox"` an der Tabelle entfernt (schlichte Tabelle wie `#messagelist`)
-- `aria-labelledby="aria-label-contactslist"` an die Tabelle (Tabelle benannt)
-- Scroller-Div: `id="contacts-content"` + `tabindex="-1"` (wie `#messagelist-content`)
+Aligned the contact list with the working mail list:
+- removed `role="listbox"` from the table (plain table like `#messagelist`)
+- added `aria-labelledby="aria-label-contactslist"` to the table (table is named)
+- scroller div: `id="contacts-content"` + `tabindex="-1"` (like `#messagelist-content`)
 
-## WICHTIG: Verzeichnis-Permissions
+## IMPORTANT: directory permissions
 
-Roundcube läuft als `www-data`. Liegt der Skin außerhalb des Images (Bind-Mount)
-und sind Unterverzeichnisse `750 root:root`, kann `www-data` sie **nicht betreten**
-und Roundcube lädt **still** das Stock-Template — jede Override-Änderung verpufft
-wirkungslos und ohne Fehlermeldung. Nach jeder Änderung sicherstellen:
+Roundcube runs as `www-data`. If the skin is outside the image (bind mount) and its
+subdirectories are `750 root:root`, `www-data` **cannot** enter them and Roundcube
+**silently** loads the stock template — every override change has no effect and no
+error. After every change make sure:
 
-    chmod -R a+rX <skin-verzeichnis>
+    chmod -R a+rX <skin-directory>
 
-Gegenprobe im Container:
+Cross-check inside the container:
 
     su -s /bin/sh www-data -c 'test -r .../skins/elastic-de/templates/addressbook.html && echo OK'

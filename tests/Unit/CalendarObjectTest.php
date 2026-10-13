@@ -65,7 +65,7 @@ class CalendarObjectTest extends TestCase
     {
         $obj = $this->makeEvent("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:test-4\r\nDTSTART:20260723T090000Z\r\nDTEND:20260723T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR");
 
-        $this->assertEquals('(Ohne Titel)', $obj->getSummary());
+        $this->assertEquals('(No title)', $obj->getSummary());
     }
 
     public function testTodoBasicProperties(): void

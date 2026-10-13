@@ -87,7 +87,7 @@ class TaskFieldsTest extends TestCase
         $this->assertSame('FREQ=WEEKLY', $arr['rrule']);
     }
 
-    // ---- Fetch-Merge ----
+    // ---- Fetch-merge ----
 
     private function existingTodo(): string
     {

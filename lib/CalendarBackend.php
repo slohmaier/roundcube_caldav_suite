@@ -8,14 +8,14 @@ use Sabre\VObject\Reader;
 class CalendarBackend
 {
     /**
-     * Neues Event von Grund auf bauen (Create).
+     * Build a new event from scratch (create).
      */
     public function buildICalEvent(array $data): string
     {
         $vcalendar = new VCalendar();
         $vcalendar->PRODID = '-//CalDAV Suite//EN';
 
-        // Leeren uid (neuer Termin) durch frischen UUID ersetzen, sonst antwortet Radicale 400.
+        // Replace an empty uid (new event) with a fresh UUID, otherwise Radicale replies 400.
         $uid = (isset($data['uid']) && !empty($data['uid'])) ? $data['uid'] : \Sabre\VObject\UUIDUtil::getUUID();
         $vevent = $vcalendar->add('VEVENT', [
             'UID' => $uid,
@@ -30,9 +30,9 @@ class CalendarBackend
     }
 
     /**
-     * Bestehendes Event aktualisieren OHNE nicht behandelte Felder zu verlieren
-     * (RRULE, ATTENDEE, ORGANIZER, SEQUENCE, EXDATE, eigene X-Props bleiben erhalten).
-     * Nur die in $data enthaltenen Felder werden angefasst.
+     * Update an existing event WITHOUT losing unhandled fields
+     * (RRULE, ATTENDEE, ORGANIZER, SEQUENCE, EXDATE, custom X- props are preserved).
+     * Only the fields present in $data are touched.
      */
     public function updateICalEvent(string $existingICal, array $data): ?string
     {
@@ -45,10 +45,10 @@ class CalendarBackend
     }
 
     /**
-     * Roundcube/JS-Daten auf eine VEVENT-Komponente anwenden.
-     * Pflichtfelder (Titel/Start/Ende) werden gesetzt wenn vorhanden; optionale
-     * Felder NUR wenn ihr Key in $data vorkommt (leerer Wert = entfernen). So gehen
-     * beim Edit Felder, die das Formular nicht kennt, nicht verloren.
+     * Apply Roundcube/JS data to a VEVENT component.
+     * Required fields (title/start/end) are set if present; optional fields ONLY
+     * if their key exists in $data (empty value = remove). This way, fields the
+     * form does not know about are not lost on edit.
      */
     private function applyEvent($vevent, array $data): void
     {
@@ -156,7 +156,7 @@ class CalendarBackend
         }
     }
 
-    /** Liste aus Array oder kommaseparierter Zeichenkette. */
+    /** List from an array or a comma-separated string. */
     private function normalizeList($value): array
     {
         $list = is_array($value) ? $value : explode(',', (string) $value);

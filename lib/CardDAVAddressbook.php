@@ -313,7 +313,7 @@ class CardDAVAddressbook extends \rcube_addressbook
             }
         }
 
-        // --- IMPP (Instant Messaging; im / im:jabber / ...) ---
+        // --- IMPP (instant messaging; im / im:jabber / ...) ---
         $vcard->remove('IMPP');
         foreach ($this->collectSubtyped($save_data, 'im') as [$subtype, $value]) {
             $prop = $vcard->add('IMPP', $value);
@@ -322,7 +322,7 @@ class CardDAVAddressbook extends \rcube_addressbook
             }
         }
 
-        // --- Geburtstag / Jahrestag ---
+        // --- Birthday / anniversary ---
         $vcard->remove('BDAY');
         if (!empty($save_data['birthday']) && ($d = $this->normalizeDate($save_data['birthday']))) {
             $vcard->add('BDAY', $d);
@@ -332,14 +332,14 @@ class CardDAVAddressbook extends \rcube_addressbook
             $vcard->add('ANNIVERSARY', $d);
         }
 
-        // --- Notizen ---
+        // --- Notes ---
         $vcard->remove('NOTE');
         if (!empty($save_data['notes'])) {
             $vcard->add('NOTE', $save_data['notes']);
         }
     }
 
-    /** Datums-Eingabe (verschiedene Formate) -> YYYY-MM-DD, oder null. */
+    /** Date input (various formats) -> YYYY-MM-DD, or null. */
     private function normalizeDate($value): ?string
     {
         if (is_array($value)) {

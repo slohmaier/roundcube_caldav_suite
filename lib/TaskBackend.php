@@ -16,7 +16,7 @@ class TaskBackend
     ];
 
     /**
-     * Neue Aufgabe von Grund auf bauen (Create).
+     * Build a new task from scratch (create).
      */
     public function buildICalTodo(array $data): string
     {
@@ -40,9 +40,9 @@ class TaskBackend
     }
 
     /**
-     * Bestehende Aufgabe aktualisieren OHNE nicht behandelte Felder zu verlieren
-     * (RRULE, RELATED-TO, eigene X-Props bleiben erhalten). Nur in $data
-     * enthaltene Felder werden angefasst.
+     * Update an existing task WITHOUT losing unhandled fields
+     * (RRULE, RELATED-TO, custom X- props are preserved). Only fields present
+     * in $data are touched.
      */
     public function updateICalTodo(string $existingICal, array $data): ?string
     {
@@ -148,8 +148,8 @@ class TaskBackend
     }
 
     /**
-     * Toggle task completion. Holt die bestehende VTODO, flippt nur den Status
-     * und erhaelt alle anderen Felder.
+     * Toggle task completion. Fetches the existing VTODO, flips only the status
+     * and preserves all other fields.
      */
     public function toggleCompleted(string $url, bool $completed, CalDAVClient $client): ?string
     {
