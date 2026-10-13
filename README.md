@@ -1,5 +1,8 @@
 # roundcube_caldav_suite
 
+[![Packagist version](https://img.shields.io/packagist/v/slohmaier/roundcube_caldav_suite.svg)](https://packagist.org/packages/slohmaier/roundcube_caldav_suite)
+[![Tests](https://github.com/slohmaier/roundcube_caldav_suite/actions/workflows/test.yml/badge.svg)](https://github.com/slohmaier/roundcube_caldav_suite/actions/workflows/test.yml)
+
 CalDAV **Calendar, Tasks & Contacts** plugin for Roundcube Webmail.
 
 Connects to **any CalDAV/CardDAV server** (Radicale, Baïkal, Nextcloud, iCloud, Google)
@@ -89,13 +92,15 @@ composer install --no-dev
 
 ### Option 3 — Composer
 
+The plugin is published on [Packagist](https://packagist.org/packages/slohmaier/roundcube_caldav_suite):
+
 ```bash
 cd /path/to/roundcube
 composer require slohmaier/roundcube_caldav_suite
 ```
 
-This requires the package to be available on Packagist (or to be added as a VCS
-repository in your `composer.json`).
+If your root project does not already allow the Roundcube plugin installer, add
+`"roundcube/plugin-installer": true` to `config.allow-plugins` in `composer.json`.
 
 ### Enable the plugin
 
